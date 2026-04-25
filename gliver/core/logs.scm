@@ -13,13 +13,20 @@
   #:use-module (srfi srfi-1)
   #:use-module (srfi srfi-9)
   #:use-module (srfi srfi-19)
-  #:export (*log-level*
-            log-debug
+  #:export (
+			*log-level*
+			*log-port*
+			*log-file-path*
+			*log-levels*
+			log-level-value
+			log-level-set!
+			log-file-set!
+			log-write
+			log-debug
 			log-info
 			log-warn
 			log-error
-            log-level-set!
-			log-file-set!))
+))
 
 (define *log-level* (make-parameter 'info))
 (define *log-port* (make-parameter (current-error-port)))
@@ -51,23 +58,44 @@
             (log-level-value (*log-level*)))
     (let* ((now (current-date))
            (timestamp (date->string now "~Y-~m-~d ~H:~M:~S"))
-           (level-str (string-upcase (symbol->string level)))
-           (message (apply format #f fmt args)))
+           (raw-level (string-upcase (symbol->string level)))
+           (level-pad (- 5 (string-length raw-level)))
+           (level-str (if (> level-pad 0)
+                          (string-append raw-level (make-string level-pad #\space))
+                          raw-level))
+           (message (apply format #f fmt args))
+           (thread-name "main"))
       (if (and filename (string? filename))
         (let* ((trimmed-filename (string-trim-right filename #\/))
                (match (string-match "[^/]+$" trimmed-filename))
                (basename (if match
                              (match:substring match 0)
                              trimmed-filename)))
-          (format (*log-port*) "[~a] ~a [~a]: ~a~%" timestamp level-str basename message))
-        (format (*log-port*) "[~a] ~a: ~a~%" timestamp level-str message))
+          ;; standard log4j format with logger name
+          (format (*log-port*) "~a [~a] ~a ~a - ~a~%" 
+                  timestamp thread-name level-str basename message))
+        ;; standard log4j format without logger name
+        (format (*log-port*) "~a [~a] ~a - ~a~%" 
+                timestamp thread-name level-str message))
       (force-output (*log-port*)))))
 
-(define (log-debug fmt . args)
-  (log-write (current-filename) 'debug fmt args))
-(define (log-info fmt . args)
-  (log-write (current-filename) 'info fmt args))
-(define (log-warn fmt . args)
-  (log-write (current-filename) 'warn fmt args))
-(define (log-error fmt . args)
-  (log-write (current-filename) 'error fmt args))
+(define-syntax log-debug
+  (syntax-rules ()
+    ((_ fmt args ...)
+     (log-write (current-filename) 'debug fmt (list args ...)))))
+
+(define-syntax log-info
+  (syntax-rules ()
+    ((_ fmt args ...)
+     (log-write (current-filename) 'info fmt (list args ...)))))
+
+(define-syntax log-warn
+  (syntax-rules ()
+    ((_ fmt args ...)
+     (log-write (current-filename) 'warn fmt (list args ...)))))
+
+(define-syntax log-error
+  (syntax-rules ()
+    ((_ fmt args ...)
+     (log-write (current-filename) 'error fmt (list args ...)))))
+

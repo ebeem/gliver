@@ -1,7 +1,7 @@
 (define-module (gliver contrib systemd)
   #:use-module (ice-9 popen)
   #:use-module (ice-9 rdelim)
-  #:use-module (gliver core logs)
+  #:use-module (gliver core)
   #:export (systemd-status
             systemd-start
             systemd-stop

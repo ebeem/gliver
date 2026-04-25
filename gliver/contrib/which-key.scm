@@ -18,9 +18,7 @@
 (define-module (gliver contrib which-key)
   #:use-module (ice-9 format)
   #:use-module (srfi srfi-1)
-  #:use-module (gliver core logs)
-  #:use-module (gliver core hooks)
-  #:use-module (gliver keybindings)
+  #:use-module (gliver core)
   #:use-module (gliver commands)
   #:use-module (gliver message-bar)
   #:declarative? #f

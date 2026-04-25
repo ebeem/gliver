@@ -13,8 +13,7 @@
 ;;;   (gaps-toggle!)
 
 (define-module (gliver contrib gaps)
-  #:use-module (gliver core logs)
-  #:use-module (gliver core manager)
+  #:use-module (gliver core)
   #:use-module (gliver commands)
   #:declarative? #f
   #:export (gap-inner-set!

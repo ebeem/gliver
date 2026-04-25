@@ -7,23 +7,22 @@
   #:use-module (ice-9 format)
   #:use-module (gliver core logs)
   #:declarative? #f
-  #:export (config-file-path
-            config-load!
-            config-reload!
-
-            *default-workspace-name*
-            *terminal*
-            *shell-program*
-            *suppress-container-indicator*
-            *startup-message*
-            *window-name-source*
-
-			*wm-behavior-focus-new-window*
+  #:export (
+			*default-workspace-name*
+			*terminal*
+			*shell-program*
+			*suppress-container-indicator*
+			*startup-message*
+			*window-name-source*
 			*wm-behavior-focus-mouse-enter*
 			*wm-behavior-focus-clear-mouse-leave*
 			*wm-behavior-focus-mouse-click*
 			*wm-behavior-focus-window-new*
-			
+			*wm-behavior-focus-new-window*
+			*wm-behavior-workspace-remove-to*
+			config-file-path
+			config-load!
+			config-reload!
 			*xdg-config-home*
 			*xdg-runtime-dir*
 			*xdg-state-home*
@@ -31,7 +30,7 @@
 			*gliver-config-dir*
 			*gliver-runtime-dir*
 			*gliver-state-dir*
-			*wm-behavior-workspace-remove-to*))
+))
 
 ;;; config variables
 (define *default-workspace-name* "Default")

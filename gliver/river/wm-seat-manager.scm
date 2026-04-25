@@ -8,12 +8,17 @@
 ;;; gliver's files or utilities except for logging and configuration
 
 (define-module (gliver river wm-seat-manager)
-  #:use-module (gliver core hooks)
+  #:use-module (gliver core types)
   #:use-module (gliver core logs)
+  #:use-module (gliver core hooks)
   #:use-module (gliver wayland client)
   #:use-module (gliver wayland gen river-window-management-v1)
   #:use-module (system foreign)
-  #:export (wm-seat-destroy
+  #:export (
+			*wm-seat-listener*
+			gliver-on-listeners-attach
+			on-seat
+			wm-seat-destroy
 			wm-seat-window-focus
 			wm-seat-shell-focus
 			wm-seat-window-focus-clear
@@ -30,7 +35,8 @@
 			on-seat-shell-interaction
 			on-seat-op-delta
 			on-seat-op-release
-			on-seat-pointer-position))
+			on-seat-pointer-position
+))
 
 (define *wm-seat-listener* #f)
 
@@ -48,7 +54,7 @@ to be properly initialized."
          on-seat-op-delta
          on-seat-op-release
          on-seat-pointer-position))
-  (gliver-hook-add! %seat-created-hook on-seat))
+  (gliver-hook-add! %seat-created-hook on-seat -1))
 
 (define (on-seat data manager seat-proxy)
   "Handle a new seat event from the compositor."
@@ -63,44 +69,44 @@ to be properly initialized."
 client side and the server should also clear everything.
 This most likely should be used internally only, and it
 will be automatically managed and called when needed."
-  (log-debug "destroying seat proxy: ~a" proxy-seat)
   (when proxy-seat
-	(river-seat-v1-destroy proxy-seat)))
+    (log-debug "destroying seat proxy: ~a" proxy-seat)
+    (river-seat-v1-destroy proxy-seat)))
 
 (define (wm-seat-window-focus proxy-seat proxy-window)
   "Request that the compositor send keyboard input to the given window.
 Must be called in a ~manage_sequence~."
   (when (and proxy-seat proxy-window)
-	(log-debug "Seat ~a focusing window ~a" proxy-seat proxy-window)
-	(river-seat-v1-focus-window proxy-seat proxy-window)))
+    (log-debug "Seat ~a focusing window ~a" proxy-seat proxy-window)
+    (river-seat-v1-focus-window proxy-seat proxy-window)))
 
 (define (wm-seat-shell-focus proxy-seat proxy-surface)
   "Request that the compositor send keyboard input to the given shell surface.
 Must be called in a ~manage_sequence~."
   (when (and proxy-seat proxy-surface)
-	(log-debug "Seat ~a focusing surface ~a" proxy-seat proxy-surface)
-	(river-seat-v1-focus-shell-surface proxy-seat proxy-surface)))
+    (log-debug "Seat ~a focusing surface ~a" proxy-seat proxy-surface)
+    (river-seat-v1-focus-shell-surface proxy-seat proxy-surface)))
 
 (define (wm-seat-window-focus-clear proxy-seat)
   "Request that the compositor send keyboard input to the given shell surface.
 Must be called in a ~manage_sequence~."
   (when proxy-seat
-	(log-debug "Seat ~a clearing focus" proxy-seat)
-	(river-seat-v1-clear-focus proxy-seat)))
+    (log-debug "Seat ~a clearing focus" proxy-seat)
+    (river-seat-v1-clear-focus proxy-seat)))
 
 (define (wm-seat-pointer-op-start proxy-seat)
   "Start an interactive pointer operation.
 Must be called in a ~manage_sequence~."
   (when proxy-seat
-	(log-debug "Seat ~a pointer operation started" proxy-seat)
-	(river-seat-v1-op-start-pointer proxy-seat)))
+    (log-debug "Seat ~a pointer operation started" proxy-seat)
+    (river-seat-v1-op-start-pointer proxy-seat)))
 
 (define (wm-seat-pointer-op-end proxy-seat)
   "End an interactive pointer operation.
 Must be called in a ~manage_sequence~."
   (when proxy-seat
-	(log-debug "Seat ~a pointer operation ended" proxy-seat)
-	(river-seat-v1-op-end proxy-seat)))
+    (log-debug "Seat ~a pointer operation ended" proxy-seat)
+    (river-seat-v1-op-end proxy-seat)))
 
 ;; TODO: needs testing
 (define (wm-seat-pointer-binding-get proxy-seat button modifiers)
@@ -109,21 +115,21 @@ button: input event code like ~BTN_RIGHT~.
 modifiers: flag enums.
 Returns river_pointer_binding_v1"
   (when proxy-seat
-	(log-debug "Getting binding for seat ~a with button ~a and modifiers ~a" proxy-seat button modifiers)
-	(river-seat-v1-get-pointer-binding proxy-seat button modifiers)))
+    (log-debug "Getting binding for seat ~a with button ~a and modifiers ~a" proxy-seat button modifiers)
+    (river-seat-v1-get-pointer-binding proxy-seat button modifiers)))
 
 (define (wm-seat-pointer-theme proxy-seat name size)
   "Set the XCursor theme for the seat."
   (when proxy-seat
-	(log-debug "Seat ~a cursor theme changed to ~a size ~a" proxy-seat name size)
-	(river-seat-v1-set-xcursor-theme proxy-seat name size)))
+    (log-debug "Seat ~a cursor theme changed to ~a size ~a" proxy-seat name size)
+    (river-seat-v1-set-xcursor-theme proxy-seat name size)))
 
 (define (wm-seat-pointer-warp proxy-seat x y)
   "Warp the pointer to the given position.
 Must be called in a ~manage_sequence~."
   (when proxy-seat
-	(log-debug "Seat ~a pointer position moved to ~ax~a" proxy-seat x y)
-	(river-seat-v1-pointer-warp proxy-seat x y)))
+    (log-debug "Seat ~a pointer position moved to ~ax~a" proxy-seat x y)
+    (river-seat-v1-pointer-warp proxy-seat x y)))
 
 ;;; seat events
 (define (on-seat-removed data proxy-seat)
@@ -133,10 +139,10 @@ Hook: %seat-removed-hook"
   (log-debug "Seat removed: ~a" proxy-seat)
   (gliver-hook-run! %seat-removed-hook data proxy-seat))
 
-(define (on-seat-wl-seat data proxy-seat name)
+(define (on-seat-wl-seat data proxy-seat object-id)
   "The wl_seat object corresponding to the river_seat_v1."
-  (log-debug "Seat wl_seat global name: ~a = ~a" proxy-seat name)
-  (gliver-hook-run! %seat-name-changed-hook data proxy-seat name))
+  (log-debug "Seat wl_seat global object-id: ~a = ~a" proxy-seat object-id)
+  (gliver-hook-run! %seat-object-id-changed-hook data proxy-seat object-id))
 
 (define (on-seat-pointer-enter data proxy-seat proxy-window)
   "The seat's pointer entered the given window's area."
@@ -155,16 +161,14 @@ Hook: %seat-removed-hook"
 
 (define (on-seat-shell-interaction data proxy-seat shell-proxy)
   "Surface is clicked or input is sent to it"
-  ;; TODO: need to figure this hook out and test it
-  ;; I don't thing it's of any use at the moment honestly
   (log-debug "Shell surface interaction: ~a" shell-proxy)
-  (gliver-hook-run! %seat-window-interacted-hook data proxy-seat shell-proxy))
+  (gliver-hook-run! %seat-shell-interacted-hook data proxy-seat shell-proxy))
 
 (define (on-seat-op-delta data proxy-seat dx dy)
   "This event indicates the total change in position since the
 start of the operation of the pointer/touch point/etc."
   (log-debug "Op delta: ~a,~a" dx dy)
-  (gliver-hook-run! %seat-op-delta-changed-hook proxy-seat dx dy))
+  (gliver-hook-run! %seat-op-delta-changed-hook data proxy-seat dx dy))
 
 (define (on-seat-op-release data proxy-seat)
   "The input driving the current interactive operation has been released."

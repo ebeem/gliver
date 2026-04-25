@@ -1,9 +1,9 @@
-;;; gliver/keybindings.scm --- Keybinding engine for Gliver
+;;; gliver/core/keybindings.scm --- Keybinding engine for Gliver
 ;;;
 ;;; Copyright (C) 2026 Gliver Contributors
 ;;; SPDX-License-Identifier: GPL-3.0-or-later
 
-(define-module (gliver keybindings)
+(define-module (gliver core keybindings)
   #:use-module (ice-9 format)
   #:use-module (ice-9 match)
   #:use-module (ice-9 regex)
@@ -12,53 +12,53 @@
   #:use-module (srfi srfi-69)
   #:use-module (system foreign)
   #:use-module (gliver core logs)
-  #:export (<gliver-key>
-            make-gliver-key
-            gliver-key-modifiers
+  #:export (
+			*modifier-map*
+			*modifier-bitmask-map*
 			gliver-key-keysym
+			gliver-key-modifiers
 			gliver-key?
-            gliver-key=?
+			%make-gliver-key
+			make-gliver-key
+			modifier-weight
+			modifier<?
+			gliver-key=?
 			gliver-key->string
 			gliver-key->xkb-binding-args
-            kbd
-
-            <gliver-keymap>
-            make-gliver-keymap
-            gliver-keymap-name
+			xkb-lib-common
+			xkb-keysym-from-name
+			keysym-name->xkb-value
+			kbd
 			gliver-keymap-bindings
+			gliver-keymap-name
 			gliver-keymap?
-            gliver-keymap-keys
-            gliver-keymap->alist
-            gliver-keymap-clear!
-
-            define-key
-            undefine-key
-            lookup-key
-
-            ;; key bindings (action + persist)
-            <gliver-binding>
-            make-gliver-binding
-            gliver-binding?
-            gliver-binding-action
-            gliver-binding-persist
-
-            ;; standard keymaps
-            *top-map*
-            *root-map*
-            *workspace-map*
-            *resize-map*
-            *exchange-map*
-
-            ;; XKB binding spec generation
-            <gliver-binding-spec>
-            make-gliver-binding-spec
+			%make-gliver-keymap
+			gliver-key-hash
+			make-gliver-keymap
+			gliver-keymap-keys
+			gliver-keymap->alist
+			gliver-binding-persist
+			gliver-binding-action
+			gliver-binding?
+			make-gliver-binding
+			define-key
+			undefine-key
+			lookup-key
+			gliver-keymap-clear!
+			*top-map*
+			*root-map*
+			*workspace-map*
+			*resize-map*
+			*exchange-map*
+			gliver-binding-spec-persist
+			gliver-binding-spec-mode
+			gliver-binding-spec-action
+			gliver-binding-spec-modifiers
+			gliver-binding-spec-keysym
 			gliver-binding-spec?
-            gliver-binding-spec-keysym
-            gliver-binding-spec-modifiers
-            gliver-binding-spec-action
-            gliver-binding-spec-mode
-            gliver-binding-spec-persist
-            gliver-binding-spec-generate))
+			make-gliver-binding-spec
+			gliver-binding-spec-generate
+))
 
 ;;; key representation
 (define *modifier-map*

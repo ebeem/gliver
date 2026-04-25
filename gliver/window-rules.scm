@@ -8,12 +8,7 @@
   #:use-module (ice-9 regex)
   #:use-module (srfi srfi-1)
   #:use-module (srfi srfi-9)
-  #:use-module (gliver core logs)
-  #:use-module (gliver core manager)
-  #:use-module (gliver core workspace)
-  #:use-module (gliver core container)
-  #:use-module (gliver core window)
-  #:use-module (gliver core hooks)
+  #:use-module (gliver core)
   #:declarative? #f
   #:export (window-rule-add!
             window-rules-clear-all!
@@ -87,11 +82,11 @@ PATTERN can be a string (exact match) or a regex-capable string."
               (let ((target (container-find-by-number val workspace)))
                 (when target
                   (window-move-to-container! window target))))))
-         ((float)
-          (when (and val (not (window-floating? window)))
-            (window-toggle-float! window))
-          (when (and (not val) (window-floating? window))
-            (window-toggle-float! window)))
+         ;; ((float)
+         ;;  (when (and val (not (window-floating? window)))
+         ;;    (window-toggle-float! window))
+         ;;  (when (and (not val) (window-floating? window))
+         ;;    (window-toggle-float! window)))
          ((fullscreen)
           (window-fullscreen-set! window val))
          ((focus)

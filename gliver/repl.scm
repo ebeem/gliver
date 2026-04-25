@@ -11,8 +11,7 @@
   #:use-module (ice-9 rdelim)
   #:use-module (ice-9 textual-ports)
   #:use-module (system repl server)
-  #:use-module (gliver core logs)
-  #:use-module (gliver core config)
+  #:use-module (gliver core)
   #:export (repl-start!
             repl-stop!
             repl-socket-path))

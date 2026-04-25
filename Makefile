@@ -14,15 +14,16 @@ GUILE      ?= guile
 GUILD      ?= guild
 
 MODULES =   gliver/core/logs.scm \
+			gliver/core/types.scm \
 			gliver/core/hooks.scm \
-			gliver/core/manager.scm \
+			gliver/core/config.scm \
+			gliver/core/keybindings.scm \
 			gliver/core/output.scm \
 			gliver/core/seat.scm \
-			gliver/core/window.scm \
 			gliver/core/workspace.scm \
 			gliver/core/container.scm \
-			gliver/core/config.scm \
-			gliver/keybindings.scm \
+			gliver/core/window.scm \
+			gliver/core.scm \
 			gliver/commands.scm \
 			gliver/window-rules.scm \
 			gliver/render.scm \
@@ -159,6 +160,7 @@ uninstall:
 
 clean:
 	rm -rf build
+	rm -rf "$${XDG_CACHE_HOME:-$$HOME/.cache}/guile/ccache/"*"$(CURDIR)"
 
 repl:
 	$(GUILE) -L . -l gliver/core.scm

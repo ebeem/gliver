@@ -17,30 +17,33 @@
   #:use-module (ice-9 rdelim)
   #:use-module (srfi srfi-1)
   #:use-module (system foreign)
-  #:use-module (gliver core logs)
-  #:use-module (gliver core manager)
-  #:use-module (gliver core hooks)
+  #:use-module (gliver core)
   #:use-module (gliver wayland client)
   #:use-module (gliver wayland gen wayland)
   #:use-module (gliver wayland gen river-input-management-v1)
   #:use-module (gliver wayland gen river-layer-shell-v1)
   #:use-module (gliver wayland gen wlr-layer-shell-unstable-v1)
-  #:export (;; connection
-            river-connect!
-            river-disconnect!
-            river-connected?
-
-            ;; event loop
-            river-event-loop!
-            river-dispatch-once!
-
-            ;; state
-            *wl-display*
-            *wl-registry*
-            *wl-compositor*
-            *wl-shm*
-            *zwlr-layer-shell*
-            ))
+  #:export (
+			WL_COMPOSITOR_NAME
+			WL_SHM_NAME
+			*wl-display*
+			*wl-registry*
+			*connected*
+			*input-manager*
+			*layer-shell*
+			*wl-compositor*
+			*wl-shm*
+			*zwlr-layer-shell*
+			*active-bindings*
+			*current-mode*
+			*pending-key-action*
+			river-connected?
+			river-connect!
+			river-disconnect!
+			river-dispatch-once!
+			read-proc-mem-kb
+			river-event-loop!
+))
 
 ;;; protocol names
 (define WL_COMPOSITOR_NAME "wl_compositor")
@@ -87,33 +90,9 @@
                 (lambda (data registry object-id protocol-ptr version)
                   (let ((protocol-name (pointer->string protocol-ptr)))
 					;; any interface should start binding with this hook
+                    ;; (log-info "binding ~a..." protocol-name)
 					(gliver-hook-run! *gliver-globals-bind-hook*
-									  registry protocol-name object-id version)
-                    (cond
-                     ((string=? protocol-name RIVER_LAYER_SHELL_V1_NAME)
-                      (log-info "Binding ~a..." protocol-name)
-                      (set! *layer-shell*
-                            (gliver-wl-registry-bind registry object-id
-													 *river-layer-shell-v1-interface*
-													 (min version 1))))
-                     ((string=? protocol-name WL_COMPOSITOR_NAME)
-                      (log-info "Binding ~a..." protocol-name)
-                      (set! *wl-compositor*
-                            (gliver-wl-registry-bind registry object-id
-													 *wl-compositor-interface*
-													 (min version 6))))
-                     ((string=? protocol-name WL_SHM_NAME)
-                      (log-info "Binding ~a..." protocol-name)
-                      (set! *wl-shm*
-                            (gliver-wl-registry-bind registry object-id
-													 *wl-shm-interface*
-													 (min version 1))))
-                     ((string=? protocol-name ZWLR_LAYER_SHELL_V1_NAME)
-                      (log-info "Binding ~a..." protocol-name)
-                      (set! *zwlr-layer-shell*
-                            (gliver-wl-registry-bind registry object-id
-													 *zwlr-layer-shell-v1-interface*
-													 (min version 4)))))))
+									  registry protocol-name object-id version)))
                 (list '* '* uint32 '* uint32))
                ;; global_remove(data, registry, object-id)
                (procedure->pointer
@@ -127,15 +106,11 @@
 	  (wl-display-roundtrip *wl-display*)
 
 	  ;; verify all important interfaces were bound
-	  ;; TODO: make this hook-run unsafe so crashes stop the wm
-	  (gliver-hook-run! *gliver-globals-verify-hook*)
+	  (gliver-hook-run-strict! *gliver-globals-verify-hook*)
 	  (log-debug "All critical globals were bound")
 
-      ;; verify critical globals were bound
-      
       (log-info "Core protocols bound.")
-
-      (gliver-hook-run! *gliver-listeners-attach-hook*)
+      (gliver-hook-run-strict! *gliver-listeners-attach-hook*)
 
       ;; second roundtrip: flushes bind requests and receives initial state
       ;; (seat, output, manage_start events delivered via wm listener)

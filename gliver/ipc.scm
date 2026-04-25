@@ -12,9 +12,7 @@
   #:use-module (ice-9 match)
   #:use-module (ice-9 textual-ports)
   #:use-module (srfi srfi-1)
-  #:use-module (gliver core config)
-  #:use-module (gliver core logs)
-  #:use-module (gliver core manager)
+  #:use-module (gliver core)
   #:use-module (gliver commands)
   #:export (ipc-start!
             ipc-stop!

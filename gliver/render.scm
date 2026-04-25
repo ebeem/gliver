@@ -14,7 +14,7 @@
   #:use-module (system foreign-library)
   #:use-module (srfi srfi-1)
   #:use-module (srfi srfi-9)
-  #:use-module (gliver core logs)
+  #:use-module (gliver core)
   #:use-module (gliver wayland client)
   #:use-module (gliver wayland gen wayland)
   #:use-module (gliver wayland gen wlr-layer-shell-unstable-v1)

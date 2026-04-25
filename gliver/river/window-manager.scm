@@ -19,51 +19,46 @@
   #:use-module (ice-9 rdelim)
   #:use-module (srfi srfi-1)
   #:use-module (system foreign)
+  #:use-module (gliver core types)
   #:use-module (gliver core logs)
-  #:use-module (gliver core config)
-  #:use-module (gliver core manager)
   #:use-module (gliver core hooks)
   #:use-module (gliver river connector)
   #:use-module (gliver wayland client)
   #:use-module (gliver wayland gen river-window-management-v1)
-  #:export (*wm-manager*
+  #:export (
+			*wm-manager*
 			*wm-seats*
-			*wm-outputs*
-			proxy->node
-			proxy-output
-			hex-color->rgba
-			wm-window-close
-			wm-window-destroy
-			wm-window-node-get
-			wm-window-dimensions-propose
-			wm-window-hide
-			wm-window-show
-			wm-window-decoration-client
-			wm-window-decoration-server
-			wm-window-borders-set
-			wm-window-tiled-set
-			wm-window-decoration-above-get
-			wm-window-decoration-below-get
-			wm-window-resize-started-inform
-			wm-window-resize-ended-inform
-			wm-window-capabilities-inform
-			wm-window-maximized-inform
-			wm-window-unmaximized-inform
-			wm-window-fullscreen-inform
-			wm-window-fullscreen-exit-inform
-			wm-window-fullscreen
-			wm-window-fullscreen-exit
-			wm-window-clip-box-set
-			wm-window-content-clip-box-set
-			wm-window-dimension-bounds-set
 			*wm-manage-queue*
-			*wm-render-queue*))
+			*wm-render-queue*
+			*in-manage-sequence*
+			RIVER_WINDOW_V1_EDGES_ALL
+			gliver-on-globals-bind
+			gliver-on-globals-unbind
+			gliver-on-globals-verify
+			gliver-on-listeners-attach
+			wm-manager-stop
+			wm-manager-destroy
+			wm-manager-manage-finish
+			wm-manager-manage-dirty
+			wm-manager-render-finish
+			wm-manager-shell-surface-get
+			wm-manager-exit
+			on-unavailable
+			on-finished
+			on-window
+			on-output
+			on-seat
+			on-session-locked
+			on-session-unlocked
+			on-manage-start
+			process-queue!
+			on-render-start
+))
 
 ;; river_window_manager_v1 interface implementation
 ;; make sure to initialize and destroy these variables when needed
 (define *wm-manager* %null-pointer)
 (define *wm-seats* '())                 ;; list of river_seat_v1 proxies
-(define *wm-output-listener* #f)           ;; reused for all river_output_v1 proxies
 
 (define *wm-manage-queue* '())
 (define *wm-render-queue* '())
@@ -126,14 +121,7 @@
           on-output
           on-seat)))
     (wl-proxy-add-listener *wm-manager*
-						   wm-listener %null-pointer))
-
-  (set! *wm-output-listener*
-        (make-river-output-v1-listener
-         on-output-removed
-         on-output-wl-output
-         on-output-position
-         on-output-dimensions)))
+						   wm-listener %null-pointer)))
 
 ;;; TODO: implement
 ;;; river_window_manager_v1: requests
@@ -225,38 +213,26 @@ object. The client should destroy the object."
 Creates a core <window> record, attaches the event listener, and queues
 the window for initial setup in the upcoming manage sequence."
   (log-info "New window proxy: ~a" proxy-win)
-  (%window-created-hook data manager proxy-win))
+  (gliver-hook-run! %window-created-hook data manager proxy-win))
 
 (define (on-output data manager output-proxy)
   "Handle a new output event from the compositor.
 Creates an output and attaches the output event listener."
-  (log-info "New output proxy: ~a" output-proxy)
-  (log-info "New output manager: ~a" manager)
-  (log-info "New output manager: ~a" *manager*)
-  (let ((outputs (manager-outputs *manager*)))
-	(log-info "New output manager outputs: ~a" outputs)
-	
-	;; create an output for this proxy (name is proxy id for now)
-	(let* ((out (make-output
-				 (format #f "output-~a" (length outputs))
-				 #:wl-proxy output-proxy)))
-	  (output-add! out)
-	  (log-info "Created output with proxy ~a" output-proxy)))
-
-  ;; attach the shared event listener
-  (when *wm-output-listener*
-    (wl-proxy-add-listener output-proxy *wm-output-listener* %null-pointer)))
+  (log-debug "New output pointer created: ~a" output-proxy)
+  (gliver-hook-run! %output-created-hook data manager output-proxy))
 
 (define (on-seat data manager seat-proxy)
   "Handle a new seat event from the compositor."
   (log-debug "New seat proxy: ~a" seat-proxy)
-  (%seat-created-hook data manager seat-proxy))
+  (gliver-hook-run! %seat-created-hook data manager seat-proxy))
 
 (define (on-session-locked data manager)
-  (log-info "Session locked."))
+  (log-info "Session locked.")
+  (gliver-hook-run! %manager-session-locked-hook data manager))
 
 (define (on-session-unlocked data manager)
-  (log-info "Session unlocked."))
+  (log-info "Session unlocked.")
+  (gliver-hook-run! %manager-session-unlocked-hook data manager))
 
 (define (on-manage-start data manager)
   "Handle manage start: execute pending actions and finish the sequence.
@@ -335,119 +311,54 @@ changes, etc.) must happen between manage_start and manage_finish."
 The server sends window dimension events before this, so nodes can be
 positioned accurately."
   (log-debug "render start")
-  (catch #t
-    (lambda ()
-      (let ((output (output-current)))
-        ;; for each tracked window, get/cache node, set position, show, set borders
-        (for-each
-         (lambda (win)
-           (let* ((win-proxy (window-wl-proxy win))
-                  (win-addr (pointer-address win-proxy))
-				  (node-proxy (window-wl-node-proxy win))
-                  (node-addr (pointer-address win-proxy)))
-             (when win
-               ;; get or cache the scene node (get_node can only be called once)
-			   ;; this shouldn't be needed cuz on-window should handle it
-			   (unless node-proxy
-				 (let ((n (river-window-v1-get-node win-proxy)))
-                   (unless (null-pointer? n)
-					 (log-warn "node proxy was set on rendering!")
-					 (window-wl-node-proxy-set! win n))))
+  ;; (catch #t
+  ;;   (lambda ()
+  ;;     (let ((output (output-current)))
+  ;;       ;; for each tracked window, get/cache node, set position, show, set borders
+  ;;       (for-each
+  ;;        (lambda (win)
+  ;;          (let* ((win-proxy (window-wl-proxy win))
+  ;;                 (win-addr (pointer-address win-proxy))
+  ;; 				  (node-proxy (window-wl-node-proxy win))
+  ;;                 (node-addr (pointer-address win-proxy)))
+  ;;            (when win
+  ;;              ;; get or cache the scene node (get_node can only be called once)
+  ;; 			   ;; this shouldn't be needed cuz on-window should handle it
+  ;; 			   (unless node-proxy
+  ;; 				 (let ((n (river-window-v1-get-node win-proxy)))
+  ;;                  (unless (null-pointer? n)
+  ;; 					 (log-warn "node proxy was set on rendering!")
+  ;; 					 (window-wl-node-proxy-set! win n))))
 
-               ;; position the node
-			   (let ((node (window-wl-node-proxy win))
-                     (container (window-container win)))
-               (when (and node (not (null-pointer? node)))
-                 (if container
-                     ;; tiled: use container geometry
-                     (river-node-v1-set-position node
-                                                 (container-x container)
-                                                 (container-y container))
-                     ;; floating: center on output
-                     (when output
-                       (river-node-v1-set-position
-                        node
-                        (quotient (output-width output) 6)
-                        (quotient (output-height output) 6))))
-                 (river-node-v1-place-top node)))
+  ;;              ;; position the node
+  ;; 			   (let ((node (window-wl-node-proxy win))
+  ;;                    (container (window-container win)))
+  ;;              (when (and node (not (null-pointer? node)))
+  ;;                (if container
+  ;;                    ;; tiled: use container geometry
+  ;;                    (river-node-v1-set-position node
+  ;;                                                (container-x container)
+  ;;                                                (container-y container))
+  ;;                    ;; floating: center on output
+  ;;                    (when output
+  ;;                      (river-node-v1-set-position
+  ;;                       node
+  ;;                       (quotient (output-width output) 6)
+  ;;                       (quotient (output-height output) 6))))
+  ;;                (river-node-v1-place-top node)))
 
-               ;; show the window
-               (river-window-v1-show win-proxy)
+  ;;              ;; show the window
+  ;;              (river-window-v1-show win-proxy)
 
-               ;; apply border configuration
-               (let ((focused? (eq? win (window-current))))
-                 (log-info "do border here")))))
-         (manager-windows *manager*))))
-    (lambda (key . args)
-      (log-error "Error in render sequence: ~a ~a" key args)))
+  ;;              ;; apply border configuration
+  ;;              (let ((focused? (eq? win (window-current))))
+  ;;                (log-info "do border here")))))
+  ;;        (manager-windows *manager*))))
+  ;;   (lambda (key . args)
+  ;;     (log-error "Error in render sequence: ~a ~a" key args)))
 
   ;; always finish the render sequence
   (wm-manager-render-finish *wm-manager*))
-
-;;; =====================================
-;;; river_output_v1 interface
-;;; =====================================
-
-;;; output requests
-(define (wm-output-destroy proxy-output)
-  "Destroy an output, this means everything was cleared from
-client side and the server should also clear everything.
-This most likely should be used internally only, and it
-will be automatically managed and called when needed."
-  (log-debug "destroying output proxy: ~a" proxy-output)
-  (when proxy-output (river-output-v1-destroy proxy-output)))
-
-(define (wm-output-presentation-mode-set output mode)
-  "Set the preferred presentation mode of the output.
-mode: enum value `RIVER_OUTPUT_V1_PRESENTATION_MODE_VSYNC`,
-`RIVER_OUTPUT_V1_PRESENTATION_MODE_ASYNC`."
-  (let ((proxy-output (output-wl-proxy output)))
-    (when proxy-output
-      (log-debug "Setting output ~a presentation mode to ~a" proxy-output mode)
-      (river-output-v1-set-presentation-mode proxy-output mode))))
-
-;;; output events
-(define (on-output-removed data proxy-output)
-  "Output was removed. This will take care of
-Removing the output record and clearing up memory.
-Hook: *output-destroy-hook*"
-  (log-debug "Output removed: ~a" proxy-output)
-  (let ((output (output-find-by-proxy proxy-output)))
-    (when output (output-remove! output))
-	(wm-output-destroy proxy-output)
-	(gliver-hook-run! *output-destroy-hook* output)))
-
-(define (on-output-wl-output data proxy-output name)
-  "The wl_output object corresponding to the river_output_v1."
-  (log-debug "Output wl_output global name: ~a = ~a" proxy-output name)
-  (let ((output (output-find-by-proxy proxy-output)))
-    (when output
-	  (log-debug "got output ~a" output)
-	  (let ((prev-name (output-name output)))
-		(output-name-set! output name)
-		(gliver-hook-run! *output-name-changed-hook* output prev-name)))))
-
-(define (on-output-position data proxy-output x y)
-  "Position of the output in the compositor's logical coordinate
-space changed. The x and y coordinates may be positive or negative."
-  (log-debug "Output position: ~a = ~a,~a" proxy-output x y)
-  (let ((output (output-find-by-proxy proxy-output)))
-    (when output
-	  (let ((prev-x (output-x output))
-			(prev-y (output-y output)))
-		(output-x-set! output x)
-		(output-y-set! output y)
-		(gliver-hook-run! *output-position-changed-hook* output prev-x prev-y)))))
-
-(define (on-output-dimensions data proxy-output width height)
-  (log-info "Output dimensions: ~a = ~ax~a" proxy-output width height)
-  (let ((output (output-find-by-proxy proxy-output)))
-    (when output
-	  (let ((prev-width (output-width output))
-			(prev-height (output-height output)))
-		(output-width-set! output width)
-		(output-height-set! output height)
-		(gliver-hook-run! *output-dimensions-changed-hook* output prev-width prev-height)))))
 
 ;; handle river initialization steps
 (gliver-hook-add! *gliver-globals-bind-hook* gliver-on-globals-bind)

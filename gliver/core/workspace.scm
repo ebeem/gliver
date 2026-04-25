@@ -17,89 +17,18 @@
   #:use-module (gliver core logs)
   #:use-module (gliver core config)
   #:use-module (gliver core hooks)
-  #:use-module (gliver core manager)
-  #:use-module (gliver core output)
-  #:use-module (gliver core container)
-  #:use-module (gliver core window)
-  #:use-module (gliver keybindings)
+  #:use-module (gliver core types)
   #:export (
-            ;; workspace
-            <workspace>
-			make-workspace
-			workspace?
-            workspace-id
-			workspace-tag-mask
-            workspace-name workspace-name-set!
-            workspace-containers workspace-containers-set!
-            workspace-output workspace-output-set!
-            workspace-layout workspace-layout-set!
-			workspace-container-current workspace-container-current-set!
-            workspace-float-workspace?
-            workspace-current
-            workspace-add!
-            workspace-add-float!
-            workspace-remove!
-            workspace-switch-to!
-            workspace-switch-to-by-id!
-            workspace-switch-to-by-name!
-            workspace-find-by-name
-            workspace-next
-            workspace-prev
-            workspace-windows
-            workspace-windows-visible
-			workspace-container-previous-set!
-			workspace-container-previous
-			%make-workspace
-			workspace-containers-move))
-
-(define-record-type <workspace>
-  (%make-workspace name id tag-mask containers output
-				   layout container-current container-previous)
-  workspace?
-  (name                 workspace-name                 workspace-name-set!)
-  (id                   workspace-id)
-  (tag-mask             workspace-tag-mask)
-  (containers           workspace-containers           workspace-containers-set!)
-  (output               workspace-output               workspace-output-set!)
-  (layout               workspace-layout               workspace-layout-set!)
-  (container-current    workspace-container-current    workspace-container-current-set!)
-  (container-previous   workspace-container-previous   workspace-container-previous-set!))
-
-(set-record-type-printer! <workspace>
-  (lambda (g port)
-    (format port "#<workspace ~a ~s tag=~a layout=~a>"
-            (workspace-id g) (workspace-name g)
-            (workspace-tag-mask g) (workspace-layout g))))
-
-(define* (make-workspace #:key
-						 (name "workspace")
-						 (id (manager-workspace-number-next!))
-                         (tag-mask (manager-tag-next!))
-                         (containers '())
-                         (output #f)
-                         (layout 'tiled))
-  (%make-workspace name id tag-mask containers
-                   output layout #f #f))
-
-(define (workspace-find-by-name name)
-  "Find a workspace by name on the current output."
-  (find (lambda (g) (string=? (workspace-name g) name))
-        (output-workspaces (output-current))))
-
-(define (workspace-windows workspace)
-  "Return all windows in @var{workspace}."
-  (apply append 
-         (map container-windows
-              (workspace-containers workspace))))
-
-(define (workspace-windows-visible workspace)
-  "Return the currently visible (not hidden/minimized) windows in @var{workspace}."
-  (filter window-visible? (workspace-windows workspace)))
-
-(define (workspace-current)
-  "Return the current active workspace"
-  (and (output-current)
-       (output-workspace-current (output-current))))
+			workspace-add!
+			%workspace-remove-target
+			workspace-containers-move
+			workspace-remove!
+			workspace-switch-to!
+			workspace-switch-to-by-id!
+			workspace-switch-to-by-name!
+			workspace-next
+			workspace-prev
+))
 
 (define* (workspace-add! output #:key (layout 'tiling) (name "workspace"))
   "Create a new workspace on @var{output}."
@@ -164,16 +93,17 @@ and then @var{s-workspace}'s container list is emptied."
 	  ;; move all containers to the target one
 	  (workspace-containers-move workspace t-workspace)
 	  ;; then move all current containers to it
-	  (when (> (length (workspace-windows workspace)) 0)
-		(for-each (lambda (w) (window-move-to-workspace! w target))
-                  (workspace-windows workspace)))
+	  ;; TODO: this shouldn't be needed anymore, but test
+	  ;; (when (> (length (workspace-windows workspace)) 0)
+	  ;; 	(for-each (lambda (w) (window-move-to-workspace! w target))
+      ;;             (workspace-windows workspace)))
       ;; remove workspace from output
       (output-workspaces-set! output
         (delete workspace (output-workspaces output)))
       ;; if this was current, switch
       (when (eq? (output-workspace-current output) workspace)
         (output-workspace-current-set! output (car (output-workspaces output))))
-      (gliver-hook-run! *workspace-destroy-hook* workspace))))
+      (gliver-hook-run! *workspace-destroy-hook* workspace t-workspace))))
 
 (define (workspace-switch-to! workspace)
   "Switch to @var{workspace} on its output."

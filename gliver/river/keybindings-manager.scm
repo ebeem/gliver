@@ -12,21 +12,40 @@
   #:use-module (ice-9 rdelim)
   #:use-module (srfi srfi-1)
   #:use-module (system foreign)
-  #:use-module (gliver core logs)
-  #:use-module (gliver core manager)
-  #:use-module (gliver core hooks)
   #:use-module (gliver river connector)
   #:use-module (gliver river window-manager)
   #:use-module (gliver wayland client)
   #:use-module (gliver wayland gen river-window-management-v1)
   #:use-module (gliver wayland gen river-xkb-bindings-v1)
-  #:use-module (gliver keybindings)
+  #:use-module (gliver core types)
+  #:use-module (gliver core logs)
+  #:use-module (gliver core hooks)
+  #:use-module (gliver core keybindings)
   #:use-module (gliver commands)
-  #:export (switch-to-mode!
-            sync-all-keybindings!
-            request-keybinding-sync!
-            *current-mode*
-            *active-bindings*))
+  #:export (
+			*xkb-bindings*
+			*xkb-bindings-seat*
+			*xkb-binding-listener*
+			*xkb-bindings-seat-listener*
+			*active-bindings*
+			*current-mode*
+			*pending-key-action*
+			*needs-keybinding-sync*
+			gliver-on-globals-bind
+			gliver-on-globals-unbind
+			gliver-on-globals-verify
+			gliver-on-listeners-attach
+			gliver-on-manage-start
+			find-spec-for-proxy
+			on-binding-pressed
+			on-binding-released
+			on-binding-stop-repeat
+			on-bindings-seat-ate
+			execute-binding-action
+			switch-to-mode!
+			sync-all-keybindings!
+			request-keybinding-sync!
+))
 
 ;; river_xkb_bindings_v1 state
 (define *xkb-bindings* %null-pointer)      ;; river_xkb_bindings_v1 proxy

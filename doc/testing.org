@@ -1,0 +1,36 @@
+This file tracks all basic functionality and manual test status
+Some of the functions below can have automated tests, but due to reliance on ~River~'s events and requests, I believe all core functionality has to be tested manually
+
+* core/output.scm
+** DONE on-output
+** TODO on-output-removed
+** DONE on-output-wl-output
+** DONE on-output-position
+** DONE on-output-dimensions
+
+** DONE output-add!
+** TODO output-remove!
+** TODO output-next
+** TODO output-prev
+** TODO output-presentation-mode-set
+
+* core/seat.scm
+** TODO seat-add!
+** TODO seat-remove!
+** TODO seat-wm-window-focus
+** TODO seat-wm-window-focus-clear
+** TODO seat-wm-pointer-op-start
+** TODO seat-wm-pointer-op-end
+** TODO seat-wm-pointer-binding-get
+** TODO seat-wm-pointer-theme
+** TODO seat-wm-pointer-warp
+** DONE on-seat
+** TODO seat-on-removed
+** TODO seat-on-wl-seat
+** TODO seat-on-pointer-enter
+** TODO seat-on-pointer-leave
+** TODO seat-on-window-interaction
+** TODO seat-on-shell-interaction
+** TODO seat-on-op-delta
+** TODO seat-on-op-release
+** TODO seat-on-pointer-position

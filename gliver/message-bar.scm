@@ -8,9 +8,7 @@
 
 (define-module (gliver message-bar)
   #:use-module (ice-9 format)
-  #:use-module (gliver core logs)
-  #:use-module (gliver core manager)
-  #:use-module (gliver core output)
+  #:use-module (gliver core)
   #:use-module (gliver render)
   #:use-module (gliver commands)
   #:declarative? #f

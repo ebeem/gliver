@@ -20,11 +20,8 @@
 (use-modules (ice-9 format)
              (ice-9 getopt-long)
              (ice-9 match)
-             (gliver utils)
              (gliver core)
-             (gliver hooks)
-             (gliver config)
-             (gliver keybindings)
+             (gliver river)
              (gliver commands)
              (gliver window-rules)
              (gliver message-bar)
@@ -61,7 +58,6 @@
 ;;; startup sequence
 (define (startup! options)
   "Main startup sequence, following the spec §20.1."
-
   ;; step 1: parse cli arguments (already done)
   (let ((log-level (option-ref options 'log-level "debug"))
         (config-path (option-ref options 'config #f)))

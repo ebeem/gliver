@@ -17,68 +17,39 @@
   #:use-module (gliver core config)
   #:use-module (gliver core logs)
   #:use-module (gliver core hooks)
-  #:use-module (gliver core window)
-  #:use-module (gliver core manager)
+  #:use-module (gliver core types)
   #:use-module (gliver river wm-seat-manager)
-  #:export (seat-wl-proxy-set!
-			seat-wl-proxy
-			seat-window-focused-set!
-			seat-window-focused
-			seat-window-entered-set!
-			seat-window-entered
-			seat-name-set!
-			seat-name
-			seat?
-			%make-seat
-			seat-find-by-proxy
-			seat-remove!
+  #:export (
 			seat-add!
-			on-seat))
-
-(define-record-type <seat>
-  (%make-seat name window-entered window-focused wl-proxy)
-  seat?
-  (name               seat-name               seat-name-set!)
-  (window-entered     seat-window-entered     seat-window-entered-set!)
-  (window-focused     seat-window-focused     seat-window-focused-set!)
-  (wl-proxy           seat-wl-proxy           seat-wl-proxy-set!))
-
-(set-record-type-printer! <seat>
-  (lambda (s port)
-    (format port "#<seat ~a (~a window)>"
-            (seat-name s)
-            (seat-window-focused s))))
-
-(define* (make-seat #:key (name #f) (wl-proxy #f) (window-entered #f) (window-focused #f))
-  (%make-seat name window-entered window-focused wl-proxy))
-
-(define (seat-find-by-proxy proxy)
-  "Look up the <seat> record by comparing the raw memory address of the proxy."
-  (if (not (pointer? proxy))
-      #f ;; early exit
-      (let ((addr (pointer-address proxy))
-            (seats (manager-seats *manager*)))
-        (find (lambda (seat)
-                (let ((proxy-seat (seat-wl-proxy seat)))
-                  (and (pointer? proxy-seat)
-                       (= (pointer-address proxy-seat) addr))))
-              seats))))
+			seat-remove!
+			seat-wm-window-focus
+			seat-wm-window-focus-clear
+			seat-wm-pointer-op-start
+			seat-wm-pointer-op-end
+			seat-wm-pointer-binding-get
+			seat-wm-pointer-theme
+			seat-wm-pointer-warp
+			on-seat
+			seat-on-removed
+			seat-on-wl-seat
+			seat-on-pointer-enter
+			seat-on-pointer-leave
+			seat-on-window-interaction
+			seat-on-shell-interaction
+			seat-on-op-delta
+			seat-on-op-release
+			seat-on-pointer-position
+))
 
 (define (seat-add! seat)
   (manager-seats-set! *manager*
-						(cons seat (manager-seats *manager*))))
+					  (cons seat (manager-seats *manager*)))
+  (gliver-hook-run! *seat-created-hook* seat))
 
 (define (seat-remove! seat)
   (let ((remaining (delete seat (manager-seats *manager*))))
-    (manager-seats-set! *manager* remaining)))
-
-(define (on-seat data manager proxy-seat)
-  "Handle a new seat event from the compositor."
-  (log-debug "New seat proxy: ~a" proxy-seat)
-  (let ((seat (make-seat #:wl-proxy proxy-seat)))
-    (seat-add! seat)))
-
-(gliver-hook-add! %seat-created-hook on-seat)
+    (manager-seats-set! *manager* remaining))
+  (gliver-hook-run! *seat-removed-hook* seat))
 
 ;;; window manager api calls
 (define (seat-wm-window-focus seat window)
@@ -140,23 +111,31 @@ Must be called in a ~manage_sequence~."
 	  (wm-seat-pointer-warp proxy-seat x y))))
 
 ;;; events
+(define (on-seat data manager proxy-seat)
+  "Handle a new seat event from the compositor."
+  (log-debug "New seat proxy: ~a" proxy-seat)
+  (let ((seat (make-seat #:wl-proxy proxy-seat)))
+    (seat-add! seat)))
+
 (define (seat-on-removed data proxy-seat)
   "Seat was removed. This will take care of
 Removing the seat record and clearing up memory.
 It calls wm-seat-destroy to destroy wayland references 
 Hook: *seat-destroy-hook*"
   (let ((seat (seat-find-by-proxy proxy-seat)))
+	(log-debug "Seat removed: ~a" seat)
     (when seat (seat-remove! seat))
 	(wm-seat-destroy proxy-seat)
 	(gliver-hook-run! *seat-destroy-hook* seat)))
 
-(define (seat-on-wl-seat data proxy-seat name)
+(define (seat-on-wl-seat data proxy-seat object-id)
   "The wl_seat object corresponding to the river_seat_v1."
   (let ((seat (seat-find-by-proxy proxy-seat)))
     (when seat
-	  (let ((prev-name (seat-name seat)))
-		(seat-name-set! seat name)
-		(gliver-hook-run! *seat-name-changed-hook* seat prev-name)))))
+	  (let ((prev-object-id (seat-wl-seat seat)))
+		(seat-wl-seat-set! seat object-id)
+		(log-debug "Seat ~a object-id updated to ~a" seat object-id)
+		(gliver-hook-run! *seat-object-id-changed-hook* seat prev-object-id)))))
 
 (define (seat-on-pointer-enter data proxy-seat proxy-win)
   "The seat's pointer entered the given window's area."
@@ -210,4 +189,15 @@ start of the operation of the pointer/touch point/etc."
   (let ((seat (seat-find-by-proxy proxy-seat)))
     (when seat
 	  (gliver-hook-run! *seat-seat-pointer-position-changed-hook* seat x y))))
+
+(gliver-hook-add! %seat-created-hook on-seat 0)
+(gliver-hook-add! %seat-removed-hook seat-on-removed 0)
+(gliver-hook-add! %seat-object-id-changed-hook seat-on-wl-seat 0)
+(gliver-hook-add! %seat-window-pointer-entered-hook seat-on-pointer-enter 0)
+(gliver-hook-add! %seat-window-pointer-left-hook seat-on-pointer-leave 0)
+(gliver-hook-add! %seat-window-interacted-hook seat-on-window-interaction 0)
+(gliver-hook-add! %seat-shell-interacted-hook seat-on-shell-interaction 0)
+(gliver-hook-add! %seat-op-delta-changed-hook seat-on-op-delta 0)
+(gliver-hook-add! %seat-op-released-hook seat-on-op-release 0)
+(gliver-hook-add! %seat-pointer-position-changed-hook seat-on-pointer-position 0)
 

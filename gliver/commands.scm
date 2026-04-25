@@ -13,15 +13,7 @@
   #:use-module (srfi srfi-9)
   #:use-module (srfi srfi-69)
   #:use-module (gliver river connector)
-  #:use-module (gliver core logs)
-  #:use-module (gliver core manager)
-  #:use-module (gliver core workspace)
-  #:use-module (gliver core hooks)
-  #:use-module (gliver core window)
-  #:use-module (gliver core container)
-  #:use-module (gliver core output)
-  #:use-module (gliver keybindings)
-  #:use-module (gliver core config)
+  #:use-module (gliver core)
   #:declarative? #f
   #:export (;; command registration
             command-register!
@@ -53,7 +45,7 @@
             cmd-window-focus-other
             cmd-window-list
             cmd-window-kill
-            cmd-window-float-toggle
+            ;; cmd-window-float-toggle
             cmd-window-fullscreen
             cmd-window-mark
             cmd-window-pull-by-number
@@ -344,14 +336,14 @@ The actual input is handled via handle-input-key callbacks."
       (log-info "Killing window: ~a" (window-title win))
       (message "Closed: ~a" (window-title win)))))
 
-(define (cmd-window-float-toggle)
-  "Toggle the current window between tiled and floating."
-  (let ((win (window-current)))
-    (when win
-      (window-toggle-float! win)
-      (message "~a: ~a"
-               (if (window-floating? win) "Floating" "Tiled")
-               (window-title win)))))
+;; (define (cmd-window-float-toggle)
+;;   "Toggle the current window between tiled and floating."
+;;   (let ((win (window-current)))
+;;     (when win
+;;       (window-toggle-float! win)
+;;       (message "~a: ~a"
+;;                (if (window-floating? win) "Floating" "Tiled")
+;;                (window-title win)))))
 
 (define (cmd-window-fullscreen)
   "Toggle fullscreen for the current window."
@@ -706,7 +698,7 @@ The actual input is handled via handle-input-key callbacks."
   (command-register! 'window-focus-other-window cmd-window-focus-other "Switch to the other window.")
   (command-register! 'window-list cmd-window-list "Show a list of windows.")
   (command-register! 'window-kill-window cmd-window-kill "Close the current window.")
-  (command-register! 'window-float-toggle-float cmd-window-float-toggle "Toggle floating state.")
+  ;; (command-register! 'window-float-toggle-float cmd-window-float-toggle "Toggle floating state.")
   (command-register! 'window-fullscreen cmd-window-fullscreen "Toggle fullscreen.")
   (command-register! 'window-mark cmd-window-mark "Toggle mark on current window.")
   (command-register! 'window-properties-show cmd-window-properties-show
