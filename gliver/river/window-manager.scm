@@ -125,70 +125,56 @@
 
 ;;; TODO: implement
 ;;; river_window_manager_v1: requests
-(define (wm-manager-stop manager)
+(define (wm-manager-stop proxy-manager)
   "Close the manager, the manager may take time to closed. listen
 for *manager-destroy-hook* in case an action other than clearing
 state needs to be executed."
-  (log-debug "Stopping manager ~a" manager)
-  (when manager
-	(let ((proxy-manager (manager-wl-proxy manager)))
-      (when proxy-manager
-		(river-window-manager-v1-stop proxy-manager)))))
+  (log-debug "Stopping manager ~a" proxy-manager)
+  (when proxy-manager
+	(river-window-manager-v1-stop proxy-manager)))
 
-(define (wm-manager-destroy manager)
+(define (wm-manager-destroy proxy-manager)
   "Destroy the manager, this means everything was cleared from
 client side and the server should also clear everything.
 This most likely should be used internally only, and it
 will be automatically managed and called when needed."
-  (log-debug "Destroying manager ~a" manager)
-  (when manager
-	(let ((proxy-manager (manager-wl-proxy manager)))
-      (when proxy-manager
-		(river-window-manager-v1-destroy proxy-manager)))))
+  (log-debug "Destroying manager ~a" proxy-manager)
+  (when proxy-manager
+	(river-window-manager-v1-destroy proxy-manager)))
 
-(define (wm-manager-manage-finish manager)
+(define (wm-manager-manage-finish proxy-manager)
   "Client has made all changes to window management
 state it wishes to include in the current manage sequence."
-  (log-debug "Finishing manage sequence ~a" manager)
-  (when manager
-	(let ((proxy-manager (manager-wl-proxy manager)))
-      (when proxy-manager
-		(river-window-manager-v1-manage-finish proxy-manager)))))
+  (log-debug "Finishing manage sequence ~a" proxy-manager)
+  (when proxy-manager
+	(river-window-manager-v1-manage-finish proxy-manager)))
 
-(define (wm-manager-manage-dirty manager)
+(define (wm-manager-manage-dirty proxy-manager)
   "Ensures a manage sequence is started and that a
 manage_start event is sent by the server."
-  (log-debug "Dirty manage sequence ~a" manager)
-  (when manager
-	(let ((proxy-manager (manager-wl-proxy manager)))
-      (when proxy-manager
-		(river-window-manager-v1-manage-dirty proxy-manager)))))
+  (log-debug "Dirty manage sequence ~a" proxy-manager)
+  (when proxy-manager
+	(river-window-manager-v1-manage-dirty proxy-manager)))
 
-(define (wm-manager-render-finish manager)
+(define (wm-manager-render-finish proxy-manager)
   "Client has made all changes to render state
 server should atomically apply and display them."
-  (log-debug "Dirty manage sequence ~a" manager)
-  (when manager
-	(let ((proxy-manager (manager-wl-proxy manager)))
-      (when proxy-manager
-		(river-window-manager-v1-render-finish proxy-manager)))))
+  (log-debug "Dirty manage sequence ~a" proxy-manager)
+  (when proxy-manager
+	(river-window-manager-v1-render-finish proxy-manager)))
 
-(define (wm-manager-shell-surface-get manager proxy-surface)
+(define (wm-manager-shell-surface-get proxy-manager proxy-surface)
   "Create a new shell surface for window manager UI
 and assign the river_shell_surface_v1 role to the surface."
   (log-debug "Creating a new shell surface ~a" proxy-surface)
-  (when manager
-	(let ((proxy-manager (manager-wl-proxy manager)))
-      (when proxy-manager
-		(river-window-manager-v1-get-shell-surface proxy-manager proxy-surface)))))
+  (when proxy-manager
+	(river-window-manager-v1-get-shell-surface proxy-manager proxy-surface)))
 
-(define (wm-manager-exit manager)
+(define (wm-manager-exit proxy-manager)
   "End the current Wayland session and exit the compositor."
-  (log-debug "Exiting manager ~a" manager)
-  (when manager
-	(let ((proxy-manager (manager-wl-proxy manager)))
-      (when proxy-manager
-		(river-window-manager-v1-exit-session proxy-manager)))))
+  (log-debug "Exiting manager ~a" proxy-manager)
+  (when proxy-manager
+	(river-window-manager-v1-exit-session proxy-manager)))
 
 ;;; window manager event handlers
 ;;; these are called by the window manager's wayland listener during
@@ -205,40 +191,40 @@ client, perhaps due to another window management client already running."
 object. The client should destroy the object."
   (log-info "Window manager finished event received.")
   ;; assuming only one manager will be available at a time
-  (wm-manager-destroy *manager*)
+  (wm-manager-destroy proxy-manager)
   (river-disconnect!))
 
-(define (on-window data manager proxy-win)
+(define (on-window data proxy-manager proxy-win)
   "Handle a new window event from the compositor.
 Creates a core <window> record, attaches the event listener, and queues
 the window for initial setup in the upcoming manage sequence."
   (log-info "New window proxy: ~a" proxy-win)
-  (gliver-hook-run! %window-created-hook data manager proxy-win))
+  (gliver-hook-run! %window-created-hook data proxy-manager proxy-win))
 
-(define (on-output data manager output-proxy)
+(define (on-output data proxy-manager output-proxy)
   "Handle a new output event from the compositor.
 Creates an output and attaches the output event listener."
   (log-debug "New output pointer created: ~a" output-proxy)
-  (gliver-hook-run! %output-created-hook data manager output-proxy))
+  (gliver-hook-run! %output-created-hook data proxy-manager output-proxy))
 
-(define (on-seat data manager seat-proxy)
+(define (on-seat data proxy-manager seat-proxy)
   "Handle a new seat event from the compositor."
   (log-debug "New seat proxy: ~a" seat-proxy)
-  (gliver-hook-run! %seat-created-hook data manager seat-proxy))
+  (gliver-hook-run! %seat-created-hook data proxy-manager seat-proxy))
 
-(define (on-session-locked data manager)
+(define (on-session-locked data proxy-manager)
   (log-info "Session locked.")
-  (gliver-hook-run! %manager-session-locked-hook data manager))
+  (gliver-hook-run! %manager-session-locked-hook data proxy-manager))
 
-(define (on-session-unlocked data manager)
+(define (on-session-unlocked data proxy-manager)
   (log-info "Session unlocked.")
-  (gliver-hook-run! %manager-session-unlocked-hook data manager))
+  (gliver-hook-run! %manager-session-unlocked-hook data proxy-manager))
 
-(define (on-manage-start data manager)
+(define (on-manage-start data proxy-manager)
   "Handle manage start: execute pending actions and finish the sequence.
 All window management state changes (keybinding enable/disable, focus
 changes, etc.) must happen between manage_start and manage_finish."
-  (log-debug "manage start")
+  (log-debug "Starting manage sequence ~a" proxy-manager)
   (set! *in-manage-sequence* #t)
 
   (catch #t
@@ -303,10 +289,10 @@ changes, etc.) must happen between manage_start and manage_finish."
       (log-error "Error in manage sequence: ~a ~a" key args)))
 
   ;; always finish the manage sequence
-  (wm-manager-manage-finish *wm-manager*)
+  (wm-manager-manage-finish proxy-manager)
   (set! *in-manage-sequence* #f))
 
-(define (on-render-start data manager)
+(define (on-render-start data proxy-manager)
   "Handle render start: position, show, and style all windows, then finish.
 The server sends window dimension events before this, so nodes can be
 positioned accurately."
@@ -358,7 +344,7 @@ positioned accurately."
   ;;     (log-error "Error in render sequence: ~a ~a" key args)))
 
   ;; always finish the render sequence
-  (wm-manager-render-finish *wm-manager*))
+  (wm-manager-render-finish proxy-manager))
 
 ;; handle river initialization steps
 (gliver-hook-add! *gliver-globals-bind-hook* gliver-on-globals-bind)

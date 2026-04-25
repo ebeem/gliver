@@ -113,25 +113,9 @@
       (gliver-hook-run-strict! *gliver-listeners-attach-hook*)
 
       ;; second roundtrip: flushes bind requests and receives initial state
-      ;; (seat, output, manage_start events delivered via wm listener)
+      ;; (outputs, seats, manage_start events delivered via wm listener)
       (wl-display-roundtrip *wl-display*)
-
-      ;; verify layer shell
-      (if (null-pointer? *layer-shell*)
-          (log-warn "~a not advertised — layer shell clients won't work"
-                    RIVER_LAYER_SHELL_V1_NAME)
-          (log-info "~a bound." RIVER_LAYER_SHELL_V1_NAME))
-
-      ;; verify core rendering globals
-      (when (null-pointer? *wl-compositor*)
-        (log-warn "wl_compositor not available — surface rendering disabled"))
-      (when (null-pointer? *wl-shm*)
-        (log-warn "wl_shm not available — surface rendering disabled"))
-      (if (null-pointer? *zwlr-layer-shell*)
-          (log-warn "~a not advertised — layer surface rendering disabled"
-                    ZWLR_LAYER_SHELL_V1_NAME)
-          (log-info "~a bound." ZWLR_LAYER_SHELL_V1_NAME))
-
+      (log-info "Initial state synced")
       (set! *connected* #t)
       (log-info "River integration initialized."))
     (lambda (key . args)
