@@ -122,6 +122,7 @@
 			*seat-name-changed-hook*
 			*seat-window-entered-changed-hook*
 			*seat-window-interacted-hook*
+			*seat-shell-interacted-hook*
 			*seat-seat-op-delta-changed-hook*
 			*seat-seat-op-released-hook*
 			*seat-seat-pointer-position-changed-hook*
@@ -315,6 +316,7 @@ If a function fails, the error is logged and the script is terminated."
 (define *seat-name-changed-hook*					(make-gliver-hook 'seat-name-changed 2))
 (define *seat-window-entered-changed-hook*          (make-gliver-hook 'seat-window-entered-changed 2))
 (define *seat-window-interacted-hook*				(make-gliver-hook 'seat-window-interacted 2))
+(define *seat-shell-interacted-hook*				(make-gliver-hook 'seat-shell-interacted 2))
 (define *seat-seat-op-delta-changed-hook*			(make-gliver-hook 'seat-seat-op-delta-changed 3))
 (define *seat-seat-op-released-hook*				(make-gliver-hook 'seat-seat-op-released 1))
 (define *seat-seat-pointer-position-changed-hook*   (make-gliver-hook 'seat-seat-pointer-position-changed 3))

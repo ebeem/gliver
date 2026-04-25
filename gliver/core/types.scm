@@ -93,6 +93,8 @@
 			seat-wl-proxy
 			seat-wl-seat-set!
 			seat-wl-seat
+			seat-pointer-op-set!
+			seat-pointer-op?
 			seat-window-focused-set!
 			seat-window-focused
 			seat-window-entered-set!
@@ -358,6 +360,7 @@ Other parameters (x, y, width, height, wl-proxy) can be provided as keyword argu
   (name               seat-name               seat-name-set!)
   (window-entered     seat-window-entered     seat-window-entered-set!)
   (window-focused     seat-window-focused     seat-window-focused-set!)
+  (pointer-op?        seat-pointer-op?        seat-pointer-op-set!)
   (wl-seat            seat-wl-seat            seat-wl-seat-set!)
   (wl-proxy           seat-wl-proxy           seat-wl-proxy-set!))
 

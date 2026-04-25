@@ -77,6 +77,7 @@ Must be called in a ~manage_sequence~."
 (define (seat-wm-pointer-op-start seat)
   "Start an interactive pointer operation.
 Must be called in a ~manage_sequence~."
+  (seat-pointer-op-set! seat #t)
   (let ((proxy-seat (seat-wl-proxy seat)))
     (when proxy-seat
 	  (wm-seat-pointer-op-start proxy-seat))))
@@ -84,6 +85,7 @@ Must be called in a ~manage_sequence~."
 (define (seat-wm-pointer-op-end seat)
   "End an interactive pointer operation.
 Must be called in a ~manage_sequence~."
+  (seat-pointer-op-set! seat #f)
   (let ((proxy-seat (seat-wl-proxy seat)))
     (when proxy-seat
 	  (wm-seat-pointer-op-end proxy-seat))))
@@ -142,6 +144,7 @@ Hook: *seat-destroy-hook*"
   (let ((seat (seat-find-by-proxy proxy-seat))
 		(window (window-find-by-proxy proxy-win)))
     (when (and seat window)
+	  (log-debug "Seat ~a pointer entered ~a" seat window)
 	  (when *wm-behavior-focus-mouse-enter*
 		(wm-seat-window-focus proxy-seat proxy-win))
 	  (seat-window-entered-set! seat window)
@@ -151,6 +154,7 @@ Hook: *seat-destroy-hook*"
   "The seat's pointer left the recent window entered."
   (let ((seat (seat-find-by-proxy proxy-seat)))
     (when seat
+	  (log-debug "Seat ~a pointer left window" seat)
 	  (when *wm-behavior-focus-clear-mouse-leave*
 		(wm-seat-window-focus-clear proxy-seat))
 	  (seat-window-entered-set! seat #f)
@@ -160,6 +164,7 @@ Hook: *seat-destroy-hook*"
   "Window is clicked or input is sent to it, focus it"
   (let ((seat (seat-find-by-proxy proxy-seat))
 		(window (window-find-by-proxy proxy-win)))
+	(log-debug "Seat ~a is interacting with window ~a" seat window)
     (when (and seat window)
 	  (when *wm-behavior-focus-mouse-click*
 		(wm-seat-window-focus proxy-seat proxy-win))
@@ -169,25 +174,29 @@ Hook: *seat-destroy-hook*"
   "Surface is clicked or input is sent to it"
   ;; TODO: need to figure this hook out and test it
   ;; I don't thing it's of any use at the moment honestly
-  (log-debug "Shell surface interaction: ~a" shell-proxy))
+  (log-debug "Seat ~a is interacting with surface: ~a" seat shell-proxy)
+  (gliver-hook-run! *seat-shell-interacted-hook* seat window))
 
 (define (seat-on-op-delta data proxy-seat dx dy)
   "This event indicates the total change in position since the
 start of the operation of the pointer/touch point/etc."
   (let ((seat (seat-find-by-proxy proxy-seat)))
     (when seat
+	  (log-debug "Seat ~a position delta: ~ax~a" seat dx dy)
 	  (gliver-hook-run! *seat-seat-op-delta-changed-hook* seat dx dy))))
 
 (define (seat-on-op-release data proxy-seat)
   "The input driving the current interactive operation has been released."
   (let ((seat (seat-find-by-proxy proxy-seat)))
     (when seat
+	  (log-debug "Seat ~a interaction released" seat dx dy)
 	  (gliver-hook-run! *seat-seat-op-released-hook* seat))))
 
 (define (seat-on-pointer-position data proxy-seat x y)
   "The current position of the pointer in the compositor's logical."
   (let ((seat (seat-find-by-proxy proxy-seat)))
     (when seat
+	  (log-debug "Seat ~a pointer position changed to ~ax~a" seat x y)
 	  (gliver-hook-run! *seat-seat-pointer-position-changed-hook* seat x y))))
 
 (gliver-hook-add! %seat-created-hook on-seat 0)
