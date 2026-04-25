@@ -265,6 +265,12 @@
   (next-tag-bit           manager-tag-next               manager-tag-next-set!)
   (wl-proxy               manager-wl-proxy               manager-wl-proxy-set!))
 
+(set-record-type-printer! <manager-state>
+  (lambda (out port)
+    (format port "#<manager ~s (~a outputs)>"
+            (manager-wl-proxy out)
+            (length (manager-outputs out)))))
+
 (define (manager-window-number-next!)
   (let ((id (manager-window-number-next *manager*)))
     (manager-window-number-next-set! *manager* (1+ id))

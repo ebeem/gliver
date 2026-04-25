@@ -13,14 +13,10 @@
   #:use-module (srfi srfi-1)
   #:use-module (system foreign)
   #:use-module (gliver river connector)
-  #:use-module (gliver river window-manager)
   #:use-module (gliver wayland client)
   #:use-module (gliver wayland gen river-window-management-v1)
   #:use-module (gliver wayland gen river-xkb-bindings-v1)
-  #:use-module (gliver core types)
-  #:use-module (gliver core logs)
-  #:use-module (gliver core hooks)
-  #:use-module (gliver core keybindings)
+  #:use-module (gliver core)
   #:use-module (gliver commands)
   #:export (
 			*xkb-bindings*
@@ -56,6 +52,13 @@
 (define *current-mode* 'normal)            ;; current keymap mode
 (define *pending-key-action* #f)
 (define *needs-keybinding-sync* #f)
+
+(define (%km-seat)
+  "Return the first seat proxy available or #f."
+  (let ((seats (manager-seats *manager*)))
+    (if (pair? seats)
+        (seat-wl-proxy (car seats))
+        #f)))
 
 (define (gliver-on-globals-bind registry protocol-name object-id version)
   "Bind and register the xkb bindings manager"
@@ -107,15 +110,15 @@
     (log-info "Performing keybinding sync...")
     (sync-all-keybindings!)
     ;; create xkb bindings seat for ensure_next_key_eaten
-    (when (and (not (null-pointer? *xkb-bindings*))
-               (not (null? *wm-seats*)))
-      (set! *xkb-bindings-seat*
-            (river-xkb-bindings-v1-get-seat *xkb-bindings* (car *wm-seats*)))
-      (unless (null-pointer? *xkb-bindings-seat*)
-        (wl-proxy-add-listener
-         *xkb-bindings-seat*
-         *xkb-bindings-seat-listener*
-         %null-pointer)))
+	(let ((seat (%km-seat)))
+      (when (and seat (not (null-pointer? *xkb-bindings*)))
+		(set! *xkb-bindings-seat*
+              (river-xkb-bindings-v1-get-seat *xkb-bindings* seat))
+		(unless (null-pointer? *xkb-bindings-seat*)
+          (wl-proxy-add-listener
+           *xkb-bindings-seat*
+           *xkb-bindings-seat-listener*
+           %null-pointer))))
     (set! *needs-keybinding-sync* #f))
 
   (when *pending-key-action*
@@ -235,9 +238,9 @@ those matching the current mode."
   (let* ((specs (gliver-binding-spec-generate *top-map* *root-map*
                                             (manager-prefix-key *manager*)
                                             'prefix))
-         (seat (if (null? *wm-seats*) %null-pointer (car *wm-seats*))))
+         (seat (%km-seat)))
 
-    (if (null-pointer? seat)
+    (if (not seat)
         (log-warn "Skipping keybindings sync: no seat available.")
         (begin
           (log-info "Syncing ~a keybindings to River..." (length specs))
@@ -267,9 +270,10 @@ those matching the current mode."
   "Request a keybinding sync in the next manage sequence.
 Use this instead of calling sync-all-keybindings! directly when
 outside a manage sequence."
-  (set! *needs-keybinding-sync* #t)
-  (unless (null-pointer? *wm-manager*)
-    (river-window-manager-v1-manage-dirty *wm-manager*)))
+  (let ((manager-proxy (manager-wl-proxy *manager*)))
+	(set! *needs-keybinding-sync* #t)
+	(unless (null-pointer? manager-proxy)
+      (river-window-manager-v1-manage-dirty manager-proxy))))
 
 ;; handle river initialization steps
 (gliver-hook-add! *gliver-globals-bind-hook* gliver-on-globals-bind)
