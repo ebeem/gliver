@@ -51,6 +51,8 @@
 			wm-on-manage-start
 			process-queue!
 			wm-on-render-start
+			with-manage-sequence
+			with-render-sequence
 ))
 
 ;; river_window_manager_v1 interface implementation
@@ -255,6 +257,26 @@ positioned accurately."
 
   ;; always finish the render sequence
   (wm-manager-render-finish proxy-manager))
+
+(define-syntax with-manage-sequence
+  (syntax-rules ()
+    ((_ expr1 expr2 ...)
+     (if *in-manage-sequence*
+         ;; if #t: execute immediately
+         (begin expr1 expr2 ...)
+         ;; if #f: wrap in a lambda and append to the queue
+         (let ((task (lambda () expr1 expr2 ...)))
+           (set! *wm-manage-queue* (append *wm-manage-queue* (list task))))))))
+
+(define-syntax with-render-sequence
+  (syntax-rules ()
+    ((_ expr1 expr2 ...)
+     (if *in-render-sequence*
+         ;; if #t: execute immediately
+         (begin expr1 expr2 ...)
+         ;; if #f: wrap in a lambda and append to the queue
+         (let ((task (lambda () expr1 expr2 ...)))
+           (set! *wm-render-queue* (append *wm-render-queue* (list task))))))))
 
 ;; handle river initialization steps
 (gliver-hook-add! *gliver-globals-bind-hook* gliver-on-globals-bind)

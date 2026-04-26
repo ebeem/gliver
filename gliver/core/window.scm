@@ -14,6 +14,7 @@
   #:use-module (gliver core config)
   #:use-module (gliver core logs)
   #:use-module (gliver core hooks)
+  #:use-module (gliver river window-manager)
   #:use-module (gliver river wm-window-manager)
   ;; lazy loaded, core type functions shouldn't be imported here
   ;; maybe using hooks is a better idea
@@ -175,35 +176,40 @@ window record will be updated accordingly to have a node reference."
 Must be called in a ~manage_sequence~."
   (when window
     (let ((proxy-window (window-wl-proxy window)))
-      (wm-window-dimensions-propose proxy-window width height))))
+	  (with-manage-sequence
+	   (wm-window-dimensions-propose proxy-window width height)))))
 
 (define (window-hide! window)
   "Request that the window be hidden.
 Must be called in a ~render_sequence~."
   (when window
     (let ((proxy-window (window-wl-proxy window)))
-      (wm-window-hide proxy-window))))
+      (with-render-sequence
+	   (wm-window-hide proxy-window)))))
 
 (define (window-show! window)
   "Request that the window be shown.
 Must be called in a ~render_sequence~."
   (when window
     (let ((proxy-window (window-wl-proxy window)))
-      (wm-window-show proxy-window))))
+      (with-render-sequence
+	   (wm-window-show proxy-window)))))
 
 (define (window-decoration-client! window)
   "Enable client-side decoration for the provided window.
 Must be called in a ~manage_sequence~."
   (when window
     (let ((proxy-window (window-wl-proxy window)))
-      (wm-window-decoration-client proxy-window))))
+      (with-manage-sequence
+	   (wm-window-decoration-client proxy-window)))))
 
 (define (window-decoration-server! window)
   "Enable server-side decoration for the provided window.
 Must be called in a ~manage_sequence~."
   (when window
 	(let ((proxy-window (window-wl-proxy window)))
-	  (wm-window-decoration-server proxy-window))))
+	  (with-manage-sequence
+	   (wm-window-decoration-server proxy-window)))))
 
 (define (window-borders-set! window edges width color-hex)
   "Set borders for the provided window.
@@ -213,9 +219,10 @@ edges: flag enum value, use `RIVER_window_V1_EDGES_NONE`,
 Must be called in a ~render_sequence~."
   (when window
     (let ((proxy-window (window-wl-proxy window)))
-      (apply wm-window-borders-set 
-             proxy-window edges width 
-             (color-hex->rgba color-hex)))))
+      (with-render-sequence
+	   (apply wm-window-borders-set 
+              proxy-window edges width 
+              (color-hex->rgba color-hex))))))
 
 (define (window-tiled-set! window edges)
   "Set tiled state for the provided window.
@@ -225,7 +232,8 @@ edges: flag enum value, use `RIVER_window_V1_EDGES_NONE`,
 Must be called in a ~render_sequence~."
   (when window
 	(let ((proxy-window (window-wl-proxy window)))
-	  (wm-window-tiled-set proxy-window edges))))
+	  (with-render-sequence
+	   (wm-window-tiled-set proxy-window edges)))))
 
 (define (window-decoration-above-get! window proxy-surface)
   "Create a decoration surface above the window and
@@ -260,18 +268,20 @@ Provided ~wl_surface~ shouldn't have a role or a buffer attached."
 Must be called in a ~manage_sequence~."
   (when window
 	(let ((proxy-window (window-wl-proxy window)))
-      (wm-window-resize-started-inform proxy-window)
-      (window-is-resizing-set! window #t)
-      (gliver-hook-run! *window-resize-start-hook* window))))
+      (with-manage-sequence
+	   (wm-window-resize-started-inform proxy-window)
+       (window-is-resizing-set! window #t)
+       (gliver-hook-run! *window-resize-start-hook* window)))))
 
 (define (window-resize-ended-inform! window)
   "Inform the window that it has ended resizing.
 Must be called in a ~manage_sequence~."
   (when window
 	(let ((proxy-window (window-wl-proxy window)))
-      (wm-window-resize-ended-inform proxy-window)
-      (window-is-resizing-set! window #f)
-      (gliver-hook-run! *window-resize-end-hook* window))))
+      (with-manage-sequence
+	   (wm-window-resize-ended-inform proxy-window)
+       (window-is-resizing-set! window #f)
+       (gliver-hook-run! *window-resize-end-hook* window)))))
 
 (define (window-capabilities-inform! window caps)
   "inform the window of the capabilities supported (maximize, minimize).
@@ -282,9 +292,10 @@ Must be called in a ~manage_sequence~."
   (when window
 	(let* ((proxy-window (window-wl-proxy window))
            (prev-caps (window-capabilities window)))
-      (wm-window-capabilities-inform proxy-window caps)
-      (window-capabilities-set! window caps)
-      (gliver-hook-run! *window-capabilities-changed-hook* window prev-caps))))
+      (with-manage-sequence
+	   (wm-window-capabilities-inform proxy-window caps)
+       (window-capabilities-set! window caps)
+       (gliver-hook-run! *window-capabilities-changed-hook* window prev-caps)))))
 
 (define (window-maximized-inform! window)
   "inform the window that it has been maximized.
@@ -292,9 +303,10 @@ Must be called in a ~manage_sequence~."
   (when window
 	(let* ((proxy-window (window-wl-proxy window))
            (prev-status (window-maximized? window)))
-	  (wm-window-maximized-inform proxy-window)
-	  (window-maximized-set! window #t)
-	  (gliver-hook-run! *window-maximized-hook* window prev-status))))
+	  (with-manage-sequence
+	   (wm-window-maximized-inform proxy-window)
+	   (window-maximized-set! window #t)
+	   (gliver-hook-run! *window-maximized-hook* window prev-status)))))
 
 (define (window-unmaximized-inform! window)
   "inform the window that it has been unmaximized.
@@ -302,9 +314,10 @@ Must be called in a ~manage_sequence~."
   (when window
 	(let* ((proxy-window (window-wl-proxy window))
            (prev-status (window-maximized? window)))
-	  (wm-window-unmaximized-inform proxy-window)
-	  (window-maximized-set! window #f)
-	  (gliver-hook-run! *window-unmaximized-hook* window prev-status))))
+	  (with-manage-sequence
+	   (wm-window-unmaximized-inform proxy-window)
+	   (window-maximized-set! window #f)
+	   (gliver-hook-run! *window-unmaximized-hook* window prev-status)))))
 
 (define (window-fullscreen-inform! window)
   "inform the window that it has entered fullscreen mode.
@@ -312,8 +325,9 @@ Must be called in a ~manage_sequence~."
   (when window
 	(let* ((proxy-window (window-wl-proxy window))
            (prev-status (window-fullscreen? window)))
-	  (wm-window-fullscreen-inform proxy-window)
-	  (gliver-hook-run! *window-fullscreen-entered-informed-hook* window prev-status))))
+	  (with-manage-sequence
+	   (wm-window-fullscreen-inform proxy-window)
+	   (gliver-hook-run! *window-fullscreen-entered-informed-hook* window prev-status)))))
 
 (define (window-fullscreen-exit-inform! window)
   "inform the window that it has exited fullscreen mode.
@@ -321,8 +335,9 @@ Must be called in a ~manage_sequence~."
   (when window
 	(let* ((proxy-window (window-wl-proxy window))
            (prev-status (window-fullscreen? window)))
-	  (wm-window-fullscreen-exit-inform proxy-window)
-	  (gliver-hook-run! *window-fullscreen-exited-informed-hook* window prev-status))))
+	  (with-manage-sequence
+	   (wm-window-fullscreen-exit-inform proxy-window)
+	   (gliver-hook-run! *window-fullscreen-exited-informed-hook* window prev-status)))))
 
 (define (window-fullscreen! window output)
   "Make the window fullscreen on the given output. river_shell_surface_v1
@@ -334,9 +349,10 @@ Must be called in a ~manage_sequence~."
 	(let* ((proxy-window (window-wl-proxy window))
 		   (proxy-output (output-wl-proxy output))
            (prev-status (window-fullscreen? window)))
-	  (wm-window-fullscreen proxy-window proxy-output)
-	  (window-fullscreen-set! window #t)
-	  (gliver-hook-run! *window-fullscreen-entered-hook* window prev-status))))
+	  (with-manage-sequence
+	   (wm-window-fullscreen proxy-window proxy-output)
+	   (window-fullscreen-set! window #t)
+	   (gliver-hook-run! *window-fullscreen-entered-hook* window prev-status)))))
 
 (define (window-fullscreen-exit! window)
   "Make the window not fullscreen.
@@ -345,9 +361,10 @@ Must be called in a ~manage_sequence~."
   (when window
 	(let* ((proxy-window (window-wl-proxy window))
            (prev-status (window-fullscreen? window)))
-	  (wm-window-fullscreen-exit proxy-window)
-	  (window-fullscreen-set! window #f)
-	  (gliver-hook-run! *window-fullscreen-entered-hook* window prev-status))))
+	  (with-manage-sequence
+	   (wm-window-fullscreen-exit proxy-window)
+	   (window-fullscreen-set! window #f)
+	   (gliver-hook-run! *window-fullscreen-entered-hook* window prev-status)))))
 
 (define (window-clip-box-set! window x y width height)
   "Clip the window, including borders and decoration surfaces.
@@ -356,7 +373,8 @@ Clip box is ignored while window is on fullscreen.
 Must be called in a ~manage_sequence~."
   (when window
 	(let ((proxy-window (window-wl-proxy window)))
-      (wm-window-clip-box-set proxy-window x y width height))))
+      (with-manage-sequence
+	   (wm-window-clip-box-set proxy-window x y width height)))))
 
 (define (window-content-clip-box-set! window x y width height)
   "Clip the window, excluding borders and decoration surfaces.
@@ -365,7 +383,8 @@ Clip box is ignored while window is on fullscreen.
 Must be called in a ~manage_sequence~."
   (when window
     (let ((proxy-window (window-wl-proxy window)))
-      (wm-window-content-clip-box-set proxy-window x y width height))))
+      (with-manage-sequence
+	   (wm-window-content-clip-box-set proxy-window x y width height)))))
 
 (define (window-dimension-bounds-set! window max-width max-height)
   "Recommend that the window keep its dimensions within a given width and height.
@@ -373,14 +392,6 @@ Setting bounds of 0 width or height indicates there are no bounds (default).
 Must be called in a ~manage_sequence~."
   (when window
     (let ((proxy-window (window-wl-proxy window)))
-      (wm-window-dimension-bounds-set proxy-window max-width max-height))))
-
-(define (window-size-set! window width height)
-  "Resize the window, impact only floating windows and stacking layouts."
-  ;; proposing dimensions is only possible in manage sequence
-  (let* ((wm-mod (resolve-interface '(gliver river window-manager)))
-         (queue (module-ref wm-mod '*wm-manage-queue*))
-         (prop-func (module-ref wm-mod 'wm-window-dimensions-propose))
-         (task (lambda () (prop-func window width height))))
-    (module-set! wm-mod '*wm-manage-queue* (append queue (list task)))))
+      (with-manage-sequence
+	   (wm-window-dimension-bounds-set proxy-window max-width max-height)))))
 
