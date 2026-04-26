@@ -15,6 +15,9 @@
   #:use-module (gliver core logs)
   #:use-module (gliver core hooks)
   #:use-module (gliver river wm-window-manager)
+  ;; lazy loaded, core type functions shouldn't be imported here
+  ;; maybe using hooks is a better idea
+  #:autoload (gliver core seat) (seat-wm-window-focus)
   #:export (
 			window-add!
 			window-remove!
@@ -50,13 +53,29 @@
 
 (define (window-add! window)
   "Add a new window to the display, placing it in the current container."
-  (let ((container (container-current)))
-    (when container
-	  (container-windows-set! container
-							  (cons window (container-windows container)))
-	  (when *wm-behavior-focus-new-window*
-		(container-window-current-set! container window))
-      (gliver-hook-run! *window-new-hook* window)))
+  (let ((output (output-current))
+		(seat (seat-current))
+		(container (container-current))
+		(proxy-window (window-wl-proxy window)))
+	;; TODO: add window to container and focus using current-window?
+	;; (when container
+	;;   (container-windows-set! container
+	;; 						  (cons window (container-windows container)))
+	;;   (when *wm-behavior-focus-new-window*
+	;; 	(container-window-current-set! container window)))
+
+	;; TODO: this should be handled by the layout instead
+	;; apply defaults to window
+	(when (and *wm-behavior-focus-new-window* seat)
+	  (seat-wm-window-focus seat window))
+	(window-capabilities-inform! window *wm-behavior-default-capabilties*)
+	(window-unmaximized-inform! window)
+    (window-fullscreen-exit-inform! window)
+	(window-dimensions-propose! window
+								(output-width output)
+								(output-height output))
+    (window-tiled-set! window *wm-behavior-default-edges*))
+  (gliver-hook-run! *window-created-hook* window)
   window)
 
 (define (window-remove! window)

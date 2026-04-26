@@ -32,6 +32,7 @@
 			*manager-disconnected-hook*
 			*manager-destroy-hook*
 			*manager-manage-start-hook*
+			*manager-render-start-hook*
 			%manager-session-unlocked-hook
 			%manager-session-locked-hook
 			%window-created-hook
@@ -53,7 +54,7 @@
 			%window-pid-changed-hook
 			%window-presentation-hint-changed-hook
 			%window-identifier-changed-hook
-			*window-new-hook*
+			*window-created-hook*
 			*window-destroy-hook*
 			*window-focus-hook*
 			*window-unfocus-hook*
@@ -216,6 +217,7 @@ If a function fails, the error is logged and the script is terminated."
 (define *manager-disconnected-hook*		(make-gliver-hook 'manager-disconnected 0))
 (define *manager-destroy-hook*			(make-gliver-hook 'manager-destroy 0))
 (define *manager-manage-start-hook*		(make-gliver-hook 'manager-manage-start 0))
+(define *manager-render-start-hook*		(make-gliver-hook 'manager-render-start 0))
 (define %manager-session-unlocked-hook	(make-gliver-hook '%manager-session-unlocked 0))
 (define %manager-session-locked-hook	(make-gliver-hook '%manager-session-locked 0))
 
@@ -240,7 +242,7 @@ If a function fails, the error is logged and the script is terminated."
 (define %window-presentation-hint-changed-hook  (make-gliver-hook '%window-presentation-hint-changed 2))
 (define %window-identifier-changed-hook			(make-gliver-hook '%window-identifier-changed 2))
 
-(define *window-new-hook*							(make-gliver-hook 'window-new 1))
+(define *window-created-hook*						(make-gliver-hook 'window-created 1))
 (define *window-destroy-hook*						(make-gliver-hook 'window-destroy 1))
 (define *window-focus-hook*							(make-gliver-hook 'window-focus 2))
 (define *window-unfocus-hook*						(make-gliver-hook 'window-unfocus 1))

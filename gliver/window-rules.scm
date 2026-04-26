@@ -117,7 +117,7 @@ Rules are checked in order; the first match applies unless continue? is set."
 ;;; rules are applied automatically via the new-window hook.
 ;;; the user can add this to their config or it's done in the main startup.
 (define (install-rule-hook!)
-  (gliver-hook-add! *window-new-hook*
+  (gliver-hook-add! *window-created-hook*
     (lambda (win) (window-rule-apply! win))))
 
 (install-rule-hook!)

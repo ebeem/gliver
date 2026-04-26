@@ -17,9 +17,9 @@
 			*wm-behavior-focus-mouse-enter*
 			*wm-behavior-focus-clear-mouse-leave*
 			*wm-behavior-focus-mouse-click*
-			*wm-behavior-focus-window-new*
 			*wm-behavior-focus-new-window*
 			*wm-behavior-workspace-remove-to*
+			*wm-behavior-default-capabilties*
 			config-file-path
 			config-load!
 			config-reload!
@@ -43,9 +43,10 @@
 (define *wm-behavior-focus-mouse-enter* #f)
 (define *wm-behavior-focus-clear-mouse-leave* #f)
 (define *wm-behavior-focus-mouse-click* #t)
-(define *wm-behavior-focus-window-new* #t)
 (define *wm-behavior-focus-new-window* #t)
 (define *wm-behavior-workspace-remove-to* 'focus)    ;; 'focus | 'index
+(define *wm-behavior-default-capabilties* 15)
+(define *wm-behavior-default-edges* 15)
 
 ;;; config file loading
 (define (config-file-path)

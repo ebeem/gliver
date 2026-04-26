@@ -218,6 +218,7 @@
 			output-find-by-id
 			output-current
 			seat-find-by-proxy
+			seat-current
 			workspace-find-by-name
 			workspace-windows
 			workspace-windows-visible
@@ -553,6 +554,13 @@ Other parameters (x, y, width, height, wl-proxy) can be provided as keyword argu
                   (and (pointer? proxy-seat)
                        (= (pointer-address proxy-seat) addr))))
               seats))))
+
+(define (seat-current)
+  "Return the first seat available or #f."
+  (let ((seats (manager-seats *manager*)))
+    (if (pair? seats)
+        (car seats)
+        #f)))
 
 (define (workspace-find-by-name name)
   "Find a workspace by name on the current output."

@@ -219,64 +219,15 @@ changes, etc.) must happen between manage_start and manage_finish."
   (set! *in-manage-sequence* #t)
 
   (catch #t
-    (lambda ()
-
-      ;; allow other modules (like xkb bindings) to perform manage sequence syncs
-      (gliver-hook-run! *manager-manage-start-hook*)
-
-      ;; process the tasks in *wm-manage-queue*
+	(lambda ()
 	  (define (process-queue!)
 		(unless (null? *wm-manage-queue*)
 		  (let ((task (car *wm-manage-queue*)))
 			(set! *wm-manage-queue* (cdr *wm-manage-queue*))
 			(task)
 			(process-queue!))))
-
-      (let* (;;(seat (and (not (null? *wm-seats*)) (car *wm-seats*)))
-             (output (output-current))
-			 (windows (manager-windows *manager*))
-			 (pending (filter window-wl-pending windows)))
-		(unless (null? pending)
-          (for-each
-           (lambda (win)
-             (let ((proxy-win (window-wl-proxy win)))
-               (when win
-                 (let ((container (window-container win)))
-                   (if container
-
-                       ;; tiled window: use container geometry
-                       (let ((w (max 1 (container-width container)))
-                             (h (max 1 (container-height container))))
-                         (log-info "Proposing dimensions ~ax~a for tiled window ~a"
-                                   w h (window-id win))
-                         (river-window-v1-propose-dimensions proxy-win w h)
-                         (river-window-v1-set-tiled proxy-win RIVER_WINDOW_V1_EDGES_ALL))
-
-                       ;; floating window: use a portion of output
-                       (let ((w (if output
-                                    (max 1 (quotient (* (output-width output) 2) 3))
-                                    640))
-                             (h (if output
-                                    (max 1 (quotient (* (output-height output) 2) 3))
-                                    480)))
-                         (log-info "Proposing dimensions ~ax~a for floating window ~a"
-                                   w h (window-id win))
-                         (river-window-v1-propose-dimensions proxy-win w h)
-                         (river-window-v1-set-tiled proxy-win RIVER_WINDOW_V1_EDGES_NONE)))
-
-                   ;; set capabilities enum (menu, maximize, fullscreen, minimize)
-				   ;; TODO: allow customization from variables
-                   (river-window-v1-set-capabilities proxy-win 15)
-
-                   ;; inform not fullscreen / unmaximized
-                   (river-window-v1-inform-not-fullscreen proxy-win)
-                   (river-window-v1-inform-unmaximized proxy-win)
-
-                   ;; focus the newest window
-                   ;; (when seat
-                   ;;   (river-seat-v1-focus-window seat proxy-win))
-				   ))))
-           pending))))
+	  (gliver-hook-run! *manager-manage-start-hook*)
+	  (process-queue!))
     (lambda (key . args)
       (log-error "Error in manage sequence: ~a ~a" key args)))
 
@@ -289,51 +240,18 @@ changes, etc.) must happen between manage_start and manage_finish."
 The server sends window dimension events before this, so nodes can be
 positioned accurately."
   (log-debug "render start")
-  ;; (catch #t
-  ;;   (lambda ()
-  ;;     (let ((output (output-current)))
-  ;;       ;; for each tracked window, get/cache node, set position, show, set borders
-  ;;       (for-each
-  ;;        (lambda (win)
-  ;;          (let* ((win-proxy (window-wl-proxy win))
-  ;;                 (win-addr (pointer-address win-proxy))
-  ;; 				  (node-proxy (window-wl-node-proxy win))
-  ;;                 (node-addr (pointer-address win-proxy)))
-  ;;            (when win
-  ;;              ;; get or cache the scene node (get_node can only be called once)
-  ;; 			   ;; this shouldn't be needed cuz on-window should handle it
-  ;; 			   (unless node-proxy
-  ;; 				 (let ((n (river-window-v1-get-node win-proxy)))
-  ;;                  (unless (null-pointer? n)
-  ;; 					 (log-warn "node proxy was set on rendering!")
-  ;; 					 (window-wl-node-proxy-set! win n))))
-
-  ;;              ;; position the node
-  ;; 			   (let ((node (window-wl-node-proxy win))
-  ;;                    (container (window-container win)))
-  ;;              (when (and node (not (null-pointer? node)))
-  ;;                (if container
-  ;;                    ;; tiled: use container geometry
-  ;;                    (river-node-v1-set-position node
-  ;;                                                (container-x container)
-  ;;                                                (container-y container))
-  ;;                    ;; floating: center on output
-  ;;                    (when output
-  ;;                      (river-node-v1-set-position
-  ;;                       node
-  ;;                       (quotient (output-width output) 6)
-  ;;                       (quotient (output-height output) 6))))
-  ;;                (river-node-v1-place-top node)))
-
-  ;;              ;; show the window
-  ;;              (river-window-v1-show win-proxy)
-
-  ;;              ;; apply border configuration
-  ;;              (let ((focused? (eq? win (window-current))))
-  ;;                (log-info "do border here")))))
-  ;;        (manager-windows *manager*))))
-  ;;   (lambda (key . args)
-  ;;     (log-error "Error in render sequence: ~a ~a" key args)))
+  (catch #t
+	(lambda ()
+	  (define (process-queue!)
+		(unless (null? *wm-render-queue*)
+		  (let ((task (car *wm-render-queue*)))
+			(set! *wm-render-queue* (cdr *wm-render-queue*))
+			(task)
+			(process-queue!))))
+	  (gliver-hook-run! *manager-render-start-hook*)
+	  (process-queue!))
+    (lambda (key . args)
+      (log-error "Error in manage sequence: ~a ~a" key args)))
 
   ;; always finish the render sequence
   (wm-manager-render-finish proxy-manager))
