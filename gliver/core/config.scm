@@ -20,6 +20,7 @@
 			*wm-behavior-focus-new-window*
 			*wm-behavior-workspace-remove-to*
 			*wm-behavior-default-capabilties*
+			*wm-behavior-default-edges*
 			config-file-path
 			config-load!
 			config-reload!
