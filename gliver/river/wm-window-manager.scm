@@ -175,7 +175,7 @@ Must be called in a ~render_sequence~."
 edges: flag enum value, use `RIVER_WINDOW_V1_EDGES_NONE`,
 `RIVER_WINDOW_V1_EDGES_TOP`, `RIVER_WINDOW_V1_EDGES_BOTTOM`,
 `RIVER_WINDOW_V1_EDGES_RIGHT`, `RIVER_WINDOW_V1_EDGES_LEFT`
-Must be called in a ~render_sequence~."
+Must be called in a ~manage_sequence~."
   (when proxy-window  
 		(log-debug "setting tiled state for window: ~a" proxy-window)
 		(river-window-v1-set-tiled proxy-window edges)))

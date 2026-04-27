@@ -229,10 +229,10 @@ Must be called in a ~render_sequence~."
 edges: flag enum value, use `RIVER_window_V1_EDGES_NONE`,
 `RIVER_window_V1_EDGES_TOP`, `RIVER_window_V1_EDGES_BOTTOM`,
 `RIVER_window_V1_EDGES_RIGHT`, `RIVER_window_V1_EDGES_LEFT`
-Must be called in a ~render_sequence~."
+Must be called in a ~manage_sequence~."
   (when window
 	(let ((proxy-window (window-wl-proxy window)))
-	  (with-render-sequence
+	  (with-manage-sequence
 	   (wm-window-tiled-set proxy-window edges)))))
 
 (define (window-decoration-above-get! window proxy-surface)
