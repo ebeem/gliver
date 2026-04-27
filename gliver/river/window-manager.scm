@@ -62,6 +62,7 @@
 (define *wm-render-queue* '())
 
 (define *in-manage-sequence* #f)
+(define *in-render-sequence* #f)
 
 ;; extra helper variables and functions
 (define RIVER_WINDOW_V1_EDGES_ALL 15)
@@ -217,7 +218,7 @@ Creates an output and attaches the output event listener."
   "Handle manage start: execute pending actions and finish the sequence.
 All window management state changes (keybinding enable/disable, focus
 changes, etc.) must happen between manage_start and manage_finish."
-  (log-debug "Starting manage sequence ~a" proxy-manager)
+  (log-debug "Start manage sequence")
   (set! *in-manage-sequence* #t)
 
   (catch #t
@@ -234,6 +235,7 @@ changes, etc.) must happen between manage_start and manage_finish."
       (log-error "Error in manage sequence: ~a ~a" key args)))
 
   ;; always finish the manage sequence
+  (log-debug "Finish manage sequence")
   (wm-manager-manage-finish proxy-manager)
   (set! *in-manage-sequence* #f))
 
@@ -241,7 +243,9 @@ changes, etc.) must happen between manage_start and manage_finish."
   "Handle render start: position, show, and style all windows, then finish.
 The server sends window dimension events before this, so nodes can be
 positioned accurately."
-  (log-debug "render start")
+  (log-debug "Start render sequence")
+  (set! *in-render-sequence* #t)
+
   (catch #t
 	(lambda ()
 	  (define (process-queue!)
@@ -256,7 +260,9 @@ positioned accurately."
       (log-error "Error in manage sequence: ~a ~a" key args)))
 
   ;; always finish the render sequence
-  (wm-manager-render-finish proxy-manager))
+  (wm-manager-render-finish proxy-manager)
+  (log-debug "Finish render sequence")
+  (set! *in-render-sequence* #f))
 
 (define-syntax with-manage-sequence
   (syntax-rules ()
