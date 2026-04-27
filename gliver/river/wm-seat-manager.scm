@@ -156,7 +156,7 @@ Hook: %seat-removed-hook"
 
 (define (on-seat-window-interaction data proxy-seat proxy-win)
   "Window is clicked or input is sent to it, focus it"
-  (log-debug "Window interaction: ~a" proxy-win)
+  (log-debug "seat ~a interacting with window ~a" proxy-seat proxy-win)
   (gliver-hook-run! %seat-window-interacted-hook data proxy-seat proxy-win))
 
 (define (on-seat-shell-interaction data proxy-seat shell-proxy)

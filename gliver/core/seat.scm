@@ -18,6 +18,7 @@
   #:use-module (gliver core logs)
   #:use-module (gliver core hooks)
   #:use-module (gliver core types)
+  #:use-module (gliver river window-manager)
   #:use-module (gliver river wm-seat-manager)
   #:export (
 			seat-add!
@@ -56,11 +57,13 @@
   "Request that the compositor send keyboard input to the given window.
 Must be called in a ~manage_sequence~."
   (let ((proxy-seat (seat-wl-proxy seat))
-		(proxy-win (window-wl-proxy window)))
-    (when (and proxy-seat proxy-win)
-	  (wm-seat-window-focus proxy-seat proxy-win)
-	  (seat-window-focused-set! seat window)
-	  (gliver-hook-run! *seat-window-focused-hook* seat window))))
+		(proxy-window (window-wl-proxy window)))
+    (when (and proxy-seat proxy-window)
+	  (log-debug "Seat ~a focusing surface ~a" seat window)
+	  (with-manage-sequence
+	   (wm-seat-window-focus proxy-seat proxy-window)
+	   (seat-window-focused-set! seat window)
+	   (gliver-hook-run! *seat-window-focused-hook* seat window)))))
 
 ;; NOTE: wm-seat-shell-focus should be implemented here
 ;; I am not sure if it's actually needed, so I skipped it
@@ -70,9 +73,10 @@ Must be called in a ~manage_sequence~."
 Must be called in a ~manage_sequence~."
   (let ((proxy-seat (seat-wl-proxy seat)))
     (when proxy-seat
-	  (wm-seat-window-focus-clear proxy-seat)
-	  (seat-window-focused-set! seat #f)
-	  (gliver-hook-run! *seat-window-focused-hook* seat #f))))
+	  (with-manage-sequence
+	   (wm-seat-window-focus-clear proxy-seat)
+	   (seat-window-focused-set! seat #f)
+	   (gliver-hook-run! *seat-window-focused-hook* seat #f)))))
 
 (define (seat-wm-pointer-op-start seat)
   "Start an interactive pointer operation.
@@ -80,7 +84,8 @@ Must be called in a ~manage_sequence~."
   (seat-pointer-op-set! seat #t)
   (let ((proxy-seat (seat-wl-proxy seat)))
     (when proxy-seat
-	  (wm-seat-pointer-op-start proxy-seat))))
+	  (with-manage-sequence
+	   (wm-seat-pointer-op-start proxy-seat)))))
 
 (define (seat-wm-pointer-op-end seat)
   "End an interactive pointer operation.
@@ -88,7 +93,8 @@ Must be called in a ~manage_sequence~."
   (seat-pointer-op-set! seat #f)
   (let ((proxy-seat (seat-wl-proxy seat)))
     (when proxy-seat
-	  (wm-seat-pointer-op-end proxy-seat))))
+	  (with-manage-sequence
+	   (wm-seat-pointer-op-end proxy-seat)))))
 
 (define (seat-wm-pointer-binding-get seat button modifiers)
   "Define a pointer binding in terms of a pointer button.
@@ -110,7 +116,8 @@ Returns river_pointer_binding_v1"
 Must be called in a ~manage_sequence~."
   (let ((proxy-seat (seat-wl-proxy seat)))
     (when proxy-seat
-	  (wm-seat-pointer-warp proxy-seat x y))))
+	  (with-manage-sequence
+	   (wm-seat-pointer-warp proxy-seat x y)))))
 
 ;;; events
 (define (on-seat data manager proxy-seat)
@@ -139,14 +146,14 @@ Hook: *seat-destroy-hook*"
 		(log-debug "Seat ~a object-id updated to ~a" seat object-id)
 		(gliver-hook-run! *seat-object-id-changed-hook* seat prev-object-id)))))
 
-(define (seat-on-pointer-enter data proxy-seat proxy-win)
+(define (seat-on-pointer-enter data proxy-seat proxy-window)
   "The seat's pointer entered the given window's area."
   (let ((seat (seat-find-by-proxy proxy-seat))
-		(window (window-find-by-proxy proxy-win)))
+		(window (window-find-by-proxy proxy-window)))
     (when (and seat window)
 	  (log-debug "Seat ~a pointer entered ~a" seat window)
 	  (when *wm-behavior-focus-mouse-enter*
-		(wm-seat-window-focus proxy-seat proxy-win))
+		(seat-wm-window-focus seat window))
 	  (seat-window-entered-set! seat window)
 	  (gliver-hook-run! *seat-window-entered-changed-hook* seat window))))
 
@@ -160,14 +167,14 @@ Hook: *seat-destroy-hook*"
 	  (seat-window-entered-set! seat #f)
 	  (gliver-hook-run! *seat-window-entered-changed-hook* seat #f))))
 
-(define (seat-on-window-interaction data proxy-seat proxy-win)
+(define (seat-on-window-interaction data proxy-seat proxy-window)
   "Window is clicked or input is sent to it, focus it"
   (let ((seat (seat-find-by-proxy proxy-seat))
-		(window (window-find-by-proxy proxy-win)))
+		(window (window-find-by-proxy proxy-window)))
 	(log-debug "Seat ~a is interacting with window ~a" seat window)
     (when (and seat window)
 	  (when *wm-behavior-focus-mouse-click*
-		(wm-seat-window-focus proxy-seat proxy-win))
+		(seat-wm-window-focus seat win))
 	  (gliver-hook-run! *seat-window-interacted-hook* seat window))))
 
 (define (seat-on-shell-interaction data proxy-seat shell-proxy)
