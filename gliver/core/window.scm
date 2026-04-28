@@ -75,13 +75,16 @@
 	(window-dimensions-propose! window
 								(output-width output)
 								(output-height output))
-    (window-tiled-set! window *wm-behavior-default-edges*))
+    (window-tiled-set! window *wm-behavior-default-edges*)
+	(manager-windows-set! *manager*
+						  (append (manager-windows *manager*) (list window))))
   (gliver-hook-run! *window-created-hook* window)
   window)
 
 (define (window-remove! window)
   "Remove a window from the display."
-  (let ((container (window-container window)))
+  (let ((container (window-container window))
+		(remaining (delete window (manager-windows *manager*))))
     (when container
       (container-windows-set! container (delete window (container-windows container)))
 	  ;; if removed window is currently focused
@@ -89,6 +92,7 @@
         (container-window-current-set! container
 									   (and (pair? (container-windows container))
 											(car (container-windows container))))))
+    (manager-windows-set! *manager* remaining)
     (gliver-hook-run! *window-destroy-hook* window)))
 
 (define (window-move-to-container! window target-container)

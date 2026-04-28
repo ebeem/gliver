@@ -174,7 +174,7 @@ Hook: *seat-destroy-hook*"
 	(log-debug "Seat ~a is interacting with window ~a" seat window)
     (when (and seat window)
 	  (when *wm-behavior-focus-mouse-click*
-		(seat-wm-window-focus seat win))
+		(seat-wm-window-focus seat window))
 	  (gliver-hook-run! *seat-window-interacted-hook* seat window))))
 
 (define (seat-on-shell-interaction data proxy-seat shell-proxy)
