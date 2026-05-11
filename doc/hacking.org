@@ -1,0 +1,34 @@
+* Data Types
+
+Gliver models its core state using Guile SRFI-9 records defined in =gliver/core/types.scm=. The data model is hierarchical and tracks the Wayland state as well as internal window management state.
+
+** Hierarchy Overview
+
+- =manager-state= (Singleton, tracks global state)
+  - =outputs= (List of =<output>= records)
+    - =workspaces= (List of =<workspace>= records per output)
+      - =containers= (List of =<container>= records per workspace)
+        - =windows= (List of =<window>= records per container)
+  - =seats= (List of =<seat>= records)
+  - =windows= (Global list of all managed =<window>= records, used to quickly loop over all available windows rather than going over each workspace and container )
+
+** Core Records
+
+*** =<manager-state>= (Singleton =*manager*=)
+The root object that holds the global display and manager state. It contains lists of all =outputs=, =seats=, and =windows=. It also holds global configuration options such as colors, borders, gaps, input timeouts, and the current mode. It manages the auto-incrementing IDs for creating new entities.
+
+*** =<output>=
+Represents a single logical screen or monitor (akin to an Emacs frame or a StumpWM screen/head). It has coordinates (=x=, =y=) and dimensions (=width=, =height=). It tracks its own list of =workspaces=, remembering which workspace is currently active and which was previously active.
+
+*** =<seat>=
+A seat bundles together the input devices (keyboard, mouse, touch) for a user. It keeps track of the currently focused window (=window-focused=) and the window the pointer is currently over (=window-entered=).
+
+*** =<workspace>=
+Similar to a virtual desktop (or an Emacs tab/StumpWM group). A workspace belongs to an =output= and has a specific =layout= (e.g., tiled). It holds a collection of =containers= and tracks the currently focused container.
+
+*** =<container>=
+A physical slot or partition on the screen where a list of windows is displayed (similar to an Emacs window or StumpWM container). It has spatial dimensions and coordinates, belongs to a =workspace=, and manages a list of =windows=, keeping track of the active window within itself.
+
+*** =<window>=
+Represents a single application buffer or window (like a terminal, browser, etc.). It holds extensive state about the application surface, including its title, app-id, dimensions, floating/fullscreen/maximized states, presentation hints, and corresponding Wayland proxies (including node and decoration proxies). A window is always assigned to a =container=.
+
