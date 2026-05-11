@@ -33,6 +33,7 @@
 			*manager-destroy-hook*
 			*manager-manage-start-hook*
 			*manager-render-start-hook*
+			*manager-layout-changed-hook*
 			%manager-session-unlocked-hook
 			%manager-session-locked-hook
 			%window-created-hook
@@ -218,6 +219,7 @@ If a function fails, the error is logged and the script is terminated."
 (define *manager-destroy-hook*			(make-gliver-hook 'manager-destroy 0))
 (define *manager-manage-start-hook*		(make-gliver-hook 'manager-manage-start 0))
 (define *manager-render-start-hook*		(make-gliver-hook 'manager-render-start 0))
+(define *manager-layout-changed-hook*	(make-gliver-hook 'manager-layout-changed 4))
 (define %manager-session-unlocked-hook	(make-gliver-hook '%manager-session-unlocked 0))
 (define %manager-session-locked-hook	(make-gliver-hook '%manager-session-locked 0))
 

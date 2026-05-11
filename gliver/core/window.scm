@@ -58,28 +58,25 @@
 		(seat (seat-current))
 		(container (container-current))
 		(proxy-window (window-wl-proxy window)))
-	;; TODO: add window to container and focus using current-window?
-	;; (when container
-	;;   (container-windows-set! container
-	;; 						  (cons window (container-windows container)))
-	;;   (when *wm-behavior-focus-new-window*
-	;; 	(container-window-current-set! container window)))
 
-	;; TODO: this should be handled by the layout instead
-	;; apply defaults to window
+	;; focus behavior
 	(when (and *wm-behavior-focus-new-window* seat)
-	  (seat-wm-window-focus seat window))
+	  (seat-wm-window-focus seat window)
+	  (container-window-current-set! container window))
+
+	;; apply defaults to window, these might be overwritten by layout
+	(window-container-set! window container)
 	(window-capabilities-inform! window *wm-behavior-default-capabilties*)
 	(window-unmaximized-inform! window)
     (window-fullscreen-exit-inform! window)
+    (window-tiled-set! window *wm-behavior-default-edges*)
 	(window-dimensions-propose! window
 								(output-width output)
 								(output-height output))
-    (window-tiled-set! window *wm-behavior-default-edges*)
-	(manager-windows-set! *manager*
-						  (append (manager-windows *manager*) (list window))))
-  (gliver-hook-run! *window-created-hook* window)
-  window)
+
+	;; the global manager will add the created window
+	;; to global state automatically with the hook
+	(gliver-hook-run! *window-created-hook* window)))
 
 (define (window-remove! window)
   "Remove a window from the display."

@@ -22,6 +22,8 @@ MODULES =   gliver/core/logs.scm \
 			gliver/core/seat.scm \
 			gliver/core/workspace.scm \
 			gliver/core/container.scm \
+			gliver/core/layout.scm \
+			gliver/core/manager.scm \
 			gliver/core/window.scm \
 			gliver/core.scm \
 			gliver/commands.scm \
