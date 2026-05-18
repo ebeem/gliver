@@ -18,6 +18,8 @@
 			*wm-behavior-focus-clear-mouse-leave*
 			*wm-behavior-focus-mouse-click*
 			*wm-behavior-focus-new-window*
+			*wm-behavior-focus-new-workspace*
+			*wm-behavior-focus-new-container*
 			*wm-behavior-workspace-remove-to*
 			*wm-behavior-default-capabilties*
 			*wm-behavior-default-edges*
@@ -45,6 +47,8 @@
 (define *wm-behavior-focus-clear-mouse-leave* #f)
 (define *wm-behavior-focus-mouse-click* #t)
 (define *wm-behavior-focus-new-window* #t)
+(define *wm-behavior-focus-new-workspace* #t)
+(define *wm-behavior-focus-new-container* #t)
 (define *wm-behavior-workspace-remove-to* 'focus)    ;; 'focus | 'index
 (define *wm-behavior-default-capabilties* 15)
 (define *wm-behavior-default-edges* 15)

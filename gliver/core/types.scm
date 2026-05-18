@@ -230,6 +230,7 @@
 			window-current
 			window-workspace
 			window-output
+			manager-print-tree
 ))
 
 ;;; display (global state)
@@ -436,7 +437,7 @@ Other parameters (x, y, width, height, wl-proxy) can be provided as keyword argu
             (container-x f) (container-y f)
             (length (container-windows f)))))
 
-(define* (make-container workspace #:key (x 0) (y 0) (width 0) (height 0))
+(define* (make-container #:key (workspace #f) (x 0) (y 0) (width 0) (height 0))
   "Create a new flat container."
   (%make-container workspace '() #f #f (container-number-next!)
                    x y width height))
@@ -621,4 +622,28 @@ Other parameters (x, y, width, height, wl-proxy) can be provided as keyword argu
 (define (window-output window)
   "Return the window output."
   (workspace-output (window-workspace window)))
+
+(define* (manager-print-tree #:optional (manager *manager*))
+  "Return the manager's state tree as a string."
+  (with-output-to-string
+    (lambda ()
+      (define (print-branch prefix item)
+        (format #t "~a▸ ~a~%" prefix item))
+      (print-branch "" manager)
+      (for-each
+       (lambda (output)
+         (print-branch "  └─" output)
+         (for-each
+          (lambda (workspace)
+            (print-branch "    └─" workspace)
+            (for-each
+             (lambda (container)
+               (print-branch "      └─" container)
+               (for-each
+                (lambda (window)
+                  (print-branch "        └─" window))
+                (container-windows container)))
+             (workspace-containers workspace)))
+          (output-workspaces output)))
+       (manager-outputs manager)))))
 

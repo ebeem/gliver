@@ -50,6 +50,7 @@
 			window-content-clip-box-set!
 			window-dimension-bounds-set!
 			window-size-set!
+			window-position-set!
 			))
 
 (define (window-add! window)
@@ -76,6 +77,7 @@
 
 	;; the global manager will add the created window
 	;; to global state automatically with the hook
+	(log-debug "Running *window-created-hook*")
 	(gliver-hook-run! *window-created-hook* window)))
 
 (define (window-remove! window)
@@ -131,6 +133,12 @@
 				 #:wl-pending #t)))
     (window-add! window)))
 (gliver-hook-add! %window-created-hook on-window)
+
+(define (on-window-closed data proxy-window)
+  "Handle a new window event from the compositor."
+  (let ((window (window-find-by-proxy proxy-window)))
+    (window-remove! window)))
+(gliver-hook-add! %window-destroy-hook on-window-closed)
 
 (define (color-hex->rgba hex-str)
   ;; strip the leading '#' if it exists
@@ -396,3 +404,17 @@ Must be called in a ~manage_sequence~."
       (with-manage-sequence
 	   (wm-window-dimension-bounds-set proxy-window max-width max-height)))))
 
+
+(define (window-size-set! window width height)
+  "Set the size of the window."
+  (window-dimensions-propose! window width height)
+  (window-width-set! window width)
+  (window-height-set! window height))
+
+(define (window-position-set! window x y)
+  "Set the position of the window.
+Must be called in a ~render_sequence~."
+  (let ((node (window-node-get! window)))
+    (when node
+      (with-render-sequence
+       ((@ (gliver river wm-node-manager) wm-node-position-set!) node x y)))))

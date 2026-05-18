@@ -88,11 +88,12 @@
 			*window-fullscreen-requested-hook*
 			*window-fullscreen-exit-requested-hook*
 			*window-minimize-requested-hook*
+			*container-created-hook*
 			*container-split-hook*
 			*container-destroy-hook*
 			*container-resize-hook*
 			*workspace-switch-hook*
-			*workspace-new-hook*
+			*workspace-created-hook*
 			*workspace-destroy-hook*
 			%output-created-hook
 			%output-removed-hook
@@ -225,7 +226,7 @@ If a function fails, the error is logged and the script is terminated."
 
 ;;; window hooks
 (define %window-created-hook					(make-gliver-hook '%window-created 3))
-(define %window-destroy-hook					(make-gliver-hook '%window-destroy 1))
+(define %window-destroy-hook					(make-gliver-hook '%window-destroy 2))
 (define %window-size-hint-changed-hook			(make-gliver-hook '%window-size-hint-changed 5))
 (define %window-size-changed-hook				(make-gliver-hook '%window-size-changed 3))
 (define %window-app-id-changed-hook				(make-gliver-hook '%window-app-id-changed 2))
@@ -278,11 +279,12 @@ If a function fails, the error is logged and the script is terminated."
 (define *window-fullscreen-exit-requested-hook*     (make-gliver-hook 'window-fullscreen-exit-requested 1))
 (define *window-minimize-requested-hook*			(make-gliver-hook 'window-minimize-requested 1))
 
+(define *container-created-hook*     (make-gliver-hook 'container-created 1))
 (define *container-split-hook*       (make-gliver-hook 'container-split 2))
 (define *container-destroy-hook*     (make-gliver-hook 'container-destroy 2))
 (define *container-resize-hook*      (make-gliver-hook 'container-resize 1))
 (define *workspace-switch-hook*      (make-gliver-hook 'workspace-switch 2))
-(define *workspace-new-hook*         (make-gliver-hook 'workspace-new 1))
+(define *workspace-created-hook*     (make-gliver-hook 'workspace-created 1))
 (define *workspace-destroy-hook*     (make-gliver-hook 'workspace-destroy 1))
 
 (define %output-created-hook				(make-gliver-hook '%output-created 3))

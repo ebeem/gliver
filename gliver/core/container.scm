@@ -12,6 +12,7 @@
   #:use-module (system foreign)
   #:use-module (gliver core types)
   #:use-module (gliver core logs)
+  #:use-module (gliver core config)
   #:use-module (gliver core hooks)
   #:export (
 			container-geometry-compute!
@@ -22,6 +23,7 @@
 			container-in-direction
 			container-window-add!
 			container-window-remove!
+			container-add!
 ))
 
 ;;; container geometry
@@ -97,4 +99,16 @@ to two different containers at the same time."
 separately if that's the desired behavior."
   (container-windows-set! container
                           (delq win (container-windows container))))
+
+(define (container-add! container)
+  "Add a new window to the display, placing it in the current container."
+  (let ((workspace (container-workspace container)))
+	;; focus behavior
+	(when *wm-behavior-focus-new-container*
+	  (workspace-container-current-set! workspace container))
+
+	;; the global manager will add the created window
+	;; to global state automatically with the hook
+	(log-debug "Running *container-created-hook*")
+	(gliver-hook-run! *container-created-hook* container)))
 

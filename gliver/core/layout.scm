@@ -6,6 +6,7 @@
 (define-module (gliver core layout)
   #:use-module (gliver core hooks)
   #:use-module (gliver core types)
+  #:use-module (gliver contrib layout alternating)
   #:export (setup-layout-manager!))
 
 (define (setup-layout-manager!)

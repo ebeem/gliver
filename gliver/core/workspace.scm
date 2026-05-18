@@ -30,20 +30,16 @@
 			workspace-prev
 ))
 
-(define* (workspace-add! output #:key (layout 'tiling) (name "workspace"))
+(define* (workspace-add! workspace)
   "Create a new workspace on @var{output}."
-  (let* ((tag (manager-tag-next!))
-         (num (manager-workspace-number-next!))
-         (workspace (make-workspace #:name name
-									#:id num
-									#:tag-mask tag
-									#:containers '()
-									#:output output
-									#:layout layout)))
-    (output-workspaces-set! output
-      (append (output-workspaces output) (list workspace)))
-    (gliver-hook-run! *workspace-new-hook* workspace)
-    workspace))
+  ;; focus behavior
+  (when *wm-behavior-focus-new-workspace*
+	(output-workspace-current-set!
+	 (workspace-output workspace)
+	 workspace))
+  
+  (gliver-hook-run! *workspace-created-hook* workspace)
+  workspace)
 
 (define* (%workspace-remove-target workspace1 workspace2)
   "Return the target workspace based on logic plus configuration."

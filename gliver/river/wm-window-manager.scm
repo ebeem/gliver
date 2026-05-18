@@ -86,15 +86,16 @@ to be properly initialized."
          on-window-minimize-requested
          on-window-unreliable-pid
          on-window-presentation-hint
-         on-window-identifier))
-  (gliver-hook-add! %window-created-hook on-window))
+         on-window-identifier)))
+(gliver-hook-add! *gliver-listeners-attach-hook* gliver-on-listeners-attach 0)
 
 (define (on-window data manager window-proxy)
   "Handle a new window event from the compositor."
   (log-debug "New window proxy: ~a" window-proxy)
   ;; attach the shared event listener
   (when *wm-window-listener*
-    (wl-proxy-add-listener proxy-window *wm-window-listener* %null-pointer)))
+    (wl-proxy-add-listener window-proxy *wm-window-listener* %null-pointer)))
+(gliver-hook-add! %window-created-hook on-window 0)
 
 ;;; window requests
 (define (wm-window-close proxy-window)
@@ -299,7 +300,7 @@ Removing the window record and clearing up memory.
 Hook: *window-destroy-hook*"
   ;; just let the window manager handle it
   (log-debug "Window closed: ~a" proxy-window)
-	(gliver-hook-run! %window-destroy-hook proxy-window))
+	(gliver-hook-run! %window-destroy-hook data proxy-window))
 
 (define (on-window-dimensions-hint data proxy-window min-w min-h max-w max-h)
   "Window shared its preferred min/max dimensions excluding borders and decorations.
@@ -324,8 +325,9 @@ Hook: *window-app-id-changed-hook*"
 (define (on-window-title data proxy-window title-ptr)
   "Window updated its title.
 Hook: *window-title-changed-hook*"
-  (log-debug "Window ~a updated its title to ~a" proxy-window title)
-  (gliver-hook-run! %window-title-changed-hook proxy-window title-ptr))
+  (let ((title (pointer->string title-ptr)))
+	(log-debug "Window ~a updated its title to ~a" proxy-window title)
+	(gliver-hook-run! %window-title-changed-hook proxy-window title)))
 
 (define (on-window-parent data proxy-window parent-proxy)
   "Window updated its parent.
