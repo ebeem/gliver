@@ -23,8 +23,8 @@
          (oy (if output (output-y output) 0))
          (ow (if output (output-width output) 1920))
          (oh (if output (output-height output) 1080))
-         (gap (manager-container-gap *manager*))
-         (outer-gap (manager-container-outer-gap *manager*))
+         (gap (manager-config-ref 'container-gap))
+         (outer-gap (manager-config-ref 'container-outer-gap))
          (containers (workspace-containers workspace)))
     (container-geometry-compute! containers ox oy ow oh gap outer-gap)
     (for-each

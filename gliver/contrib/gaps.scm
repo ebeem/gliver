@@ -82,8 +82,8 @@
 
 (define (apply-gaps!)
   "Apply the current gap settings to the display."
-  (manager-container-gap-set! *manager* *gap-inner*)
-  (manager-container-outer-gap-set! *manager* *gap-outer*))
+  (manager-config-set! 'container-gap *gap-inner*)
+  (manager-config-set! 'container-outer-gap *gap-outer*))
 
 ;;; register commands
 (command-register! 'toggle-gaps gaps-toggle! "Toggle gaps on/off.")

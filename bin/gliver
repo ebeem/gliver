@@ -122,9 +122,9 @@
     ;; via river_window_v1.set_borders. the display's border-width and
     ;; border-color values are read at render time by apply-border-config-to-window!
     (log-info "Border config: width=~a focused=~a unfocused=~a"
-              (manager-border-width *manager*)
-              (manager-border-color-focused *manager*)
-              (manager-border-color-unfocused *manager*))
+              (manager-config-ref 'border-width)
+              (manager-config-ref 'border-color-focused)
+              (manager-config-ref 'border-color-unfocused))
 
     ;; step 14: install message bar callback
     (message-callback-install!)

@@ -236,7 +236,7 @@ those matching the current mode."
 
   ;; generate binding specs
   (let* ((specs (gliver-binding-spec-generate *top-map* *root-map*
-                                            (manager-prefix-key *manager*)
+                                            (manager-config-ref 'prefix-key)
                                             'prefix))
          (seat (%km-seat)))
 

@@ -189,10 +189,10 @@
   "Run the main event loop.
 This integrates Wayland event dispatching with IPC and REPL polling."
   (log-info "Entering main event loop.")
-  (manager-running-set! *manager* #t)
+  (manager-config-set! 'running? #t)
 
   (let ((wl-fd (wl-display-get-fd *wl-display*)))
-    (while (and (manager-running? *manager*) *connected*)
+    (while (and (manager-config-ref 'running?) *connected*)
       (catch #t
         (lambda ()
           ;; flush outgoing requests

@@ -610,7 +610,7 @@ The actual input is handled via handle-input-key callbacks."
 (define (cmd-quit)
   "Quit Gliver."
   (gliver-hook-run! *shutdown-hook*)
-  (manager-running-set! *manager* #f)
+  (manager-config-set! 'running? #f)
   (message "Goodbye."))
 
 (define (cmd-restart)
@@ -671,12 +671,12 @@ The actual input is handled via handle-input-key callbacks."
 ;;; prefix mode commands
 (define (cmd-prefix-activated)
   "Handle prefix key activation."
-  (manager-mode-set! *manager* 'prefix)
+  (manager-config-set! 'mode 'prefix)
   (log-debug "Prefix mode activated."))
 
 (define (cmd-prefix-abort)
   "Abort prefix mode."
-  (manager-mode-set! *manager* 'normal)
+  (manager-config-set! 'mode 'normal)
   (message "Aborted."))
 
 (define (cmd-enter-submap name)
@@ -685,8 +685,8 @@ The actual input is handled via handle-input-key callbacks."
 
 (define (cmd-send-prefix-key)
   "Send the prefix key to the focused application."
-  (manager-mode-set! *manager* 'normal)
-  (let ((prefix (manager-prefix-key *manager*)))
+  (manager-config-set! 'mode 'normal)
+  (let ((prefix (manager-config-ref 'prefix-key)))
     (shell-process-spawn-detached
      (format #f "wtype -M ctrl -k t -m ctrl" ))))
 

@@ -14,38 +14,9 @@
   #:export (
 			manager-wl-proxy-set!
 			manager-wl-proxy
-			manager-tag-next-set!
-			manager-tag-next
-			manager-workspace-number-next-set!
-			manager-workspace-number-next
-			manager-output-number-next-set!
-			manager-output-number-next
-			manager-container-number-next-set!
-			manager-container-number-next
-			manager-window-number-next-set!
-			manager-window-number-next
-			manager-running-set!
-			manager-running?
-			manager-container-outer-gap-set!
-			manager-container-outer-gap
-			manager-container-gap-set!
-			manager-container-gap
-			manager-border-color-urgent-set!
-			manager-border-color-urgent
-			manager-border-color-unfocused-set!
-			manager-border-color-unfocused
-			manager-border-color-focused-set!
-			manager-border-color-focused
-			manager-border-width-set!
-			manager-border-width
-			manager-mode-set!
-			manager-mode
-			manager-message-timeout-set!
-			manager-message-timeout
-			manager-prefix-timeout-set!
-			manager-prefix-timeout
-			manager-prefix-key-set!
-			manager-prefix-key
+			manager-config
+			manager-config-ref
+			manager-config-set!
 			manager-windows-set!
 			manager-windows
 			manager-seats-set!
@@ -236,35 +207,14 @@
 ;;; display (global state)
 (define-record-type <manager-state>
   (%make-manager-state outputs output-current output-previous
-                       seats windows prefix-key prefix-timeout
-                       message-timeout mode
-                       border-width border-color-focused
-                       border-color-unfocused border-color-urgent
-                       container-gap container-outer-gap running?
-                       window-number-next container-number-next output-number-next
-					   workspace-number-next next-tag-bit wl-proxy)
+                       seats windows config wl-proxy)
   manager-state?
   (outputs                manager-outputs                manager-outputs-set!)
   (output-current         manager-output-current         manager-output-current-set!)
   (output-previous        manager-output-previous        manager-output-previous-set!)
   (seats                  manager-seats                  manager-seats-set!)
   (windows                manager-windows                manager-windows-set!)
-  (prefix-key             manager-prefix-key             manager-prefix-key-set!)
-  (prefix-timeout         manager-prefix-timeout         manager-prefix-timeout-set!)
-  (message-timeout        manager-message-timeout        manager-message-timeout-set!)
-  (mode                   manager-mode                   manager-mode-set!)
-  (border-width           manager-border-width           manager-border-width-set!)
-  (border-color-focused   manager-border-color-focused   manager-border-color-focused-set!)
-  (border-color-unfocused manager-border-color-unfocused manager-border-color-unfocused-set!)
-  (border-color-urgent    manager-border-color-urgent    manager-border-color-urgent-set!)
-  (container-gap          manager-container-gap          manager-container-gap-set!)
-  (container-outer-gap    manager-container-outer-gap    manager-container-outer-gap-set!)
-  (running?               manager-running?               manager-running-set!)
-  (window-number-next     manager-window-number-next     manager-window-number-next-set!)
-  (container-number-next  manager-container-number-next  manager-container-number-next-set!)
-  (output-number-next     manager-output-number-next     manager-output-number-next-set!)
-  (workspace-number-next  manager-workspace-number-next  manager-workspace-number-next-set!)
-  (next-tag-bit           manager-tag-next               manager-tag-next-set!)
+  (config                 manager-config                 manager-config-set!)
   (wl-proxy               manager-wl-proxy               manager-wl-proxy-set!))
 
 (set-record-type-printer! <manager-state>
@@ -273,55 +223,65 @@
             (manager-wl-proxy out)
             (length (manager-outputs out)))))
 
+(define (manager-config-ref key)
+  "Look up KEY in the manager config hash table."
+  (hash-ref (manager-config *manager*) key))
+
+(define (manager-config-set! key value)
+  "Set KEY to VALUE in the manager config hash table."
+  (hash-set! (manager-config *manager*) key value))
+
 (define (manager-window-number-next!)
-  (let ((id (manager-window-number-next *manager*)))
-    (manager-window-number-next-set! *manager* (1+ id))
+  (let ((id (manager-config-ref 'window-number-next)))
+    (manager-config-set! 'window-number-next (1+ id))
     id))
 
 (define (manager-workspace-number-next!)
-  (let ((id (manager-workspace-number-next *manager*)))
-    (manager-workspace-number-next-set! *manager* (1+ id))
+  (let ((id (manager-config-ref 'workspace-number-next)))
+    (manager-config-set! 'workspace-number-next (1+ id))
     id))
 
 (define (manager-output-number-next!)
-  (let ((id (manager-output-number-next *manager*)))
-    (manager-output-number-next-set! *manager* (1+ id))
+  (let ((id (manager-config-ref 'output-number-next)))
+    (manager-config-set! 'output-number-next (1+ id))
     id))
 
 (define (manager-tag-next!)
-  (let ((bit (manager-tag-next *manager*)))
-    (manager-tag-next-set! *manager* (ash bit 1))
+  (let ((bit (manager-config-ref 'next-tag-bit)))
+    (manager-config-set! 'next-tag-bit (ash bit 1))
     bit))
 
 (define (container-number-next!)
-  (let ((n (manager-container-number-next *manager*)))
-    (manager-container-number-next-set! *manager* (1+ n))
+  (let ((n (manager-config-ref 'container-number-next)))
+    (manager-config-set! 'container-number-next (1+ n))
     n))
 
 (define *manager*
-  (%make-manager-state
-   '()   ; outputs
-   #f    ; output-current
-   #f    ; output-previous
-   '()   ; seats
-   '()   ; windows
-   (make-gliver-key '(Control) 't) ; prefix-key
-   1000  ; prefix-timeout ms
-   5     ; message-timeout seconds
-   'normal ; mode
-   2     ; border-width
-   "#5588ff"  ; border-color-focused
-   "#333333"  ; border-color-unfocused
-   "#ff5555"  ; border-color-urgent
-   0     ; container-gap
-   0     ; container-outer-gap
-   #f    ; running?
-   0     ; window-number-next
-   0     ; container-number-next
-   0     ; output-number-next
-   0     ; workspace-number-next
-   1     ; next-tag-bit
-   #f))  ;; wl-proxy
+  (let ((cfg (make-hash-table)))
+    (hash-set! cfg 'prefix-key             (make-gliver-key '(Control) 't))
+    (hash-set! cfg 'prefix-timeout         1000)  ; ms
+    (hash-set! cfg 'message-timeout        5)     ; seconds
+    (hash-set! cfg 'mode                   'normal)
+    (hash-set! cfg 'border-width           2)
+    (hash-set! cfg 'border-color-focused   "#5588ff")
+    (hash-set! cfg 'border-color-unfocused "#333333")
+    (hash-set! cfg 'border-color-urgent    "#ff5555")
+    (hash-set! cfg 'container-gap          12)
+    (hash-set! cfg 'container-outer-gap    4)
+    (hash-set! cfg 'running?               #f)
+    (hash-set! cfg 'window-number-next     0)
+    (hash-set! cfg 'container-number-next  0)
+    (hash-set! cfg 'output-number-next     0)
+    (hash-set! cfg 'workspace-number-next  0)
+    (hash-set! cfg 'next-tag-bit           1)
+    (%make-manager-state
+     '()   ; outputs
+     #f    ; output-current
+     #f    ; output-previous
+     '()   ; seats
+     '()   ; windows
+     cfg
+     #f))) ; wl-proxy
 
 ;;; output: similar to an emacs container and stumpwm screen head
 ;;; a single logical screen/monitor, treated by wayland as output

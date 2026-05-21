@@ -66,7 +66,7 @@
   (set! *message-bar-visible* #t)
   (message-bar-render!)
   ;; set up auto-hide timer
-  (let ((timeout (manager-message-timeout *manager*)))
+  (let ((timeout (manager-config-ref 'message-timeout)))
     (when (and timeout (> timeout 0))
       ;; in a full implementation, this would use a timer fd
       ;; or scheduled callback in the event loop
