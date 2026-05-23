@@ -266,7 +266,7 @@
     (hash-set! cfg 'border-color-focused   "#5588ff")
     (hash-set! cfg 'border-color-unfocused "#333333")
     (hash-set! cfg 'border-color-urgent    "#ff5555")
-    (hash-set! cfg 'container-gap          12)
+    (hash-set! cfg 'container-inner-gap    12)
     (hash-set! cfg 'container-outer-gap    4)
     (hash-set! cfg 'running?               #f)
     (hash-set! cfg 'window-number-next     0)

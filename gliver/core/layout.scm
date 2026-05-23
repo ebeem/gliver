@@ -16,7 +16,11 @@
              (container (if (eq? type 'container)
                             (car args)
                             (and window (window-container window))))
-             (workspace (and container (container-workspace container))))
+             (workspace (cond ((eq? type 'output)
+                               (output-workspace-current (if (pair? args) (car args) (output-current))))
+                              (container
+                               (container-workspace container))
+                              (else #f))))
         (gliver-hook-run! *manager-layout-changed-hook*
                           hook-name
                           workspace
@@ -43,6 +47,10 @@
               (gliver-hook-add! hook (make-handler 'container (gliver-hook-name hook))))
             (list *container-split-hook*
                   *container-destroy-hook*
-                  *container-resize-hook*)))
+                  *container-resize-hook*))
+
+  (for-each (lambda (hook)
+              (gliver-hook-add! hook (make-handler 'output (gliver-hook-name hook))))
+            (list *output-dimensions-changed-hook*)))
 
 (setup-layout-manager!)

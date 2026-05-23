@@ -17,6 +17,7 @@
   ;; lazy loaded, core type functions shouldn't be imported here
   #:autoload (gliver core container) (container-add!)
   #:autoload (gliver core workspace) (workspace-add!)
+  #:autoload (gliver contrib layout alternating) (alternating-make-config)
   #:export (
 ))
 
@@ -28,6 +29,7 @@
   (when (= 0 (length (output-workspaces output)))
 	(let ((workspace
 		   (make-workspace #:name (format #f "workspace-%d-%d" (output-id output) 1)
+						   #:layout (alternating-make-config)
 						   #:output output)))
 	  (workspace-add! workspace)
 	  (output-workspace-current-set! output workspace)))

@@ -67,7 +67,12 @@
 
 	;; apply defaults to window, these might be overwritten by layout
 	(window-container-set! window container)
-	(window-capabilities-inform! window *wm-behavior-default-capabilties*)
+	(when (eq? *wm-behavior-default-decoration* 'server)
+	  (window-decoration-server! window))
+	(when (eq? *wm-behavior-default-decoration* 'client)
+	  (window-decoration-client! window))
+	
+	(window-capabilities-inform! window *wm-behavior-default-capabilties*)	
 	(window-unmaximized-inform! window)
     (window-fullscreen-exit-inform! window)
     (window-tiled-set! window *wm-behavior-default-edges*)

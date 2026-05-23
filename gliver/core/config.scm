@@ -21,6 +21,7 @@
 			*wm-behavior-focus-new-workspace*
 			*wm-behavior-focus-new-container*
 			*wm-behavior-workspace-remove-to*
+			*wm-behavior-default-decoration*
 			*wm-behavior-default-capabilties*
 			*wm-behavior-default-edges*
 			config-file-path
@@ -50,8 +51,9 @@
 (define *wm-behavior-focus-new-workspace* #t)
 (define *wm-behavior-focus-new-container* #t)
 (define *wm-behavior-workspace-remove-to* 'focus)    ;; 'focus | 'index
-(define *wm-behavior-default-capabilties* 15)
-(define *wm-behavior-default-edges* 15)
+(define *wm-behavior-default-decoration* 'server)          ;; 'server | 'client
+(define *wm-behavior-default-capabilties* 0)
+(define *wm-behavior-default-edges* 0)
 
 ;;; config file loading
 (define (config-file-path)
