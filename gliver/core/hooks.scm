@@ -57,8 +57,8 @@
 			%window-identifier-changed-hook
 			*window-created-hook*
 			*window-destroy-hook*
-			*window-focus-hook*
-			*window-unfocus-hook*
+			*window-focused-hook*
+			*window-unfocused-hook*
 			*window-place-hook*
 			*window-float-hook*
 			*window-unfloat-hook*
@@ -247,8 +247,8 @@ If a function fails, the error is logged and the script is terminated."
 
 (define *window-created-hook*						(make-gliver-hook 'window-created 1))
 (define *window-destroy-hook*						(make-gliver-hook 'window-destroy 1))
-(define *window-focus-hook*							(make-gliver-hook 'window-focus 2))
-(define *window-unfocus-hook*						(make-gliver-hook 'window-unfocus 1))
+(define *window-focused-hook*						(make-gliver-hook 'window-focused 1))
+(define *window-unfocused-hook*						(make-gliver-hook 'window-unfocused 1))
 (define *window-place-hook*							(make-gliver-hook 'window-place 2))
 (define *window-float-hook*							(make-gliver-hook 'window-float 1))
 (define *window-unfloat-hook*						(make-gliver-hook 'window-unfloat 1))

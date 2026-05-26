@@ -297,7 +297,7 @@ The actual input is handled via handle-input-key callbacks."
              (next-idx (modulo (1+ (or idx 0)) (length wins)))
              (next-win (list-ref wins next-idx)))
         (container-window-current-set! container next-win)
-        (gliver-hook-run! *window-focus-hook* next-win cur)))))
+        (gliver-hook-run! *window-focused-hook* next-win cur)))))
 
 (define (cmd-window-focus-prev)
   "Focus the previous window in the current container."
@@ -309,7 +309,7 @@ The actual input is handled via handle-input-key callbacks."
              (prev-idx (modulo (+ (or idx 0) (length wins) -1) (length wins)))
              (prev-win (list-ref wins prev-idx)))
         (container-window-current-set! container prev-win)
-        (gliver-hook-run! *window-focus-hook* prev-win cur)))))
+        (gliver-hook-run! *window-focused-hook* prev-win cur)))))
 
 (define (cmd-window-focus-other)
   "Switch to the previously focused window."

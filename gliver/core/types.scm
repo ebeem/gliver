@@ -262,10 +262,10 @@
     (hash-set! cfg 'prefix-timeout         1000)  ; ms
     (hash-set! cfg 'message-timeout        5)     ; seconds
     (hash-set! cfg 'mode                   'normal)
-    (hash-set! cfg 'border-width           2)
-    (hash-set! cfg 'border-color-focused   "#5588ff")
-    (hash-set! cfg 'border-color-unfocused "#333333")
-    (hash-set! cfg 'border-color-urgent    "#ff5555")
+    (hash-set! cfg 'border-width           3)
+    (hash-set! cfg 'border-color-focused   "#c6a0f6")
+    (hash-set! cfg 'border-color-unfocused "#1e2030")
+    (hash-set! cfg 'border-color-urgent    "#ed8796")
     (hash-set! cfg 'container-inner-gap    12)
     (hash-set! cfg 'container-outer-gap    4)
     (hash-set! cfg 'running?               #f)

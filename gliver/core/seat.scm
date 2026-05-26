@@ -57,12 +57,18 @@
   "Request that the compositor send keyboard input to the given window.
 Must be called in a ~manage_sequence~."
   (let ((proxy-seat (seat-wl-proxy seat))
-		(proxy-window (window-wl-proxy window)))
+		(proxy-window (window-wl-proxy window))
+		(current-focused (seat-window-focused seat)))
     (when (and proxy-seat proxy-window)
 	  (log-debug "Seat ~a focusing surface ~a" seat window)
-	  (with-manage-sequence
+
+	  ;; unfocus old window and focus the new one via hooks as well
+	  (with-manage-sequence	   
 	   (wm-seat-window-focus proxy-seat proxy-window)
+	   (when current-focused
+		 (gliver-hook-run! *window-unfocused-hook* current-focused))
 	   (seat-window-focused-set! seat window)
+	   (gliver-hook-run! *window-focused-hook* window)
 	   (gliver-hook-run! *seat-window-focused-hook* seat window)))))
 
 ;; NOTE: wm-seat-shell-focus should be implemented here

@@ -122,8 +122,8 @@ This most likely should be used internally only, and it
 will be automatically managed and called when needed and
 window record will be updated accordingly to have a node reference."
   (when proxy-window
-	  (log-debug "getting node of window: ~a" proxy-window)
-	  (river-window-v1-get-node proxy-window)))
+	(log-debug "getting node of window: ~a" proxy-window)
+	(river-window-v1-get-node proxy-window)))
 
 (define (wm-window-dimensions-propose proxy-window width height)
   "Propose dimensions (width and height) for a window.
@@ -150,15 +150,15 @@ Must be called in a ~render_sequence~."
   "Enable client-side decoration for the provided window.
 Must be called in a ~manage_sequence~."
   (when proxy-window  
-	  (log-debug "using client side decoration for window: ~a" proxy-window)
-		(river-window-v1-use-csd proxy-window)))
+	(log-debug "using client side decoration for window: ~a" proxy-window)
+	(river-window-v1-use-csd proxy-window)))
 
 (define (wm-window-decoration-server proxy-window)
   "Enable server-side decoration for the provided window.
 Must be called in a ~manage_sequence~."
   (when proxy-window  
-	  (log-debug "using server side decoration for window: ~a" proxy-window)
-		(river-window-v1-use-ssd proxy-window)))
+	(log-debug "using server side decoration for window: ~a" proxy-window)
+	(river-window-v1-use-ssd proxy-window)))
 
 (define (wm-window-borders-set proxy-window edges width r g b a)
   "Set borders for the provided window.
@@ -167,8 +167,8 @@ edges: flag enum value, use `RIVER_WINDOW_V1_EDGES_NONE`,
 `RIVER_WINDOW_V1_EDGES_RIGHT`, `RIVER_WINDOW_V1_EDGES_LEFT`
 Must be called in a ~render_sequence~."
   (when proxy-window  
-	  (log-debug "setting borders for window: ~a" proxy-window)
-		(river-window-v1-set-borders proxy-window edges width 
+	(log-debug "setting borders for window: ~a to width ~a, edges: ~a, and rgba(~a, ~a, ~a, ~a)" proxy-window width edges r g b a)
+	(river-window-v1-set-borders proxy-window edges width 
                                  r g b a)))
 
 (define (wm-window-tiled-set proxy-window edges)
@@ -178,15 +178,15 @@ edges: flag enum value, use `RIVER_WINDOW_V1_EDGES_NONE`,
 `RIVER_WINDOW_V1_EDGES_RIGHT`, `RIVER_WINDOW_V1_EDGES_LEFT`
 Must be called in a ~manage_sequence~."
   (when proxy-window  
-		(log-debug "setting tiled state for window: ~a" proxy-window)
-		(river-window-v1-set-tiled proxy-window edges)))
+	(log-debug "setting tiled state for window: ~a" proxy-window)
+	(river-window-v1-set-tiled proxy-window edges)))
 
 (define (wm-window-decoration-above-get proxy-window proxy-surface)
   "Create a decoration surface above the window and
 assign the river_decoration_v1 role to the surface.
 Provided ~wl_surface~ shouldn't have a role or a buffer attached."
   (when proxy-window  
-		(log-debug "creating decoration surface ~a above window: ~a" proxy-surface proxy-window)
+	(log-debug "creating decoration surface ~a above window: ~a" proxy-surface proxy-window)
     (river-window-v1-get-decoration-above proxy-window proxy-surface)))
 
 (define (wm-window-decoration-below-get proxy-window proxy-surface)
@@ -194,22 +194,22 @@ Provided ~wl_surface~ shouldn't have a role or a buffer attached."
 assign the river_decoration_v1 role to the surface.
 Provided ~wl_surface~ shouldn't have a role or a buffer attached."
   (when proxy-window  
-		(log-debug "creating decoration surface ~a below window: ~a" proxy-surface proxy-window)
+	(log-debug "creating decoration surface ~a below window: ~a" proxy-surface proxy-window)
     (river-window-v1-get-decoration-below proxy-window proxy-surface)))
 
 (define (wm-window-resize-started-inform proxy-window)
   "Inform the window that it is being resized.
 Must be called in a ~manage_sequence~."
   (when proxy-window  
-		(log-debug "resizing window ~a started" proxy-window)
-		(river-window-v1-inform-resize-start proxy-window)))
+	(log-debug "resizing window ~a started" proxy-window)
+	(river-window-v1-inform-resize-start proxy-window)))
 
 (define (wm-window-resize-ended-inform proxy-window)
   "Inform the window that it has ended resizing.
 Must be called in a ~manage_sequence~."
   (when proxy-window  
-		(log-debug "resizing window ~a ended" proxy-window)
-		(river-window-v1-inform-resize-end proxy-window)))
+	(log-debug "resizing window ~a ended" proxy-window)
+	(river-window-v1-inform-resize-end proxy-window)))
 
 (define (wm-window-capabilities-inform proxy-window caps)
   "inform the window of the capabilities supported (maximize, minimize).
@@ -246,8 +246,8 @@ Must be called in a ~manage_sequence~."
   "inform the window that it has exited fullscreen mode.
 Must be called in a ~manage_sequence~."
   (when proxy-window
-		  (log-debug "Window ~a exited fullscreen mode" proxy-window)
-		  (river-window-v1-inform-not-fullscreen proxy-window)))
+	(log-debug "Window ~a exited fullscreen mode" proxy-window)
+	(river-window-v1-inform-not-fullscreen proxy-window)))
 
 (define (wm-window-fullscreen proxy-window proxy-output)
   "Make the window fullscreen on the given output. river_shell_surface_v1
@@ -300,7 +300,7 @@ Removing the window record and clearing up memory.
 Hook: *window-destroy-hook*"
   ;; just let the window manager handle it
   (log-debug "Window closed: ~a" proxy-window)
-	(gliver-hook-run! %window-destroy-hook data proxy-window))
+  (gliver-hook-run! %window-destroy-hook data proxy-window))
 
 (define (on-window-dimensions-hint data proxy-window min-w min-h max-w max-h)
   "Window shared its preferred min/max dimensions excluding borders and decorations.
@@ -320,7 +320,7 @@ Hook: *window-size-changed-hook*"
   "Window updated its app_id.
 Hook: *window-app-id-changed-hook*"
   (log-debug "Window ~a updated its app_id to ~a" proxy-window app-id-ptr)
-	(gliver-hook-run! %window-app-id-changed-hook proxy-window app-id-ptr))
+  (gliver-hook-run! %window-app-id-changed-hook proxy-window app-id-ptr))
 
 (define (on-window-title data proxy-window title-ptr)
   "Window updated its title.
@@ -414,4 +414,4 @@ The identifier will always be unique and will not be reused.
 Only called once when the window is created."
   (log-debug "Window identifier: ~a = ~a" proxy-window id-ptr)
   (gliver-hook-run! %window-presentation-hint-changed-hook proxy-window id-ptr))
-  
+

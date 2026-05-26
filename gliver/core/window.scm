@@ -25,7 +25,7 @@
 			window-move-to-container!
 			window-move-to-workspace!
 			on-window
-			color-hex->rgba
+			color-hex->rgba-32
 			window-close!
 			window-node-get!
 			window-dimensions-propose!
@@ -145,21 +145,50 @@
     (window-remove! window)))
 (gliver-hook-add! %window-destroy-hook on-window-closed)
 
-(define (color-hex->rgba hex-str)
+(define (on-window-focused window)
+  "Handle window focused event."
+  ;; colorize the window border with active window border color
+  (window-borders-set! window *wm-behavior-default-border-edges*
+					   (manager-config-ref 'border-width)
+					   (manager-config-ref 'border-color-focused)))
+(gliver-hook-add! *window-focused-hook* on-window-focused)
+
+(define (on-window-unfocused window)
+  "Handle window unfocused event."
+  ;; colorize the window border with inactive window border color
+  (window-borders-set! window *wm-behavior-default-border-edges*
+					   (manager-config-ref 'border-width)
+					   (manager-config-ref 'border-color-unfocused)))
+(gliver-hook-add! *window-unfocused-hook* on-window-unfocused)
+
+(define (color-hex->rgba-32 hex-str)
   ;; strip the leading '#' if it exists
   (let* ((clean-str (if (char=? (string-ref hex-str 0) #\#)
                         (substring hex-str 1)
                         hex-str))
          (len (string-length clean-str))
          (get-val (lambda (start)
-                    (string->number (substring clean-str start (+ start 2)) 16))))
+                    (string->number (substring clean-str start (+ start 2)) 16)))
+         ;; multiplier to stretch 0-255 into 0-4294967295
+         (scale 16843009)) 
     (cond
-     ((= len 6) ;; rrggbb
-      (list (get-val 0) (get-val 2) (get-val 4) 255))
-     ((= len 8) ;; rrggbbaa
-      (list (get-val 0) (get-val 2) (get-val 4) (get-val 6)))
+     ((or (= len 6) (= len 8))
+      (let* ((r (get-val 0))
+             (g (get-val 2))
+             (b (get-val 4))
+             (a (if (= len 8) (get-val 6) 255))
+             
+             ;; calculate pre-multiplied 32-bit values using exact integers.
+			 ;; river uses 32-bit colors rather than 8-bit
+             (a-32 (* a scale))
+             (r-32 (quotient (* r a scale) 255))
+             (g-32 (quotient (* g a scale) 255))
+             (b-32 (quotient (* b a scale) 255)))
+        
+        (list r-32 g-32 b-32 a-32)))
      (else
-      (error "Invalid hex color length. Expected 6 or 8 characters:" hex-str)))))
+      (log-error "Invalid hex color length. Expected 6 or 8 characters: ~a" hex-str)
+	  (list 4294967295 4294967295 4294967295 4294967295)))))
 
 (define (window-close! window)
   "Close a WINDOW, the window may take time to respond or
@@ -227,16 +256,17 @@ Must be called in a ~manage_sequence~."
 
 (define (window-borders-set! window edges width color-hex)
   "Set borders for the provided window.
-edges: flag enum value, use `RIVER_window_V1_EDGES_NONE`,
-`RIVER_window_V1_EDGES_TOP`, `RIVER_window_V1_EDGES_BOTTOM`,
-`RIVER_window_V1_EDGES_RIGHT`, `RIVER_window_V1_EDGES_LEFT`
+edges: flag enum value, use `RIVER_WINDOW_V1_EDGES_NONE`,
+`RIVER_WINDOW_V1_EDGES_TOP`, `RIVER_WINDOW_V1_EDGES_BOTTOM`,
+`RIVER_WINDOW_V1_EDGES_RIGHT`, `RIVER_WINDOW_V1_EDGES_LEFT`
 Must be called in a ~render_sequence~."
+  (log-debug "Setting border color of window: ~a to ~a" window color-hex)
   (when window
     (let ((proxy-window (window-wl-proxy window)))
       (with-render-sequence
 	   (apply wm-window-borders-set 
               proxy-window edges width 
-              (color-hex->rgba color-hex))))))
+              (color-hex->rgba-32 color-hex))))))
 
 (define (window-tiled-set! window edges)
   "Set tiled state for the provided window.
