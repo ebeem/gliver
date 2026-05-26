@@ -17,9 +17,12 @@
   #:use-module (gliver core hooks)
   #:use-module (srfi srfi-1)
   #:declarative? #f
-  #:export (alternating-make-config))
+  #:export (
+			layout-alternating-make-config
+			layout-laternating-update
+))
 
-(define* (alternating-make-config #:key
+(define* (layout-alternating-make-config #:key
                                   (initial-split-direction 'horizontal)
                                   (split-ratio 0.5)
                                   (max-depth 5)
@@ -35,7 +38,7 @@
     (inner-gap . ,inner-gap)
     (outer-gap . ,outer-gap)))
 
-(define (layout-update hook-name workspace container window)
+(define (layout-laternating-update hook-name workspace container window)
   (let* ((layout-cfg (workspace-layout workspace))
          (layout-name (if (list? layout-cfg)
                           (assq-ref layout-cfg 'layout)
@@ -168,4 +171,4 @@
                                   next-dir)))))))))))))
   #t)
 
-(gliver-hook-add! *manager-layout-changed-hook* layout-update)
+(gliver-hook-add! *manager-layout-changed-hook* layout-laternating-update)
