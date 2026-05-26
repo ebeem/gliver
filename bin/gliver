@@ -29,7 +29,8 @@
              (gliver repl)
              (gliver river connector)
              (gliver river window-manager)
-             (gliver river keybindings-manager))
+             (gliver river keybindings-manager)
+			 (gliver contrib keybindings stumpwm))
 
 (define *version* "0.0.3")
 
@@ -103,7 +104,7 @@
     (ipc-start!)
 
     ;; step 10: install default keybindings (if not overridden by config)
-    (keybindings-install-default-stumpwm!)
+    (keybindings-stumpwm-install-default!)
 
     ;; step 11: sync keybindings to river (deferred to next manage sequence)
     (log-info "requesting keybinding sync...")
