@@ -28,15 +28,11 @@
   ;; using this hook
   (when (= 0 (length (output-workspaces output)))
 	(let ((workspace
-		   (make-workspace #:name (format #f "workspace-%d-%d" (output-id output) 1)
+		   (make-workspace #:name (format #f "workspace-~d-~d" (output-id output) 1)
 						   #:layout (layout-alternating-make-config)
 						   #:output output)))
 	  (workspace-add! workspace)
-	  (output-workspace-current-set! output workspace)))
-  (manager-outputs-set! *manager*
-						(append (manager-outputs *manager*) (list output)))
-  (when (= 1 (length (manager-outputs *manager*)))
-	(manager-output-current-set! *manager* output)))
+	  (output-workspace-current-set! output workspace))))
 
 (define* (on-workspace-created workspace)
   "Updates the created workspace state."
