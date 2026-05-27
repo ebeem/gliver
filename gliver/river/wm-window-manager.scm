@@ -319,8 +319,9 @@ Hook: *window-size-changed-hook*"
 (define (on-window-app-id data proxy-window app-id-ptr)
   "Window updated its app_id.
 Hook: *window-app-id-changed-hook*"
-  (log-debug "Window ~a updated its app_id to ~a" proxy-window app-id-ptr)
-  (gliver-hook-run! %window-app-id-changed-hook proxy-window app-id-ptr))
+  (let ((app-id (pointer->string app-id-ptr)))
+    (log-debug "Window ~a updated its app_id to ~a" proxy-window app-id)
+    (gliver-hook-run! %window-app-id-changed-hook proxy-window app-id)))
 
 (define (on-window-title data proxy-window title-ptr)
   "Window updated its title.
@@ -412,6 +413,7 @@ hint: enum value `RIVER_OUTPUT_V1_PRESENTATION_MODE_VSYNC`,
   "The identifier is a string that contains up to 32 printable ASCII bytes.
 The identifier will always be unique and will not be reused.
 Only called once when the window is created."
-  (log-debug "Window identifier: ~a = ~a" proxy-window id-ptr)
-  (gliver-hook-run! %window-presentation-hint-changed-hook proxy-window id-ptr))
+  (let ((identifier (pointer->string id-ptr)))
+    (log-debug "Window identifier: ~a = ~a" proxy-window identifier)
+    (gliver-hook-run! %window-identifier-changed-hook proxy-window identifier)))
 

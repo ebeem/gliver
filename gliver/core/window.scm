@@ -161,6 +161,30 @@
 					   (manager-config-ref 'border-color-unfocused)))
 (gliver-hook-add! *window-unfocused-hook* on-window-unfocused)
 
+(define (on-window-title-changed proxy-window title)
+  (let ((window (window-find-by-proxy proxy-window)))
+    (when window
+      (window-title-set! window title))))
+(gliver-hook-add! %window-title-changed-hook on-window-title-changed)
+
+(define (on-window-app-id-changed proxy-window app-id)
+  (let ((window (window-find-by-proxy proxy-window)))
+    (when window
+      (window-app-id-set! window app-id))))
+(gliver-hook-add! %window-app-id-changed-hook on-window-app-id-changed)
+
+(define (on-window-identifier-changed proxy-window identifier)
+  (let ((window (window-find-by-proxy proxy-window)))
+    (when window
+      (window-identifier-set! window identifier))))
+(gliver-hook-add! %window-identifier-changed-hook on-window-identifier-changed)
+
+(define (on-window-pid-changed proxy-window pid)
+  (let ((window (window-find-by-proxy proxy-window)))
+    (when window
+      (window-pid-set! window pid))))
+(gliver-hook-add! %window-pid-changed-hook on-window-pid-changed)
+
 (define (color-hex->rgba-32 hex-str)
   ;; strip the leading '#' if it exists
   (let* ((clean-str (if (char=? (string-ref hex-str 0) #\#)
