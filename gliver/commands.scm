@@ -15,95 +15,77 @@
   #:use-module (gliver river connector)
   #:use-module (gliver core)
   #:declarative? #f
-  #:export (;; command registration
-            command-register!
+  #:export (
+			command-record-docstring
+			command-record-procedure
+			command-record-name
 			command-record?
-            command-find
-            command-all
-            command-run
-            command-run-by-name
-
-            ;; message display
-            message
-            message-no-timeout
-            *message-last*
-
-            ;; interactive input
-            read-one-line
-            read-yes-or-no
-
-            ;; input state
-            *input-callback*
-            *input-prompt*
-            *input-buffer*
-            *input-completions*
-            handle-input-key
-
-            ;; default commands - window
-            cmd-window-focus-next
-            cmd-window-focus-prev
-            cmd-window-focus-other
-            cmd-window-list
-            cmd-window-kill
-            ;; cmd-window-float-toggle
-            cmd-window-fullscreen
-            cmd-window-mark
-            cmd-window-pull-by-number
-            cmd-window-properties-show
-            cmd-window-swap
-            cmd-window-workspace-move
-            cmd-window-container-move-direction
-
-            ;; default commands - container
-            ;; cmd-container-split-horizontal
-            ;; cmd-container-split-vertical
-            ;; cmd-container-destroy
-            ;; cmd-container-destory-others
-            ;; cmd-container-focus-next
-            ;; cmd-container-focus-prev
-            ;; cmd-container-focus-direction
-            ;; cmd-container-resize
-            ;; cmd-container-balance
-
-            ;; default commands - workspace
-            cmd-workspace-create
-            cmd-workspace-destroy
-            cmd-workspace-focus
-            cmd-workspace-focus-next
-            cmd-workspace-focus-prev
-            cmd-workspace-focus-last
-            cmd-workspace-rename
-            cmd-workspace-list
-
-            ;; default commands - output
-            cmd-output-focus-next
-            cmd-output-focus-prev
-
-            ;; default commands - session
-            cmd-exec
-            cmd-shell-command
-            cmd-eval-cmd
-            cmd-colon
-            cmd-config-reload
-            cmd-quit
-            cmd-restart
-            cmd-time
-            cmd-describe-key
-            cmd-describe-command
-            cmd-where-is
-            cmd-list-commands
-
-            ;; prefix mode
-            cmd-prefix-activated
-            cmd-prefix-abort
-            cmd-enter-submap
-            cmd-send-prefix-key
-
-            ;; setup
-            keybindings-clear!
+			make-command-record
+			*command-table*
+			command-register!
+			command-find
+			command-all
+			command-run
+			command-run-by-name
 			shell-command-output
 			shell-process-spawn
-			shell-process-spawn-detached))
+			shell-process-spawn-detached
+			*message-last*
+			*message-callback*
+			message
+			message-no-timeout
+			*input-callback*
+			*input-prompt*
+			*input-buffer*
+			*input-completions*
+			*input-result-callback*
+			read-one-line
+			read-yes-or-no
+			handle-input-key
+			cmd-window-focus-next
+			cmd-window-focus-prev
+			cmd-window-focus-other
+			cmd-window-list
+			cmd-window-kill
+			cmd-window-fullscreen
+			cmd-window-swap
+			cmd-window-mark
+			cmd-window-workspace-move
+			cmd-window-container-move-direction
+			cmd-container-focus-direction
+			cmd-window-pull-by-number
+			cmd-window-properties-show
+			cmd-workspace-create
+			cmd-workspace-destroy
+			cmd-workspace-focus
+			cmd-workspace-focus-next
+			cmd-workspace-focus-prev
+			cmd-workspace-focus-last
+			cmd-workspace-rename
+			cmd-workspace-list
+			cmd-output-focus-next
+			cmd-output-focus-prev
+			cmd-exec
+			cmd-shell-command
+			cmd-eval-cmd
+			cmd-terminal-spawn
+			cmd-dmenu-run
+			cmd-colon
+			cmd-config-reload
+			cmd-quit
+			cmd-restart
+			cmd-time
+			cmd-describe-key
+			cmd-describe-command
+			cmd-where-is
+			cmd-list-commands
+			cmd-prefix-activated
+			cmd-prefix-abort
+			cmd-enter-submap
+			cmd-send-prefix-key
+			command-register-defaults!
+			keybindings-clear!
+))
 
 ;;; command registry
 (define-record-type <command>
@@ -455,16 +437,19 @@ The actual input is handled via handle-input-key callbacks."
 ;;           (workspace-container-current-set! workspace pf)
 ;;           (message "Container ~a" (container-number pf)))))))
 
-;; (define (cmd-container-focus-direction dir)
-;;   "Move focus in direction DIR (left/right/up/down)."
-;;   (let* ((workspace (workspace-current))
-;;          (container (container-current))
-;;          (target (and workspace container (container-in-direction dir container workspace))))
-;;     (if target
-;;         (begin
-;;           (workspace-container-current-set! workspace target)
-;;           (message "Container ~a" (container-number target)))
-;;         (message "No container in that direction."))))
+(define (cmd-container-focus-direction dir)
+  "Focus the container in direction DIR."
+  (let* ((workspace (workspace-current))
+         (container (container-current))
+         (target (and workspace container (container-in-direction dir container workspace))))
+    (if target
+        (begin
+          (workspace-container-current-set! workspace target)
+          (let ((win (container-window-current target))
+                (seat (seat-current)))
+            (when (and win seat)
+              (seat-wm-window-focus seat win))))
+        (debug-log "Couldn't find focus target"))))
 
 ;; (define (clamp val lo hi)
 ;;   (max lo (min hi val)))
@@ -595,6 +580,10 @@ The actual input is handled via handle-input-key callbacks."
   "Spawn default terminal."
   (cmd-exec (format #f "exec ~a" *terminal*)))
 
+(define (cmd-dmenu-run)
+  "Spawn dmenu run process."
+  (cmd-exec (format #f "exec ~a" *dmenu*)))
+
 (define (cmd-colon)
   "Open the colon command prompt."
   (read-one-line ":"
@@ -712,6 +701,7 @@ The actual input is handled via handle-input-key callbacks."
   ;; (command-register! 'container-focus-next cmd-container-focus-next "Focus next container.")
   ;; (command-register! 'container-focus-prev cmd-container-focus-prev "Focus previous container.")
   ;; (command-register! 'container-balance cmd-container-balance "Balance all containers.")
+  (command-register! 'container-focus-direction cmd-container-focus-direction "Focus container in direction.")
 
   ;; workspace
   (command-register! 'workspace-create cmd-workspace-create "Create a new workspace.")

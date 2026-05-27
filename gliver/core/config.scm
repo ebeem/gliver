@@ -10,6 +10,7 @@
   #:export (
 			*default-workspace-name*
 			*terminal*
+			*dmenu*
 			*shell-program*
 			*suppress-container-indicator*
 			*startup-message*
@@ -40,6 +41,7 @@
 ;;; config variables
 (define *default-workspace-name* "Default")
 (define *terminal* "foot")
+(define *dmenu* "fuzzel")
 (define *shell-program* "/bin/sh")
 (define *suppress-container-indicator* #f)
 (define *startup-message* #t)
