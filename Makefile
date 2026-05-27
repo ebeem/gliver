@@ -49,6 +49,7 @@ MODULES =   gliver/core/logs.scm \
 			gliver/contrib/systemd.scm \
 			gliver/contrib/which-key.scm \
 			gliver/contrib/keybindings/stumpwm.scm \
+			gliver/contrib/keybindings/sway.scm \
 			gliver/contrib/layout/alternating.scm
 
 COMPILED = $(patsubst %.scm, build/%.go, $(MODULES))
