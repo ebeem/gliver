@@ -120,7 +120,6 @@
                     (lambda (key . rest)
                       (log-error "Command ~a error: ~a ~a"
                                  (command-record-name cmd) key rest)
-                      (message (format #f "Error: ~a ~a" key rest))
                       #f))))
       (gliver-hook-run! *command-post-hook* (command-record-name cmd) args result)
       result)))
@@ -139,11 +138,9 @@
                     (apply command-run-by-name cmd-name (append cmd-args args)))
                   (begin
                     (log-warn "Unknown command: ~a" name)
-                    (message (format #f "Unknown command: ~a" name))
                     #f)))
             (begin
               (log-warn "Unknown command: ~a" name)
-              (message (format #f "Unknown command: ~a" name))
               #f)))))
 
 ;;; shell
@@ -217,7 +214,7 @@ The actual input is handled via handle-input-key callbacks."
   (set! *input-buffer* "")
   (set! *input-completions* completions)
   ;; display prompt
-  (message "~a" prompt)
+  (log-debug "~a" prompt)
   ;; return #f — the actual result comes via callback
   #f)
 
@@ -236,13 +233,13 @@ The actual input is handled via handle-input-key callbacks."
    ((string=? key-str "Escape")
     (set! *input-buffer* "")
     (set! *input-prompt* "")
-    (message "Aborted.")
+    (log-debug "Aborted.")
     #f)
    ((string=? key-str "BackSpace")
     (when (> (string-length *input-buffer*) 0)
       (set! *input-buffer*
         (substring *input-buffer* 0 (1- (string-length *input-buffer*)))))
-    (message "~a~a" *input-prompt* *input-buffer*)
+    (log-debug "~a~a" *input-prompt* *input-buffer*)
     #f)
    ((string=? key-str "Tab")
     ;; Tab completion
@@ -253,15 +250,15 @@ The actual input is handled via handle-input-key callbacks."
        ((null? matches) #f)
        ((= 1 (length matches))
         (set! *input-buffer* (car matches))
-        (message "~a~a" *input-prompt* *input-buffer*)
+        (log-debug "~a~a" *input-prompt* *input-buffer*)
         #f)
        (else
-        (message "~a" (string-join matches " | "))
+        (log-debug "~a" (string-join matches " | "))
         #f))))
    ((= (string-length key-str) 1)
     ;; Regular character
     (set! *input-buffer* (string-append *input-buffer* key-str))
-    (message "~a~a" *input-prompt* *input-buffer*)
+    (log-debug "~a~a" *input-prompt* *input-buffer*)
     #f)
    (else #f)))
 
@@ -301,8 +298,8 @@ The actual input is handled via handle-input-key callbacks."
   (let* ((workspace (workspace-current))
          (wins (if workspace (workspace-windows workspace) '())))
     (if (null? wins)
-        (message "No windows.")
-        (message "~a"
+        (log-debug "No windows.")
+        (log-debug "~a"
                  (string-join
                   (map (lambda (w)
                          (format #f "~a:~a"
@@ -313,16 +310,19 @@ The actual input is handled via handle-input-key callbacks."
 (define (cmd-window-kill)
   "Close the current window."
   (let ((win (window-current)))
-    (when win
-      (log-info "Killing window: ~a" (window-title win))
-      (message "Closed: ~a" (window-title win)))))
+    (if win
+        (begin
+          (log-info "Killing window: ~a" (window-title win))
+          (window-close! win)
+          (log-debug "Closed: ~a" (window-title win)))
+        (log-debug "No current window."))))
 
 ;; (define (cmd-window-float-toggle)
 ;;   "Toggle the current window between tiled and floating."
 ;;   (let ((win (window-current)))
 ;;     (when win
 ;;       (window-toggle-float! win)
-;;       (message "~a: ~a"
+;;       (log-debug "~a: ~a"
 ;;                (if (window-floating? win) "Floating" "Tiled")
 ;;                (window-title win)))))
 
@@ -330,18 +330,20 @@ The actual input is handled via handle-input-key callbacks."
   "Toggle fullscreen for the current window."
   (let ((win (window-current)))
     (when win
-      (window-fullscreen-set! win (not (window-fullscreen? win))))))
+      (if (window-fullscreen? win)
+          (window-fullscreen-exit! win)
+          (window-fullscreen! win (window-output win))))))
 
 (define (cmd-window-swap)
   "Swap windows between current container and another."
-  (message "Select target container..."))
+  (log-debug "Select target container..."))
 
 (define (cmd-window-mark)
   "Toggle mark on the current window."
   (let ((win (window-current)))
     (when win
       (window-marked-set! win (not (window-marked? win)))
-      (message "~a ~a"
+      (log-debug "~a ~a"
                (if (window-marked? win) "Marked" "Unmarked")
                (window-title win)))))
 
@@ -350,11 +352,11 @@ The actual input is handled via handle-input-key callbacks."
   (let ((win (window-current))
         (target (and name (workspace-find-by-name name))))
     (cond
-     ((not win) (message "No current window."))
-     ((not target) (message "Workspace not found: ~a" name))
+     ((not win) (log-debug "No current window."))
+     ((not target) (log-debug "Workspace not found: ~a" name))
      (else
       (window-move-to-workspace! win target)
-      (message "Moved to ~a." name)))))
+      (log-debug "Moved to ~a." name)))))
 
 (define (cmd-window-container-move-direction dir)
   "Move the current window to the container in direction DIR."
@@ -366,8 +368,8 @@ The actual input is handled via handle-input-key callbacks."
         (begin
           (window-move-to-container! win target)
           (workspace-container-current-set! workspace target)
-          (message "Moved to container ~a" (container-number target)))
-        (message "Cannot move."))))
+          (log-debug "Moved to container ~a" (container-number target)))
+        (log-debug "Cannot move."))))
 
 (define (cmd-window-pull-by-number n)
   "Pull window N into the current container."
@@ -380,13 +382,13 @@ The actual input is handled via handle-input-key callbacks."
   "Show properties of the current window."
   (let ((win (window-current)))
     (if win
-        (message "id=~a title=~s app-id=~s class=~s float=~a"
+        (log-debug "id=~a title=~s app-id=~s class=~s float=~a"
                  (window-id win)
                  (window-title win)
                  (window-app-id win)
                  (window-class win)
                  (window-floating? win))
-        (message "No current window."))))
+        (log-debug "No current window."))))
 
 ;;; container commands
 ;; (define (cmd-container-split-horizontal)
@@ -394,28 +396,28 @@ The actual input is handled via handle-input-key callbacks."
 ;;   (let ((container (container-current)))
 ;;     (when container
 ;;       (container-split-horizontal! container 0.5)
-;;       (message "Split horizontal."))))
+;;       (log-debug "Split horizontal."))))
 
 ;; (define (cmd-container-split-vertical)
 ;;   "Split the current container vertically."
 ;;   (let ((container (container-current)))
 ;;     (when container
 ;;       (container-split-vertical! container 0.5)
-;;       (message "Split vertical."))))
+;;       (log-debug "Split vertical."))))
 
 ;; (define (cmd-container-destroy)
 ;;   "Remove the current split."
 ;;   (let ((container (container-current)))
 ;;     (when container
 ;;       (container-split-remove! container)
-;;       (message "Split removed."))))
+;;       (log-debug "Split removed."))))
 
 ;; (define (cmd-container-destory-others)
 ;;   "Remove all splits in the current workspace."
 ;;   (let ((workspace (workspace-current)))
 ;;     (when workspace
 ;;       (container-split-only (workspace-containers workspace))
-;;       (message "Only one container."))))
+;;       (log-debug "Only one container."))))
 
 ;; (define (cmd-container-focus-next)
 ;;   "Focus the next container."
@@ -425,7 +427,7 @@ The actual input is handled via handle-input-key callbacks."
 ;;       (let ((nf (container-next workspace container)))
 ;;         (when nf
 ;;           (workspace-container-current-set! workspace nf)
-;;           (message "Container ~a" (container-number nf)))))))
+;;           (log-debug "Container ~a" (container-number nf)))))))
 
 ;; (define (cmd-container-focus-prev)
 ;;   "Focus the previous container."
@@ -435,7 +437,7 @@ The actual input is handled via handle-input-key callbacks."
 ;;       (let ((pf (container-prev workspace container)))
 ;;         (when pf
 ;;           (workspace-container-current-set! workspace pf)
-;;           (message "Container ~a" (container-number pf)))))))
+;;           (log-debug "Container ~a" (container-number pf)))))))
 
 (define (cmd-container-focus-direction dir)
   "Focus the container in direction DIR."
@@ -475,7 +477,7 @@ The actual input is handled via handle-input-key callbacks."
 ;;   (let ((workspace (workspace-current)))
 ;;     (when workspace
 ;;       (container-balance! (workspace-containers workspace))
-;;       (message "Containers balanced."))))
+;;       (log-debug "Containers balanced."))))
 
 ;;; workspace commands
 (define (cmd-workspace-create name)
@@ -484,23 +486,23 @@ The actual input is handled via handle-input-key callbacks."
     (when output
       (let ((workspace (workspace-add! (or name "New") output)))
         (workspace-switch-to! workspace)
-        (message "Workspace ~a created." (workspace-name workspace))))))
+        (log-debug "Workspace ~a created." (workspace-name workspace))))))
 
 (define (cmd-workspace-destroy)
   "Kill the current workspace."
   (let ((workspace (workspace-current)))
     (when workspace
       (if (= 1 (length (output-workspaces (output-current))))
-          (message "Cannot kill the last workspace.")
+          (log-debug "Cannot kill the last workspace.")
           (begin
             (workspace-remove! workspace)
-            (message "Workspace killed."))))))
+            (log-debug "Workspace killed."))))))
 
 (define (cmd-workspace-focus name)
   "Select a workspace by name."
   (if name
       (workspace-switch-to-by-name! name)
-      (message "No workspace name given.")))
+      (log-debug "No workspace name given.")))
 
 (define (cmd-workspace-focus-next)
   "Switch to the next workspace."
@@ -522,12 +524,12 @@ The actual input is handled via handle-input-key callbacks."
   (let ((workspace (workspace-current)))
     (when (and workspace name)
       (workspace-name-set! workspace name)
-      (message "Renamed to ~a." name))))
+      (log-debug "Renamed to ~a." name))))
 
 (define (cmd-workspace-list)
   "List all workspaces."
   (let ((workspaces (output-workspaces (output-current))))
-    (message "~a"
+    (log-debug "~a"
              (string-join
               (map (lambda (g)
                      (format #f "~a~a:~a"
@@ -570,10 +572,10 @@ The actual input is handled via handle-input-key callbacks."
   (catch #t
     (lambda ()
       (let ((result (eval-string expr-str)))
-        (message "~a" result)
+        (log-debug "~a" result)
         result))
     (lambda (key . args)
-      (message "Error: ~a ~a" key args)
+      (log-error "Error: ~a ~a" key args)
       #f)))
 
 (define (cmd-terminal-spawn)
@@ -593,23 +595,23 @@ The actual input is handled via handle-input-key callbacks."
   "Reload the configuration file."
   (config-reload!)
   (gliver-hook-run! *config-loaded-hook*)
-  (message "Config reloaded."))
+  (log-debug "Config reloaded."))
 
 (define (cmd-quit)
   "Quit Gliver."
   (gliver-hook-run! *shutdown-hook*)
   (manager-config-set! 'running? #f)
-  (message "Goodbye."))
+  (log-debug "Goodbye."))
 
 (define (cmd-restart)
   "Restart Gliver."
   (gliver-hook-run! *restart-hook*)
-  (message "Restarting...")
+  (log-debug "Restarting...")
   (config-reload!))
 
 (define (cmd-time)
   "Show the current time."
-  (message "~a" (shell-command-output "date")))
+  (log-debug "~a" (shell-command-output "date")))
 
 (define (cmd-describe-key key-str)
   "Describe what a key binding does."
@@ -619,20 +621,20 @@ The actual input is handled via handle-input-key callbacks."
     (if action
         (cond
          ((command-record? (command-find action))
-          (message "~a → ~a: ~a" key-str action
+          (log-debug "~a → ~a: ~a" key-str action
                    (command-record-docstring (command-find action))))
          ((gliver-keymap? action)
-          (message "~a → keymap: ~a" key-str (gliver-keymap-name action)))
+          (log-debug "~a → keymap: ~a" key-str (gliver-keymap-name action)))
          (else
-          (message "~a → ~a" key-str action)))
-        (message "~a is not bound." key-str))))
+          (log-debug "~a → ~a" key-str action)))
+        (log-debug "~a is not bound." key-str))))
 
 (define (cmd-describe-command name)
   "Describe a command."
   (let ((cmd (command-find name)))
     (if cmd
-        (message "~a: ~a" name (command-record-docstring cmd))
-        (message "Unknown command: ~a" name))))
+        (log-debug "~a: ~a" name (command-record-docstring cmd))
+        (log-warn "Unknown command: ~a" name))))
 
 (define (cmd-where-is name)
   "Find the keybinding for a command."
@@ -645,14 +647,14 @@ The actual input is handled via handle-input-key callbacks."
                                   (and (symbol? action) (eq? action name)))))
                           (gliver-keymap->alist *root-map*))))
     (if (null? bindings)
-        (message "~a is not on any key." name)
-        (message "~a is on ~a" name
+        (log-debug "~a is not on any key." name)
+        (log-debug "~a is on ~a" name
                  (string-join (map (lambda (b) (gliver-key->string (car b))) bindings)
                               ", ")))))
 
 (define (cmd-list-commands)
   "List all available commands."
-  (message "~a" (string-join (sort (map symbol->string (command-all))
+  (log-debug "~a" (string-join (sort (map symbol->string (command-all))
                                    string<?)
                              " ")))
 
@@ -665,7 +667,7 @@ The actual input is handled via handle-input-key callbacks."
 (define (cmd-prefix-abort)
   "Abort prefix mode."
   (manager-config-set! 'mode 'normal)
-  (message "Aborted."))
+  (log-debug "Aborted."))
 
 (define (cmd-enter-submap name)
   "Enter a sub-keymap by name."
