@@ -1,4 +1,4 @@
-#!/usr/bin/env guile
+#!/usr/bin/env -S guile --no-auto-compile -s
 !#
 ;;; bin/gliver-repl --- Connect to Gliver's REPL
 ;;;
@@ -13,6 +13,9 @@
              (ice-9 rdelim)
              (ice-9 getopt-long)
              (ice-9 textual-ports))
+
+;; timeout in seconds
+(define repl-timeout (* 10 1000 1000))
 
 (define (repl-socket-path)
   (let ((runtime-dir (or (getenv "XDG_RUNTIME_DIR")
@@ -55,27 +58,26 @@
       (format #t "  -h, --help         Show this help~%")
       (exit 0))
 
-    ;; Connect
     (catch #t
       (lambda ()
         (let ((sock (socket AF_UNIX SOCK_STREAM 0)))
           (connect sock AF_UNIX socket-path)
 
           (if eval-expr
-              ;; One-shot evaluation
+              ;; one-shot evaluation
               (begin
                 (display eval-expr sock)
                 (newline sock)
                 (force-output sock)
-                (read-response-until-timeout sock 1000000)
+                (read-response-until-timeout sock repl-timeout)
                 (newline)
                 (close-port sock))
 
-              ;; Interactive mode
+              ;; interactive mode
               (begin
                 (format #t "Connected to Gliver REPL at ~a~%" socket-path)
                 (format #t "Type Guile expressions. Press Ctrl-D to exit.~%~%")
-                (read-response-until-timeout sock 100000)
+                (read-response-until-timeout sock repl-timeout)
                 (let loop ()
                   (display "gliver> ")
                   (force-output)
@@ -84,7 +86,7 @@
                       (display line sock)
                       (newline sock)
                       (force-output sock)
-                      (read-response-until-timeout sock 100000)
+                      (read-response-until-timeout sock repl-timeout)
                       (loop))))
                 (format #t "~%Disconnected.~%")
                 (close-port sock)))))

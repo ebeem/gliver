@@ -10,7 +10,10 @@
   #:use-module (ice-9 format)
   #:use-module (ice-9 rdelim)
   #:use-module (ice-9 textual-ports)
+  #:use-module (ice-9 threads)
+  #:use-module (ice-9 ports)
   #:use-module (system repl server)
+  #:use-module (system repl repl)
   #:use-module (gliver core)
   #:export (repl-start!
             repl-stop!
@@ -24,6 +27,43 @@
   (string-append (*gliver-runtime-dir*) "/repl.sock"))
 
 ;;; server
+(define (gliver-serve-client client addr)
+  (let ((thread (current-thread)))
+    ((@@ (system repl server) add-open-socket!)
+     client
+     (lambda () (cancel-thread thread))))
+
+  ((@@ (system repl server) guard-against-http-request) client)
+
+  (dynamic-wind
+    (lambda () #f)
+    (lambda ()
+      (with-continuation-barrier
+       (lambda ()
+         (parameterize ((current-input-port client)
+                        (current-output-port client)
+                        (current-error-port client)
+                        (current-warning-port client))
+           (with-fluids (((@@ (system repl server) *repl-stack*) '()))
+             (catch 'system-error
+               (lambda ()
+                 (start-repl))
+               (lambda (key . args)
+                 (let ((errno (system-error-errno (cons key args))))
+                   (cond
+                    ((member errno (list EPIPE ECONNRESET))
+                     (log-info "REPL client disconnected: ~a" (strerror errno)))
+                    (else
+                     (apply throw key args)))))))))))
+    (lambda ()
+      ((@@ (system repl server) close-socket!) client))))
+
+(define (gliver-run-server server-socket)
+  ((@@ (system repl server) run-server*) server-socket gliver-serve-client))
+
+(define (gliver-spawn-server server-socket)
+  (make-thread gliver-run-server server-socket))
+
 (define (repl-start!)
   "Start the REPL server on a UNIX domain socket.
 Uses Guile's built-in (system repl server) for Geiser compatibility."
@@ -35,7 +75,7 @@ Uses Guile's built-in (system repl server) for Geiser compatibility."
     (catch #t
       (lambda ()
         ;; spawn-server takes a list specifying the server type
-        (set! *repl-server* (spawn-server (make-unix-domain-server-socket #:path path)))
+        (set! *repl-server* (gliver-spawn-server (make-unix-domain-server-socket #:path path)))
         (chmod path #o700)
         (log-info "REPL server listening on ~a" path)
         (log-info "Connect with: guile -c '(begin (use-modules (system repl server)) (run-client (make-unix-domain-server-socket #:path \"~a\")))'" path))
