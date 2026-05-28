@@ -26,6 +26,22 @@
     (socket (single-char #\s) (value #t))
     (help   (single-char #\h) (value #f))))
 
+(define (char-available? sock timeout-usec)
+  "Return #t if a character is ready to be read from SOCK within TIMEOUT-USEC."
+  (or (char-ready? sock)
+      (let ((ready (select (list sock) '() '() 0 timeout-usec)))
+        (pair? (car ready)))))
+
+(define (read-response-until-timeout sock first-timeout)
+  "Read and print all characters from SOCK until a timeout or EOF is reached."
+  (let loop ((timeout-usec first-timeout))
+    (when (char-available? sock timeout-usec)
+      (let ((c (read-char sock)))
+        (unless (eof-object? c)
+          (display c)
+          (force-output)
+          (loop 10000))))))
+
 (define (main args)
   (let* ((options (getopt-long args option-spec))
          (socket-path (or (option-ref options 'socket #f)
@@ -51,14 +67,15 @@
                 (display eval-expr sock)
                 (newline sock)
                 (force-output sock)
-                (let ((response (get-string-all sock)))
-                  (display response)
-                  (close-port sock)))
+                (read-response-until-timeout sock 1000000)
+                (newline)
+                (close-port sock))
 
               ;; Interactive mode
               (begin
                 (format #t "Connected to Gliver REPL at ~a~%" socket-path)
                 (format #t "Type Guile expressions. Press Ctrl-D to exit.~%~%")
+                (read-response-until-timeout sock 100000)
                 (let loop ()
                   (display "gliver> ")
                   (force-output)
@@ -67,11 +84,7 @@
                       (display line sock)
                       (newline sock)
                       (force-output sock)
-                      ;; Read response (with short timeout)
-                      (let ((resp (read-line sock)))
-                        (unless (eof-object? resp)
-                          (display resp)
-                          (newline)))
+                      (read-response-until-timeout sock 100000)
                       (loop))))
                 (format #t "~%Disconnected.~%")
                 (close-port sock)))))
