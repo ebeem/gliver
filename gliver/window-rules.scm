@@ -88,12 +88,14 @@ PATTERN can be a string (exact match) or a regex-capable string."
          ;;  (when (and (not val) (window-floating? window))
          ;;    (window-toggle-float! window)))
          ((fullscreen)
-          (window-fullscreen-set! window val))
+          (%window-fullscreen-set! window val))
          ((focus)
           (when val
             (let ((container (window-container window)))
               (when container
-                (container-window-current-set! container window)))))
+				(log-debug "focus window")
+				;; TODO: focus window/container
+                ))))
          (else
           (log-warn "Unknown window rule action: ~a" key)))))
    actions))

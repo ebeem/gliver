@@ -307,7 +307,7 @@ Hook: *window-destroy-hook*"
 Hook: *window-size-hint-changed*"
   (log-debug "Window dimensions hint: ~a min=~ax~a max=~ax~a"
              proxy-window min-w min-h max-w max-h)
-  (gliver-hook-run! %window-size-hint-changed-hook 
+  (gliver-hook-run! %window-size-hint-changed-hook
                     proxy-window min-w min-h max-w max-h))
 
 (define (on-window-dimensions data proxy-window width height)

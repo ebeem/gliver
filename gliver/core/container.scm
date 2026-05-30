@@ -14,48 +14,43 @@
   #:use-module (gliver core logs)
   #:use-module (gliver core config)
   #:use-module (gliver core hooks)
+  #:autoload (gliver core window) (window-focus!)
   #:export (
-			container-geometry-compute!
 			container-next
 			container-prev
 			container-center-x
 			container-center-y
 			container-in-direction
-			container-window-add!
-			container-window-remove!
 			container-add!
+			container-remove!
+			container-focus!
 ))
 
-;;; container geometry
-(define (container-geometry-compute! containers x y w h gap outer-gap)
-  "Compute geometry for a flat list of CONTAINERS, distributing them horizontally."
-  (let ((count (length containers)))
-    (when (> count 0)
-      (let ((cw (quotient w count)))
-        (let loop ((rest containers) (cx x))
-          (when (pair? rest)
-            (let ((c (car rest)))
-              (container-x-set! c (+ cx gap outer-gap))
-              (container-y-set! c (+ y gap outer-gap))
-              (container-width-set! c (max 1 (- cw (* 2 gap) (* 2 outer-gap))))
-              (container-height-set! c (max 1 (- h (* 2 gap) (* 2 outer-gap))))
-              (loop (cdr rest) (+ cx cw)))))))))
-
-(define (container-next workspace current)
-  "Return the next container after CURRENT in WORKSPACE's list."
-  (let* ((containers (workspace-containers workspace))
+(define* (container-next current #:key (recursive #t))
+  "Return the next container after CURRENT container."
+  (let* ((workspace (container-workspace current))
+		 (containers (workspace-containers workspace))
          (idx (list-index (lambda (f) (eq? f current)) containers)))
-    (if idx
-        (list-ref containers (modulo (1+ idx) (length containers)))
-        (and (pair? containers) (car containers)))))
+    (cond
+     ((not idx)
+      (and (pair? containers) (car containers)))
+     ((and (not recursive) (= (1+ idx) (length containers)))
+      #f)
+     (else
+      (list-ref containers (modulo (1+ idx) (length containers)))))))
 
-(define (container-prev workspace current)
-  "Return the previous container before CURRENT in WORKSPACE's list."
-  (let* ((containers (workspace-containers workspace))
+(define* (container-prev current #:key (recursive #t))
+  "Return the previous container before CURRENT container."
+  (let* ((workspace (container-workspace current))
+		 (containers (workspace-containers workspace))
          (idx (list-index (lambda (f) (eq? f current)) containers)))
-    (if idx
-        (list-ref containers (modulo (+ idx (length containers) -1) (length containers)))
-        (and (pair? containers) (car containers)))))
+    (cond
+     ((not idx)
+      (and (pair? containers) (last containers)))
+     ((and (not recursive) (zero? idx))
+      #f)
+     (else
+      (list-ref containers (modulo (1- idx) (length containers)))))))
 
 (define (container-center-x f)
   (+ (container-x f) (quotient (container-width f) 2)))
@@ -103,27 +98,52 @@
                        (< dist-a dist-b)))))
         #f)))
 
-(define (container-window-add! container win)
-  "Add WINDOW to the CONTAINER, the window shouldn't be added
-to two different containers at the same time."
-  (container-windows-set! container
-                          (append (container-windows container) (list win))))
-
-(define (container-window-remove! container win)
-  "Remove WINDOW from the CONTAINER, the window should be destroyed
-separately if that's the desired behavior."
-  (container-windows-set! container
-                          (delq win (container-windows container))))
-
 (define (container-add! container)
   "Add a new window to the display, placing it in the current container."
+  (log-debug "adding container ~a" container)
+  ;; TODO: each container must at least have one window/node in `container-windows`
+  ;; if it doesn't have any windows, one will be created and focused automatically
+  ;; this is more of a node/placeholder
   (let ((workspace (container-workspace container)))
-	;; focus behavior
-	(when *wm-behavior-focus-new-container*
-	  (workspace-container-current-set! workspace container))
 
-	;; the global manager will add the created window
-	;; to global state automatically with the hook
-	(log-debug "Running *container-created-hook*")
+	;; add the container to the back referenced workspace containers
+	(%workspace-containers-set! workspace
+	 (append (workspace-containers workspace) (list container)))
+
+	;; focus the output if no output is currently focused
+	;; or if configuration is set to focus new output
+	(when (or *wm-behavior-focus-new-container*
+			  (not (workspace-container-current workspace)))
+	  (container-focus! container))
+
 	(gliver-hook-run! *container-created-hook* container)))
+
+(define (container-remove! container)
+  "Remove CONTAINER from its workspace."
+  (let* ((workspace (container-workspace container))
+		 (container-target (or (container-next container #:recursive #f)
+							   (container-prev container #:recursive #f))))
+    (when workspace
+      ;; remove container from workspace's container list
+      (%workspace-containers-set! workspace
+                                 (delete container (workspace-containers workspace)))
+      ;; focus a new container if the current focused container will be removed
+      (when (eq? (workspace-container-current workspace) container)
+        (container-focus! container-target))
+      (log-debug "Running *container-destroy-hook*")
+      (gliver-hook-run! *container-destroy-hook* container workspace))))
+
+(define (container-focus! container)
+  "Focus a container by focusing its last focused window."
+  ;; target window is current focused or first window
+  (let* ((windows (container-windows container))
+		 (window (and (not (null? windows))
+					  (or (container-window-current container)
+						  (car windows))))
+		 (workspace (container-workspace container))
+		 (prev-container (workspace-container-current workspace)))
+	(%workspace-container-previous-set! workspace prev-container)
+	(%workspace-container-current-set! workspace container)
+	(when window
+	  (window-focus! window))))
 

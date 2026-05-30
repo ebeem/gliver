@@ -18,28 +18,43 @@
   #:use-module (gliver core config)
   #:use-module (gliver core hooks)
   #:use-module (gliver core types)
+  #:autoload (gliver core container) (container-focus! container-add!)
   #:export (
 			workspace-add!
 			%workspace-remove-target
 			workspace-containers-move
 			workspace-remove!
-			workspace-switch-to!
-			workspace-switch-to-by-id!
-			workspace-switch-to-by-name!
+			workspace-focus!
 			workspace-next
 			workspace-prev
 ))
 
 (define* (workspace-add! workspace)
-  "Create a new workspace on @var{output}."
-  ;; focus behavior
-  (when *wm-behavior-focus-new-workspace*
-	(output-workspace-current-set!
-	 (workspace-output workspace)
-	 workspace))
-  
-  (gliver-hook-run! *workspace-created-hook* workspace)
-  workspace)
+  "Create a new workspace."
+  (log-debug "adding workspace ~a" workspace)
+  (let* ((output (workspace-output workspace))
+		 (output-focused-workspace (output-workspace-current output)))
+
+	;; each workspace must at least have one container in `workspace-containers`
+	;; if it doesn't have any workspaces, one will be created and focused automatically
+	(when (null? (workspace-containers workspace))
+	  (let* ((container
+			  (make-container #:workspace workspace
+							  #:width (output-width output)
+							  #:height (output-height output))))
+		(container-add! container)))
+
+	;; add the workspace to the back referenced output workspaces
+	(%output-workspaces-set! output
+							 (append (output-workspaces output) (list workspace)))
+
+	;; focus the workspace if no workspace is currently focused
+	;; or if configuration is set to focus new workspace
+	(when (or *wm-behavior-focus-new-workspace*
+			  (not (output-focused-workspace output)))
+	  (workspace-focus! workspace))
+
+	(gliver-hook-run! *workspace-created-hook* workspace)))
 
 (define* (%workspace-remove-target workspace1 workspace2)
   "Return the target workspace based on logic plus configuration."
@@ -76,10 +91,10 @@ This only happens if @var{s-workspace} has any windows. Containers from
 @var{s-workspace} are appended to @var{t-workspace}'s container list,
 and then @var{s-workspace}'s container list is emptied."
   (when (positive? (length (workspace-windows s-workspace)))
-    (workspace-containers-set! t-workspace
+    (%workspace-containers-set! t-workspace
                                (append (workspace-containers t-workspace)
                                        (workspace-containers s-workspace)))
-    (workspace-containers-set! s-workspace '())))
+    (%workspace-containers-set! s-workspace '())))
 
 (define* (workspace-remove! workspace #:key (t-workspace #f))
   "Delete @var{workspace}, moving its containers to @var{t-workspace}."
@@ -101,29 +116,17 @@ and then @var{s-workspace}'s container list is emptied."
         (output-workspace-current-set! output (car (output-workspaces output))))
       (gliver-hook-run! *workspace-destroy-hook* workspace t-workspace))))
 
-(define (workspace-switch-to! workspace)
-  "Switch to @var{workspace} on its output."
-  (let ((output (workspace-output workspace))
-        (old-workspace (output-workspace-current (workspace-output workspace))))
-    (unless (eq? workspace old-workspace)
-	  ;; TODO: call river api here
-      (output-workspace-previous-set! output old-workspace)
-      (output-workspace-current-set! output workspace)
-      (gliver-hook-run! *workspace-switch-hook* workspace old-workspace))))
-
-(define (workspace-switch-to-by-id! n)
-  "Switch to workspace id N on the current output."
-  (let* ((output (output-current))
-         (workspace (find (lambda (g) (= (workspace-id g) n))
-                      (output-workspaces output))))
-    (when workspace
-      (workspace-switch-to! workspace))))
-
-(define (workspace-switch-to-by-name! name)
-  "Switch to the workspace named NAME on the current output."
-  (let ((workspace (workspace-find-by-name name)))
-    (when workspace
-      (workspace-switch-to! workspace))))
+(define (workspace-focus! workspace)
+  "Focus active container in the workspace"
+  ;; focus the current container, it's actually an error
+  ;; not to have a current container
+  (let* ((container (workspace-container-current workspace))
+		 (output (workspace-output workspace))
+		 (prev-workspace (output-workspace-current output)))
+	(%output-workspace-previous-set! output prev-workspace)
+	(%output-workspace-current-set! output workspace)
+	(when container
+	  (container-focus! container))))
 
 (define (workspace-next workspace)
   (let* ((output (workspace-output workspace))

@@ -33,6 +33,7 @@
                   *window-destroy-hook*
                   *window-place-hook*
                   *window-float-hook*
+				  *window-focused-hook*
                   *window-unfloat-hook*
                   *window-size-changed-hook*
                   *window-size-hint-changed-hook*

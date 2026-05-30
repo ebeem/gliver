@@ -9,11 +9,11 @@
 (define (workspace-ensure-and-focus! name)
   (let ((ws (workspace-find-by-name name)))
     (if ws
-        (workspace-switch-to! ws)
+        (workspace-focus! ws)
         (let* ((output (output-current))
                (new-ws (make-workspace name #:output output)))
           (workspace-add! new-ws)
-          (workspace-switch-to! new-ws)))))
+          (workspace-focus! new-ws)))))
 
 ;; custom helper to ensure a workspace exists when moving a window
 (define (window-move-to-workspace-ensure! name)
@@ -29,7 +29,7 @@
                   (window-move-to-workspace! win new-ws))))))))
 
 (define (keybindings-sway-install-default!)
-  "Install the default Sway-compatible keybindings nested in StumpWM-style keymaps."
+  "Install the default Sway-compatible keybindings."
   ;; basics
   (define-key *top-map* "s-Return" 'terminal-spawn)
   (define-key *top-map* "s-S-q" 'window-kill-window)

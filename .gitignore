@@ -1,0 +1,14 @@
+*.go
+*.log
+*.trs
+build
+.dir-locals.el
+
+# temp
+wayland-scm
+tools
+gliver/wayland/ffi
+gliver/wayland/egl.scm
+gliver/wayland/client_.scm
+gliver/wayland/cursor.scm
+gliver/wayland/server.scm

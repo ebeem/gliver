@@ -9,7 +9,6 @@
   #:use-module (gliver core seat)
   #:use-module (gliver core types)
   #:use-module (gliver core window)
-  #:use-module (gliver core manager)
   #:use-module (gliver core keybindings)
   #:use-module (gliver core layout)
   #:use-module (gliver core workspace))

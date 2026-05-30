@@ -6,7 +6,7 @@
 ))
 
 (define (keybindings-stumpwm-install-default!)
-  "Install the default StumpWM-compatible keybindings."
+  "Install the default StumpWM keybindings."
   ;; Workspace sub-map
   (define-key *workspace-map* "c" 'workspace-create)
   (define-key *workspace-map* "C" 'workspace-create-float)

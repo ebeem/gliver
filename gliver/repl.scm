@@ -52,7 +52,9 @@
                  (let ((errno (system-error-errno (cons key args))))
                    (cond
                     ((member errno (list EPIPE ECONNRESET))
-                     (log-info "REPL client disconnected: ~a" (strerror errno)))
+					 ;; client disconnected
+                     ;; (log-debug "REPL client disconnected: ~a" (strerror errno))
+					 )
                     (else
                      (apply throw key args)))))))))))
     (lambda ()

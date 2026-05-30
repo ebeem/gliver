@@ -164,23 +164,7 @@ Returns the PID."
 
 (define (shell-process-spawn-detached cmd)
   "Spawn CMD via /bin/sh in a detached subprocess (double-fork)."
-  (let ((pid (primitive-fork)))
-    (cond
-     ((zero? pid)
-      ;; first child: fork again and exit
-      (let ((pid2 (primitive-fork)))
-        (cond
-         ((zero? pid2)
-          ;; grandchild: exec the command
-          (setsid)
-          (execlp "/bin/sh" "/bin/sh" "-c" cmd)
-          (primitive-exit 127))
-         (else
-          (primitive-exit 0)))))
-     (else
-      ;; parent: wait for first child
-      (waitpid pid)
-      pid))))
+  (system (string-append cmd " &")))
 
 ;;; message display
 (define *message-last* "")
@@ -267,27 +251,13 @@ The actual input is handled via handle-input-key callbacks."
 ;;; window commands
 (define (cmd-window-focus-next)
   "Focus the next window in the current container."
-  (let ((container (container-current)))
-    (when (and container (> (length (container-windows container)) 1))
-      (let* ((wins (container-windows container))
-             (cur (container-window-current container))
-             (idx (list-index (lambda (w) (eq? w cur)) wins))
-             (next-idx (modulo (1+ (or idx 0)) (length wins)))
-             (next-win (list-ref wins next-idx)))
-        (container-window-current-set! container next-win)
-        (gliver-hook-run! *window-focused-hook* next-win cur)))))
+  ;; TODO: fix logic, use window-focus!
+  )
 
 (define (cmd-window-focus-prev)
   "Focus the previous window in the current container."
-  (let ((container (container-current)))
-    (when (and container (> (length (container-windows container)) 1))
-      (let* ((wins (container-windows container))
-             (cur (container-window-current container))
-             (idx (list-index (lambda (w) (eq? w cur)) wins))
-             (prev-idx (modulo (+ (or idx 0) (length wins) -1) (length wins)))
-             (prev-win (list-ref wins prev-idx)))
-        (container-window-current-set! container prev-win)
-        (gliver-hook-run! *window-focused-hook* prev-win cur)))))
+  ;; TODO: fix logic, use window-focus!
+  )
 
 (define (cmd-window-focus-other)
   "Switch to the previously focused window."
@@ -367,8 +337,8 @@ The actual input is handled via handle-input-key callbacks."
     (if (and win target)
         (begin
           (window-move-to-container! win target)
-          (workspace-container-current-set! workspace target)
-          (log-debug "Moved to container ~a" (container-number target)))
+          ;(workspace-container-current-set! workspace target)
+          (log-debug "Moved to container ~a" (container-id target)))
         (log-debug "Cannot move."))))
 
 (define (cmd-window-pull-by-number n)
@@ -424,20 +394,20 @@ The actual input is handled via handle-input-key callbacks."
 ;;   (let* ((workspace (workspace-current))
 ;;          (container (container-current)))
 ;;     (when (and workspace container)
-;;       (let ((nf (container-next workspace container)))
+;;       (let ((nf (container-next container)))
 ;;         (when nf
 ;;           (workspace-container-current-set! workspace nf)
-;;           (log-debug "Container ~a" (container-number nf)))))))
+;;           (log-debug "Container ~a" (container-id nf)))))))
 
 ;; (define (cmd-container-focus-prev)
 ;;   "Focus the previous container."
 ;;   (let* ((workspace (workspace-current))
 ;;          (container (container-current)))
 ;;     (when (and workspace container)
-;;       (let ((pf (container-prev workspace container)))
+;;       (let ((pf (container-prev container)))
 ;;         (when pf
 ;;           (workspace-container-current-set! workspace pf)
-;;           (log-debug "Container ~a" (container-number pf)))))))
+;;           (log-debug "Container ~a" (container-id pf)))))))
 
 (define (cmd-container-focus-direction dir)
   "Focus the container in direction DIR."
@@ -446,12 +416,12 @@ The actual input is handled via handle-input-key callbacks."
          (target (and workspace container (container-in-direction dir container workspace))))
     (if target
         (begin
-          (workspace-container-current-set! workspace target)
+          ;(workspace-container-current-set! workspace target)
           (let ((win (container-window-current target))
                 (seat (seat-current)))
             (when (and win seat)
               (seat-wm-window-focus seat win))))
-        (debug-log "Couldn't find focus target"))))
+        (log-debug "Couldn't find focus target"))))
 
 ;; (define (clamp val lo hi)
 ;;   (max lo (min hi val)))
@@ -485,7 +455,7 @@ The actual input is handled via handle-input-key callbacks."
   (let ((output (output-current)))
     (when output
       (let ((workspace (workspace-add! (or name "New") output)))
-        (workspace-switch-to! workspace)
+        (workspace-focus! workspace)
         (log-debug "Workspace ~a created." (workspace-name workspace))))))
 
 (define (cmd-workspace-destroy)
@@ -498,26 +468,20 @@ The actual input is handled via handle-input-key callbacks."
             (workspace-remove! workspace)
             (log-debug "Workspace killed."))))))
 
-(define (cmd-workspace-focus name)
-  "Select a workspace by name."
-  (if name
-      (workspace-switch-to-by-name! name)
-      (log-debug "No workspace name given.")))
-
 (define (cmd-workspace-focus-next)
   "Switch to the next workspace."
   (let ((g (workspace-next (output-current))))
-    (when g (workspace-switch-to! g))))
+    (when g (workspace-focus! g))))
 
 (define (cmd-workspace-focus-prev)
   "Switch to the previous workspace."
   (let ((g (workspace-prev (output-current))))
-    (when g (workspace-switch-to! g))))
+    (when g (workspace-focus! g))))
 
 (define (cmd-workspace-focus-last)
   "Switch to the previously active workspace."
   (let ((prev (output-workspace-previous (output-current))))
-    (when prev (workspace-switch-to! prev))))
+    (when prev (workspace-focus! prev))))
 
 (define (cmd-workspace-rename name)
   "Rename the current workspace."
@@ -544,16 +508,16 @@ The actual input is handled via handle-input-key callbacks."
   "Focus the next output."
   (let ((ns (output-next)))
     (when ns
-      (manager-output-previous-set! *manager* (output-current))
-      (manager-output-current-set! *manager* ns)
+      ;(manager-output-previous-set! *manager* (output-current))
+      ;(manager-output-current-set! *manager* ns)
       (gliver-hook-run! *output-focus-hook* ns (manager-output-previous *manager*)))))
 
 (define (cmd-output-focus-prev)
   "Focus the previous output."
   (let ((ps (output-prev)))
     (when ps
-      (manager-output-previous-set! *manager* (output-current))
-      (manager-output-current-set! *manager* ps)
+      ;(manager-output-previous-set! *manager* (output-current))
+      ;(manager-output-current-set! *manager* ps)
       (gliver-hook-run! *output-focus-hook* ps (manager-output-previous *manager*)))))
 
 ;;; session commands
@@ -708,7 +672,7 @@ The actual input is handled via handle-input-key callbacks."
   ;; workspace
   (command-register! 'workspace-create cmd-workspace-create "Create a new workspace.")
   (command-register! 'workspace-destroy cmd-workspace-destroy "Kill the current workspace.")
-  (command-register! 'workspace-focus cmd-workspace-focus "Select a workspace by name.")
+  ;(command-register! 'workspace-focus cmd-workspace-focus "Select a workspace by name.")
   (command-register! 'workspace-focus-next cmd-workspace-focus-next "Switch to the next workspace.")
   (command-register! 'workspace-focus-prev cmd-workspace-focus-prev "Switch to the previous workspace.")
   (command-register! 'workspace-focus-last cmd-workspace-focus-last "Switch to the last workspace.")

@@ -21,6 +21,7 @@
 			*wm-behavior-focus-new-window*
 			*wm-behavior-focus-new-workspace*
 			*wm-behavior-focus-new-container*
+			*wm-behavior-focus-new-output*
 			*wm-behavior-workspace-remove-to*
 			*wm-behavior-default-decoration*
 			*wm-behavior-default-capabilties*
@@ -53,6 +54,7 @@
 (define *wm-behavior-focus-new-window* #t)
 (define *wm-behavior-focus-new-workspace* #t)
 (define *wm-behavior-focus-new-container* #t)
+(define *wm-behavior-focus-new-output* #f)
 (define *wm-behavior-workspace-remove-to* 'focus)    ;; 'focus | 'index
 (define *wm-behavior-default-decoration* 'server)    ;; 'server | 'client
 (define *wm-behavior-default-capabilties* 0)

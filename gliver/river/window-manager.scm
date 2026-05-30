@@ -71,7 +71,7 @@
   "Bind and register the window manager"
   (when (string=? protocol-name RIVER_WINDOW_MANAGER_V1_NAME)
 	(log-info "Binding ~a..." protocol-name)
-	(manager-wl-proxy-set! *manager*
+	(%manager-wl-proxy-set! *manager*
 						   (gliver-wl-registry-bind registry object-id
 								   *river-window-manager-v1-interface*
 								   (min version 4)))

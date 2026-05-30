@@ -43,13 +43,13 @@
 ))
 
 (define (seat-add! seat)
-  (manager-seats-set! *manager*
+  (%manager-seats-set! *manager*
 					  (cons seat (manager-seats *manager*)))
   (gliver-hook-run! *seat-created-hook* seat))
 
 (define (seat-remove! seat)
   (let ((remaining (delete seat (manager-seats *manager*))))
-    (manager-seats-set! *manager* remaining))
+    (%manager-seats-set! *manager* remaining))
   (gliver-hook-run! *seat-removed-hook* seat))
 
 ;;; window manager api calls
@@ -67,7 +67,7 @@ Must be called in a ~manage_sequence~."
 	   (wm-seat-window-focus proxy-seat proxy-window)
 	   (when current-focused
 		 (gliver-hook-run! *window-unfocused-hook* current-focused))
-	   (seat-window-focused-set! seat window)
+	   (%seat-window-focused-set! seat window)
 	   (gliver-hook-run! *window-focused-hook* window)
 	   (gliver-hook-run! *seat-window-focused-hook* seat window)))))
 
@@ -81,13 +81,13 @@ Must be called in a ~manage_sequence~."
     (when proxy-seat
 	  (with-manage-sequence
 	   (wm-seat-window-focus-clear proxy-seat)
-	   (seat-window-focused-set! seat #f)
+	   (%seat-window-focused-set! seat #f)
 	   (gliver-hook-run! *seat-window-focused-hook* seat #f)))))
 
 (define (seat-wm-pointer-op-start seat)
   "Start an interactive pointer operation.
 Must be called in a ~manage_sequence~."
-  (seat-pointer-op-set! seat #t)
+  (%seat-pointer-op-set! seat #t)
   (let ((proxy-seat (seat-wl-proxy seat)))
     (when proxy-seat
 	  (with-manage-sequence
@@ -96,7 +96,7 @@ Must be called in a ~manage_sequence~."
 (define (seat-wm-pointer-op-end seat)
   "End an interactive pointer operation.
 Must be called in a ~manage_sequence~."
-  (seat-pointer-op-set! seat #f)
+  (%seat-pointer-op-set! seat #f)
   (let ((proxy-seat (seat-wl-proxy seat)))
     (when proxy-seat
 	  (with-manage-sequence
@@ -148,7 +148,7 @@ Hook: *seat-destroy-hook*"
   (let ((seat (seat-find-by-proxy proxy-seat)))
     (when seat
 	  (let ((prev-object-id (seat-wl-seat seat)))
-		(seat-wl-seat-set! seat object-id)
+		(%seat-wl-seat-set! seat object-id)
 		(log-debug "Seat ~a object-id updated to ~a" seat object-id)
 		(gliver-hook-run! *seat-object-id-changed-hook* seat prev-object-id)))))
 
@@ -160,7 +160,7 @@ Hook: *seat-destroy-hook*"
 	  (log-debug "Seat ~a pointer entered ~a" seat window)
 	  (when *wm-behavior-focus-mouse-enter*
 		(seat-wm-window-focus seat window))
-	  (seat-window-entered-set! seat window)
+	  (%seat-window-entered-set! seat window)
 	  (gliver-hook-run! *seat-window-entered-changed-hook* seat window))))
 
 (define (seat-on-pointer-leave data proxy-seat)
@@ -170,7 +170,7 @@ Hook: *seat-destroy-hook*"
 	  (log-debug "Seat ~a pointer left window" seat)
 	  (when *wm-behavior-focus-clear-mouse-leave*
 		(wm-seat-window-focus-clear proxy-seat))
-	  (seat-window-entered-set! seat #f)
+	  (%seat-window-entered-set! seat #f)
 	  (gliver-hook-run! *seat-window-entered-changed-hook* seat #f))))
 
 (define (seat-on-window-interaction data proxy-seat proxy-window)
