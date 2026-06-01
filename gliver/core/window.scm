@@ -132,11 +132,11 @@
 
 (define (window-remove! window)
   "Remove a window from the display."
-  (let ((container (window-container window))
-		(all-remaining (delete window (manager-windows *manager*)))
-		(container-remaining (delete window (container-windows container)))
-		(window-target (or (window-next window #:recursive #f)
-						   (window-prev window #:recursive #f))))
+  (let* ((container (window-container window))
+		 (all-remaining (delete window (manager-windows *manager*)))
+		 (container-remaining (delete window (container-windows container)))
+		 (window-target (or (window-next window #:recursive #f)
+							(window-prev window #:recursive #f))))
     (when container
       (%container-windows-set! container container-remaining)
 	  ;; if removed window is currently focused, focus next window in container
