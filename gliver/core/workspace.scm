@@ -27,6 +27,8 @@
 			workspace-focus!
 			workspace-next
 			workspace-prev
+			workspace-windows
+			workspace-windows-visible
 ))
 
 (define* (workspace-add! workspace)
@@ -142,4 +144,14 @@ and then @var{s-workspace}'s container list is emptied."
          (idx (list-index (lambda (g) (eq? g current)) workspaces)))
     (and idx (list-ref workspaces (modulo (+ idx (length workspaces) -1)
                                       (length workspaces))))))
+
+(define (workspace-windows workspace)
+  "Return all windows in @var{workspace}."
+  (apply append 
+         (map container-windows
+              (workspace-containers workspace))))
+
+(define (workspace-windows-visible workspace)
+  "Return the currently visible (not hidden/minimized) windows in @var{workspace}."
+  (filter window-visible? (workspace-windows workspace)))
 

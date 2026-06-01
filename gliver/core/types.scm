@@ -189,8 +189,6 @@
 			seat-find-by-proxy
 			seat-current
 			workspace-find-by-name
-			workspace-windows
-			workspace-windows-visible
 			workspace-current
 			container-find-by-number
 			container-current
@@ -533,15 +531,7 @@ Other parameters (x, y, width, height, wl-proxy) can be provided as keyword argu
   (find (lambda (g) (string=? (workspace-name g) name))
         (output-workspaces (output-current))))
 
-(define (workspace-windows workspace)
-  "Return all windows in @var{workspace}."
-  (apply append 
-         (map container-windows
-              (workspace-containers workspace))))
 
-(define (workspace-windows-visible workspace)
-  "Return the currently visible (not hidden/minimized) windows in @var{workspace}."
-  (filter window-visible? (workspace-windows workspace)))
 
 (define (workspace-current)
   "Return the current active workspace"
