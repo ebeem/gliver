@@ -1,5 +1,5 @@
 * Refactoring
-** TODO replace default hook modifier in manager.scm with setter functions
+** DONE replace default hook modifier in manager.scm with setter functions
 default record setter should be private, another public one should be created to customize the behavior. It's also a good idea to call all hooks needed in setters rather than relying on user to run them. Add an optional parameter to disable hook call.
 ** TODO move all extra modules to ~contrib~
 including ~window-rules~ and any other module that seems like a plugin
