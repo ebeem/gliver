@@ -6,3 +6,9 @@ including ~window-rules~ and any other module that seems like a plugin
 ** TODO create a hash-table for all ~contrib~ and extra configuration variables
 gaps parameters, mode, message-timeout and all other manager state variables should move to the hash-table which is the only variable referenced by the ~manager~ other than the list of outputs, seats, and windows.
 
+** TODO document hooks
+currently it's not clear what the parameters are, should probably be documented in ~hooks.scm~
+
+** TODO add metadata to outputs, workspaces, containers, and windows
+this will allow modules to add their metadata to types so they can persist and be shared across other modules. Should be very similar to how manager handles configuration.
+
