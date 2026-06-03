@@ -7,6 +7,7 @@
   #:use-module (ice-9 format)
   #:use-module (ice-9 match)
   #:use-module (srfi srfi-1)
+  #:use-module (srfi srfi-2)
   #:use-module (srfi srfi-9)
   #:use-module (srfi srfi-9 gnu)
   #:use-module (system foreign)
@@ -14,7 +15,9 @@
   #:use-module (gliver core logs)
   #:use-module (gliver core config)
   #:use-module (gliver core hooks)
-  #:autoload (gliver core window) (window-focus!)
+  #:autoload (gliver core window) (window-focus!
+								   window-position-set!
+								   window-dimensions-propose!)
   #:export (
 			container-next
 			container-prev
@@ -24,6 +27,8 @@
 			container-add!
 			container-remove!
 			container-focus!
+			container-size-set!
+			container-position-set!
 ))
 
 (define* (container-next current #:key (recursive #t))
@@ -136,10 +141,10 @@
 (define (container-focus! container)
   "Focus a container by focusing its last focused window."
   ;; target window is current focused or first window
+  (log-debug "focusing container ~a" container)
   (let* ((windows (container-windows container))
-		 (window (and (not (null? windows))
-					  (or (container-window-current container)
-						  (car windows))))
+		 (window (or (container-window-current container)
+					 (and (pair? windows) (car windows))))
 		 (workspace (container-workspace container))
 		 (prev-container (workspace-container-current workspace)))
 	(%workspace-container-previous-set! workspace prev-container)
@@ -147,3 +152,26 @@
 	(when window
 	  (window-focus! window))))
 
+(define* (container-size-set! container width height #:key (animate #t))
+  "Resize the container to the provided width and height."
+  (let* ((windows (container-windows container))
+		 (window (or (container-window-current container)
+					 (and (pair? windows) (car windows))))
+		 (int-width (inexact->exact (floor width)))
+		 (int-height (inexact->exact (floor height))))
+	(%container-width-set! container int-width)
+	(%container-height-set! container int-height)
+	(when window
+	  (window-dimensions-propose! window int-width int-height #:animate animate))))
+
+(define* (container-position-set! container x y #:key (animate #t))
+  "Move the container position to the provided x and y."
+  (let* ((windows (container-windows container))
+		 (window (or (container-window-current container)
+					 (and (pair? windows) (car windows))))
+		 (int-x (inexact->exact (floor x)))
+		 (int-y (inexact->exact (floor y))))
+	(%container-x-set! container int-x)
+	(%container-y-set! container int-y)
+	(when window
+	  (window-position-set! window int-x int-y #:animate animate))))
