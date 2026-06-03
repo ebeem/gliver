@@ -10,8 +10,10 @@
   #:use-module (ice-9 rdelim)
   #:use-module (ice-9 regex)
   #:use-module (ice-9 textual-ports)
+  #:use-module (ice-9 textual-ports)
   #:use-module (srfi srfi-1)
   #:use-module (srfi srfi-9)
+  #:use-module (srfi srfi-13)
   #:use-module (srfi srfi-19)
   #:export (
 			*log-level*
@@ -31,6 +33,8 @@
 (define *log-level* (make-parameter 'info))
 (define *log-port* (make-parameter (current-error-port)))
 (define *log-file-path* (make-parameter #f))
+(define *thread-padding* 6)
+(define *logger-padding* 14)
 
 (define *log-levels*
   '((debug . 0) (info . 1) (warn . 2) (error . 3)))
@@ -57,26 +61,24 @@
   (when (>= (log-level-value level)
             (log-level-value (*log-level*)))
     (let* ((now (current-date))
-           (timestamp (date->string now "~Y-~m-~d ~H:~M:~S"))
+           (ms (string-pad (number->string (quotient (date-nanosecond now) 1000000)) 3 #\0))
+           (timestamp (string-append (date->string now "~Y-~m-~d ~H:~M:~S.") ms))
            (raw-level (string-upcase (symbol->string level)))
-           (level-pad (- 5 (string-length raw-level)))
-           (level-str (if (> level-pad 0)
-                          (string-append raw-level (make-string level-pad #\space))
-                          raw-level))
+           (level-str (string-pad raw-level 5 #\space))
+           (thread-name "main")
            (message (apply format #f fmt args))
-           (thread-name "main"))
-      (if (and filename (string? filename))
-        (let* ((trimmed-filename (string-trim-right filename #\/))
-               (match (string-match "[^/]+$" trimmed-filename))
-               (basename (if match
-                             (match:substring match 0)
-                             trimmed-filename)))
-          ;; standard log4j format with logger name
-          (format (*log-port*) "~a [~a] ~a ~a - ~a~%" 
-                  timestamp thread-name level-str basename message))
-        ;; standard log4j format without logger name
-        (format (*log-port*) "~a [~a] ~a - ~a~%" 
-                timestamp thread-name level-str message))
+           (basename (if (and filename (string? filename))
+                         (let* ((trimmed (string-trim-right filename #\/))
+                                (match (string-match "[^/]+$" trimmed)))
+                           (if match (match:substring match 0) trimmed))
+                         "Unknown")))
+	  ;; standard log4j format with logger name
+      (format (*log-port*) "~a [~a] ~a ~a - ~a~%"
+              timestamp 
+              thread-name
+              level-str 
+              basename 
+              message)
       (force-output (*log-port*)))))
 
 (define-syntax log-debug

@@ -10,6 +10,7 @@
   #:use-module (srfi srfi-9)
   #:use-module (srfi srfi-9 gnu)
   #:use-module (gliver core keybindings)
+  #:use-module (gliver core logs)
   #:use-module (system foreign)
   #:export (
 			%manager-wl-proxy-set!
@@ -359,9 +360,10 @@ Other parameters (x, y, width, height, wl-proxy) can be provided as keyword argu
 
 (set-record-type-printer! <workspace>
   (lambda (g port)
-    (format port "#<workspace ~a ~s tag=~a layout=~a>"
+    (format port "#<workspace ~a ~s container-current=~a, prev=~a tag=~a layout=~a>"
             (workspace-id g) (workspace-name g)
-            (workspace-tag-mask g) (workspace-layout g))))
+			(workspace-container-current g) (workspace-container-previous g)
+            (workspace-tag-mask g) (assq-ref (workspace-layout g) 'layout))))
 
 (define* (make-workspace #:key
 						 (id (manager-workspace-number-next!))
@@ -530,8 +532,6 @@ Other parameters (x, y, width, height, wl-proxy) can be provided as keyword argu
   "Find a workspace by name on the current output."
   (find (lambda (g) (string=? (workspace-name g) name))
         (output-workspaces (output-current))))
-
-
 
 (define (workspace-current)
   "Return the current active workspace"
