@@ -170,6 +170,6 @@ repl:
 	$(GUILE) -L . -l gliver/core.scm
 
 run:
-	GUILE_LOAD_PATH=. $(GUILE) --no-auto-compile -L . --debug bin/gliver
+	./bin/gliver
 
 .PHONY: repl run
