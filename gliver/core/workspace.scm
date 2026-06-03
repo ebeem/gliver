@@ -40,8 +40,11 @@
 	;; each workspace must at least have one container in `workspace-containers`
 	;; if it doesn't have any workspaces, one will be created and focused automatically
 	(when (null? (workspace-containers workspace))
+	  (log-debug "adding empty container to workspace")
 	  (let* ((container
 			  (make-container #:workspace workspace
+							  #:x 0
+							  #:y 0
 							  #:width (output-width output)
 							  #:height (output-height output))))
 		(container-add! container)))
@@ -111,11 +114,11 @@ and then @var{s-workspace}'s container list is emptied."
 	  ;; 	(for-each (lambda (w) (window-move-to-workspace! w target))
       ;;             (workspace-windows workspace)))
       ;; remove workspace from output
-      (output-workspaces-set! output
+      (%output-workspaces-set! output
         (delete workspace (output-workspaces output)))
       ;; if this was current, switch
       (when (eq? (output-workspace-current output) workspace)
-        (output-workspace-current-set! output (car (output-workspaces output))))
+        (%output-workspace-current-set! output (car (output-workspaces output))))
       (gliver-hook-run! *workspace-destroy-hook* workspace t-workspace))))
 
 (define (workspace-focus! workspace)
