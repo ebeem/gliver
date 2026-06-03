@@ -1,0 +1,100 @@
+;;; bin/gliver-repl --- Connect to Gliver's REPL
+;;;
+;;; Copyright (C) 2026 Gliver Contributors
+;;; SPDX-License-Identifier: GPL-3.0-or-later
+;;;
+;;; Usage:
+;;;   gliver-repl                # interactive REPL
+;;;   gliver-repl -e '(expr)'   # evaluate one expression and exit
+
+(use-modules (ice-9 format)
+             (ice-9 rdelim)
+             (ice-9 getopt-long)
+             (ice-9 textual-ports))
+
+;; timeout in seconds
+(define repl-timeout (* 10 1000 1000))
+
+(define (repl-socket-path)
+  (let ((runtime-dir (or (getenv "XDG_RUNTIME_DIR")
+                         (string-append "/run/user/"
+                                        (number->string (getuid))))))
+    (or (getenv "GLIVER_REPL_SOCKET")
+        (string-append runtime-dir "/gliver/repl.sock"))))
+
+(define option-spec
+  '((eval   (single-char #\e) (value #t))
+    (socket (single-char #\s) (value #t))
+    (help   (single-char #\h) (value #f))))
+
+(define (char-available? sock timeout-usec)
+  "Return #t if a character is ready to be read from SOCK within TIMEOUT-USEC."
+  (or (char-ready? sock)
+      (let ((ready (select (list sock) '() '() 0 timeout-usec)))
+        (pair? (car ready)))))
+
+(define (read-response-until-timeout sock first-timeout)
+  "Read and print all characters from SOCK until a timeout or EOF is reached."
+  (let loop ((timeout-usec first-timeout))
+    (when (char-available? sock timeout-usec)
+      (let ((c (read-char sock)))
+        (unless (eof-object? c)
+          (display c)
+          (force-output)
+          (loop 10000))))))
+
+(define (main args)
+  (let* ((options (getopt-long args option-spec))
+         (socket-path (or (option-ref options 'socket #f)
+                          (repl-socket-path)))
+         (eval-expr (option-ref options 'eval #f)))
+
+    (when (option-ref options 'help #f)
+      (format #t "Usage: gliver-repl [OPTIONS]~%")
+      (format #t "  -e, --eval EXPR    Evaluate EXPR and exit~%")
+      (format #t "  -s, --socket PATH  Custom REPL socket path~%")
+      (format #t "  -h, --help         Show this help~%")
+      (exit 0))
+
+    (catch #t
+      (lambda ()
+        (let ((sock (socket AF_UNIX SOCK_STREAM 0)))
+          (connect sock AF_UNIX socket-path)
+
+          (if eval-expr
+              ;; one-shot evaluation
+              (begin
+                (display eval-expr sock)
+                (newline sock)
+                (force-output sock)
+                (read-response-until-timeout sock repl-timeout)
+                (newline)
+                (close-port sock))
+
+              ;; interactive mode
+              (begin
+                (format #t "Connected to Gliver REPL at ~a~%" socket-path)
+                (format #t "Type Guile expressions. Press Ctrl-D to exit.~%~%")
+                (read-response-until-timeout sock repl-timeout)
+                (let loop ()
+                  (display "gliver> ")
+                  (force-output)
+                  (let ((line (read-line)))
+                    (unless (eof-object? line)
+                      (display line sock)
+                      (newline sock)
+                      (force-output sock)
+                      (read-response-until-timeout sock repl-timeout)
+                      (loop))))
+                (format #t "~%Disconnected.~%")
+                (close-port sock)))))
+      (lambda (key . args)
+        (format (current-error-port)
+                "gliver-repl: cannot connect: ~a ~a~%"
+                key args)
+        (format (current-error-port)
+                "Socket: ~a~%Is Gliver running?~%"
+                socket-path)
+        (exit 1)))))
+
+(main (command-line))
