@@ -12,3 +12,7 @@ currently it's not clear what the parameters are, should probably be documented 
 ** TODO add metadata to outputs, workspaces, containers, and windows
 this will allow modules to add their metadata to types so they can persist and be shared across other modules. Should be very similar to how manager handles configuration.
 
+** TODO plan animations
+no need for implementation now, but common functions should be used and expect animations to be introduced later. There should be no call changes to introduce animations.
+
+** TODO make default layout manual
