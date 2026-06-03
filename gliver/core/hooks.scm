@@ -37,6 +37,8 @@
 			%manager-session-unlocked-hook
 			%manager-session-locked-hook
 			%window-created-hook
+			%window-container-removed-hook*
+			%window-container-added-hook*
 			%window-destroy-hook
 			%window-size-hint-changed-hook
 			%window-size-changed-hook
@@ -56,6 +58,7 @@
 			%window-presentation-hint-changed-hook
 			%window-identifier-changed-hook
 			*window-created-hook*
+			*window-container-moved-hook*
 			*window-destroy-hook*
 			*window-focused-hook*
 			*window-unfocused-hook*
@@ -226,6 +229,8 @@ If a function fails, the error is logged and the script is terminated."
 
 ;;; window hooks
 (define %window-created-hook					(make-gliver-hook '%window-created 3))
+(define %window-container-removed-hook*			(make-gliver-hook '%window-container-removed 2))
+(define %window-container-added-hook*			(make-gliver-hook '%window-container-added 2))
 (define %window-destroy-hook					(make-gliver-hook '%window-destroy 2))
 (define %window-size-hint-changed-hook			(make-gliver-hook '%window-size-hint-changed 5))
 (define %window-size-changed-hook				(make-gliver-hook '%window-size-changed 3))
@@ -246,6 +251,7 @@ If a function fails, the error is logged and the script is terminated."
 (define %window-identifier-changed-hook			(make-gliver-hook '%window-identifier-changed 2))
 
 (define *window-created-hook*						(make-gliver-hook 'window-created 1))
+(define *window-container-moved-hook*				(make-gliver-hook 'window-container-removed 3))
 (define *window-destroy-hook*						(make-gliver-hook 'window-destroy 1))
 (define *window-focused-hook*						(make-gliver-hook 'window-focused 1))
 (define *window-unfocused-hook*						(make-gliver-hook 'window-unfocused 1))

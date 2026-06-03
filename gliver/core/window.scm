@@ -7,6 +7,7 @@
   #:use-module (ice-9 format)
   #:use-module (ice-9 match)
   #:use-module (srfi srfi-1)
+  #:use-module (srfi srfi-2)
   #:use-module (srfi srfi-9)
   #:use-module (srfi srfi-9 gnu)
   #:use-module (system foreign)
@@ -20,17 +21,15 @@
   ;; maybe using hooks is a better idea
   #:autoload (gliver core seat) (seat-wm-window-focus)
   #:export (
+			window-next
+			window-prev
 			window-add!
+			window-apply-defaults!
 			window-remove!
+			%window-container-remove!
+			%window-container-add!
 			window-focus!
-			on-window
-			on-window-closed
-			on-window-focused
-			on-window-unfocused
-			on-window-title-changed
-			on-window-app-id-changed
-			on-window-identifier-changed
-			on-window-pid-changed
+			window-move-to-container!
 			color-hex->rgba-32
 			window-close!
 			window-node-get!
@@ -56,6 +55,19 @@
 			window-content-clip-box-set!
 			window-dimension-bounds-set!
 			window-position-set!
+			on-window
+			on-window-closed
+			on-window-focused
+			on-window-unfocused
+			on-window-title-changed
+			on-window-parent-changed
+			on-window-app-id-changed
+			on-window-identifier-changed
+			on-window-presentation-hint
+			on-window-pid-changed
+			on-window-dimensions
+			on-window-dimensions-hint
+			on-window-decoration-hint
 ))
 
 (define* (window-next current #:key (recursive #t))
@@ -87,64 +99,72 @@
 (define (window-add! window)
   "Add a new window to the display, placing it in the current container."
   (log-debug "adding window ~a" window)
-  (let* ((output (output-current))
-		 (proxy-window (window-wl-proxy window)))
+  (let* ((proxy-window (window-wl-proxy window))
+		 (container (or (window-container window)
+						(container-current)))
+		 (all-windows (append (manager-windows *manager*) (list window))))
+	;; add window to provided container (current focused if none is provided)
+	(%window-container-add! window container
+							#:focus *wm-behavior-focus-new-window*)
+	;; windows are stored in the manager for quick lookups
+	(%manager-windows-set! *manager* all-windows)
+	(gliver-hook-run! *window-created-hook* window)))
 
-	;; set window container if it's not already assigned
-	(unless (window-container window)
-	  (%window-container-set! window (container-current)))
-
-	;; To improve performance, windows are stored in the manager directly
-	;; so they can quickly be looked up. Each container references all of its windows
-	;; and windows back reference the container.
-	;; All of this is handled by the hook, developers must only set the window container
-	;; in the window record using `window-container-set`.
-	(let* ((container (window-container window)))
-	  (log-debug "setting references for container ~a" container)
-	  (%container-windows-set! container
-							  (append (container-windows container) (list window)))
-	  (%manager-windows-set! *manager*
-							(append (manager-windows *manager*) (list window))))
-
-	(log-debug "focusing window")
-	;; focus behavior
-	(when *wm-behavior-focus-new-window*
-	  (window-focus! window))
-
-	;; apply defaults to window, these might be overwritten by layout
+(define (window-apply-defaults! window)
+  "Apply defaults to window, these might be overwritten by layout "
+  (let ((output (output-current)))
 	(when (eq? *wm-behavior-default-decoration* 'server)
 	  (window-decoration-server! window))
 	(when (eq? *wm-behavior-default-decoration* 'client)
 	  (window-decoration-client! window))
-	
 	(window-capabilities-inform! window *wm-behavior-default-capabilties*)	
 	(window-unmaximized-inform! window)
     (window-fullscreen-exit-inform! window)
     (window-tiled-set! window *wm-behavior-default-edges*)
 	(window-dimensions-propose! window
 								(output-width output)
-								(output-height output))
-
-	;; the global manager will add the created window
-	;; to global state automatically with the hook
-	(log-debug "Running *window-created-hook*")
-	(gliver-hook-run! *window-created-hook* window)))
+								(output-height output))))
 
 (define (window-remove! window)
   "Remove a window from the display."
-  (let* ((container (window-container window))
-		 (all-remaining (delete window (manager-windows *manager*)))
-		 (container-remaining (delete window (container-windows container)))
-		 (window-target (or (window-next window #:recursive #f)
-							(window-prev window #:recursive #f))))
-    (when container
+  (let ((remaining-windows (delete window (manager-windows *manager*))))
+    (%manager-windows-set! *manager* remaining-windows)
+	;; make sure the window is removed properly from container so
+	;; another window is focused
+	(%window-container-remove! window)
+    (gliver-hook-run! *window-destroy-hook* window)))
+
+(define* (%window-container-remove! window #:key (focus #t))
+  "Remove a window from the container. This function makes the window state
+invalid as the window should always have a container."
+  (and-let* ((container (window-container window))
+			 (container-remaining (delete window (container-windows container)))
+			 (window-target (or (window-next window #:recursive #f)
+								(window-prev window #:recursive #f))))
+      (%window-container-set! window #f)
       (%container-windows-set! container container-remaining)
+	  (gliver-hook-run! %window-container-removed-hook* window container)
 	  ;; if removed window is currently focused, focus next window in container
       (when (and window-target
 				 (eq? (container-window-current container) window))
-		(window-focus! window-target)))
-    (%manager-windows-set! *manager* all-remaining)
-    (gliver-hook-run! *window-destroy-hook* window)))
+		;; if focus parameter is true, another window in the container will be focused
+		;; otherwise the container will just have it as current window without seat focusing it
+		(if focus
+			(window-focus! window-target)
+			(%container-window-current-set! container window-target)))))
+
+(define* (%window-container-add! window container #:key (focus #t))
+  "Add a window to a container. The window should have no container. it's
+always better to call ~%window-container-remove!~ before calling this function."
+  (let ((container-windows (append (container-windows container) (list window))))
+	(%window-container-set! window container)
+	(%container-windows-set! container container-windows)
+	(gliver-hook-run! %window-container-added-hook* window container)
+	;; if focus parameter is true, window will be focused, otherwise the
+	;; container will just have it as current window without seat focusing it
+	(if focus
+		(window-focus! window)
+		(%container-window-current-set! container window))))
 
 (define (window-focus! window)
   "Focus a window from the display."
@@ -153,6 +173,23 @@
 	  (seat-wm-window-focus seat window)
 	  (%container-window-current-set! (window-container window) window)
 	  (gliver-hook-run! *window-focused-hook* window))))
+
+(define* (window-move-to-container! window container #:key (focus #t))
+  "Move a window to a container."
+  (let ((container-current (window-container window)))
+	;; window should be removed from current container first
+	(log-debug "moving window ~a to container ~a" window container)
+	(when container-current
+	  (%window-container-remove! window #:focus #f))
+	;; moves the window to the new container
+	(%window-container-add! window container #:focus focus)
+	(window-position-set! window
+						  (container-x container)
+						  (container-y container))
+	(window-dimensions-propose! window
+								(container-width container)
+								(container-height container))
+	(gliver-hook-run! *window-container-moved-hook* window container container-current)))
 
 (define (color-hex->rgba-32 hex-str)
   ;; strip the leading '#' if it exists
@@ -207,13 +244,15 @@ window record will be updated accordingly to have a node reference."
           proxy-node))
       cached-node)))
 
-(define (window-dimensions-propose! window width height)
+(define* (window-dimensions-propose! window width height #:key (animate #t))
   "Propose dimensions (width and height) for a window.
 Must be called in a ~manage_sequence~."
   (when window
     (let ((proxy-window (window-wl-proxy window)))
 	  (with-manage-sequence
-	   (wm-window-dimensions-propose proxy-window width height)))))
+	   (wm-window-dimensions-propose proxy-window
+									 (inexact->exact (floor width))
+									 (inexact->exact (floor height)))))))
 
 (define (window-hide! window)
   "Request that the window be hidden.
@@ -434,16 +473,17 @@ Must be called in a ~manage_sequence~."
       (with-manage-sequence
 	   (wm-window-dimension-bounds-set proxy-window max-width max-height)))))
 
-(define (window-position-set! window x y)
+(define* (window-position-set! window x y #:key (animate #t))
   "Set the position of the window.
 Must be called in a ~render_sequence~."
-  (let ((node (window-node-get! window)))
-    (when node
-	  (%window-x-set! window x)
-	  (%window-y-set! window y)
+  (let ((node (window-node-get! window))
+		(int-x (inexact->exact (floor x)))
+		(int-y (inexact->exact (floor y))))
+	(when node
+	  (%window-x-set! window int-x)
+	  (%window-y-set! window int-y)
       (with-render-sequence
-       ((@ (gliver river wm-node-manager) wm-node-position-set!) node x y)))))
-
+       ((@ (gliver river wm-node-manager) wm-node-position-set!) node int-x int-y)))))
 
 (define (on-window data manager proxy-window)
   "Handle a new window event from the compositor."
@@ -498,17 +538,11 @@ Must be called in a ~render_sequence~."
       (%window-identifier-set! window identifier))))
 (gliver-hook-add! %window-identifier-changed-hook on-window-identifier-changed)
 
-(define (on-window-identifier-changed proxy-window identifier)
-  (let ((window (window-find-by-proxy proxy-window)))
-    (when window
-      (%window-identifier-set! window identifier))))
-(gliver-hook-add! %window-identifier-changed-hook on-window-identifier-changed)
-
 (define (on-window-presentation-hint data proxy-window hint)
   (let ((window (window-find-by-proxy proxy-window)))
     (when window
       (%window-presentation-hint-set! window hint))))
-(gliver-hook-run! %window-presentation-hint-changed-hook proxy-window hint)
+(gliver-hook-add! %window-presentation-hint-changed-hook on-window-presentation-hint)
 
 (define (on-window-pid-changed proxy-window pid)
   (let ((window (window-find-by-proxy proxy-window)))
