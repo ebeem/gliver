@@ -17,8 +17,12 @@
   #:use-module (gliver core hooks)
   #:use-module (srfi srfi-1)
   #:declarative? #f
-  #:export (layout-alternating-make-config
-            layout-laternating-update))
+  #:export (
+			layout-alternating-make-config
+			get-param
+			layout-laternating-create-container
+			layout-laternating-update
+))
 
 (define* (layout-alternating-make-config #:key
                                   (initial-split-direction 'horizontal)
@@ -45,148 +49,118 @@
         (if pair (cdr pair) default-val))
       default-val))
 
-(define (gather-target-windows workspace hook-name window append-method)
-  "Returns a flat, ordered list of all windows for this layout iteration."
-  (let* ((current-containers (workspace-containers workspace))
-         (all-windows-raw (append-map container-windows current-containers)))
-    (if (and (eq? hook-name 'window-created)
-             (eq? append-method 'tail)
-             window
-             (memq window all-windows-raw))
-        (append (delq window all-windows-raw) (list window))
-        all-windows-raw)))
+(define (layout-laternating-create-container workspace index)
+  "Create a new container at the provided index. This will also handle
+fixing other containers if needed."
+  (let* ((containers (workspace-containers workspace))
+  		 (containers-count (length containers))
+  		 (output (workspace-output workspace))
+  		 (tail? (>= index containers-count))
+  		 (layout-cfg (workspace-layout workspace))
+		 (split-ratio (get-param layout-cfg 'split-ratio 0.5)))
+	(log-info "checking case in create container")
+	(log-info "containers=~a, tail?=~a, index=~a" containers tail? index)
+	(log-info "cond-0, (null? containers)=~a" (null? containers))
+	(log-info "cond-1, tail?=~a" tail?)
+	(log-info "cond-2, else" tail?)
+	(log-info "last container=~a" (last containers))
 
-(define (group-windows wins max-depth)
-  "Groups windows into sub-lists based on max-depth. Deeper windows are stacked."
-  (let ((num-wins (length wins))
-        (limit (if max-depth (min (length wins) max-depth) (length wins))))
-    (let loop ((i 0) (remaining-wins wins) (groups '()))
-      (cond
-       ((null? remaining-wins) (reverse groups))
-       ((= i (- limit 1))      (reverse (cons remaining-wins groups)))
-       (else                   (loop (+ i 1) 
-                                     (cdr remaining-wins) 
-                                     (cons (list (car remaining-wins)) groups)))))))
+	(cond
+	 ((null? containers)
+      (log-info "case 0: no containers are available yet"))
 
-(define (sync-containers-to-groups! workspace window-groups)
-  "Ensures the workspace has exactly the right number of containers, assigning window groups."
-  (let* ((current-containers (workspace-containers workspace))
-         (non-empty (filter (lambda (c) (not (null? (container-windows c)))) current-containers))
-         (empty (filter (lambda (c) (null? (container-windows c))) current-containers))
-         (sorted-containers (append non-empty empty))
-         (required-count (length window-groups))
-         (current-count (length sorted-containers))
-         (discarded (if (> current-count required-count)
-                        (drop sorted-containers required-count)
-                        '()))
-         (active (if (>= current-count required-count)
-                     (take sorted-containers required-count)
-                     (append sorted-containers
-                             (map (lambda (_) (make-container #:workspace workspace))
-                                  (iota (- required-count current-count)))))))
-    (for-each container-remove! discarded)
+  	 (tail?
+   	   ;; case 1: the container to be created at the tail
+  	   ;; a container should be created and last container size
+  	   ;; should be adjusted
+	  (let* ((container (last containers))
+			 (width (container-width container))
+			 (height (container-height container))
+			 (x (container-x container))
+			 (y (container-y container))
+			 (split (if (>= width height) 'vertical 'horizontal))
+			 ;; old container new size
+			 (prev-split-ratio (- 1 split-ratio))
+			 (prev-n-width (if (eq? split 'vertical) (* width prev-split-ratio) width))
+			 (prev-n-height (if (eq? split 'vertical) height (* height prev-split-ratio)))
+			 ;; new container position and size
+			 (n-width (if (eq? split 'vertical) (* width split-ratio) width))
+			 (n-height (if (eq? split 'vertical) height (* height split-ratio)))
+			 (n-x (if (eq? split 'vertical) (+ x prev-n-width) y))
+			 (n-y (if (eq? split 'vertical) x (+ y prev-n-height)))
+			 (new-container (make-container #:workspace workspace
+											 #:x n-x
+											 #:y n-y
+  											 #:width n-width
+  											 #:height n-height)))
+		 (log-info "case 1: the container to be created at the tail")
+		 ;; the old container will also have its size adjusted
+		 (container-size-set! container prev-n-width prev-n-height)
+  		 (container-add! new-container)
+		 )
+  	   )
 
-    ;; bind windows to their designated containers
-    (for-each (lambda (container group)
-                (%container-windows-set! container group)
-                (%container-window-current-set! container (car group))
-                (for-each (lambda (win) (%window-container-set! win container)) group))
-              active
-              window-groups)
-
-    ;; update the workspace state
-    (%workspace-containers-set! workspace active)
-    active))
-
-(define (apply-geometry! containers workspace layout-cfg)
-  "Calculates boundaries and applies X/Y/W/H to all active containers and their windows."
-  (let* ((output (workspace-output workspace))
-         (ox (if output (output-x output) 0))
-         (oy (if output (output-y output) 0))
-         (ow (if output (output-width output) 1920))
-         (oh (if output (output-height output) 1080))
-         (inner-gap (or (get-param layout-cfg 'inner-gap #f) 
-                        (manager-config-ref 'container-inner-gap)))
-         (outer-gap (or (get-param layout-cfg 'outer-gap #f) 
-                        (manager-config-ref 'container-outer-gap)))
-         (initial-dir (get-param layout-cfg 'initial-split-direction 'horizontal))
-         (split-ratio (get-param layout-cfg 'split-ratio 0.5))
-         (alternate-dir? (get-param layout-cfg 'alternate-direction? #t))
-         (x-start (+ ox inner-gap outer-gap))
-         (y-start (+ oy inner-gap outer-gap))
-         (w-start (max 1 (- ow (* 2 inner-gap) (* 2 outer-gap))))
-         (h-start (max 1 (- oh (* 2 inner-gap) (* 2 outer-gap)))))
-
-    (let loop ((conts containers)
-               (x x-start) (y y-start) (w w-start) (h h-start)
-               (is-horizontal? (eq? initial-dir 'horizontal)))
-      (unless (null? conts)
-        (let ((c (car conts))
-              (is-last? (null? (cdr conts))))
-
-          (if is-last?
-			  ;; base case: final container takes all remaining space
-              (begin
-                (%container-x-set! c x) (%container-y-set! c y)
-                (%container-width-set! c w) (%container-height-set! c h)
-                (let ((win (container-window-current c)))
-                  (when win
-					(window-show! win)
-                    (window-position-set! win x y)
-                    (window-dimensions-propose! win w h))
-                  (for-each window-hide! (delq win (container-windows c)))))
-
-              ;; recursive case: split space and continue
-              (let* ((next-dir (if alternate-dir? (not is-horizontal?) is-horizontal?))
-                     (split-w (if is-horizontal? (max 1 (inexact->exact (round (* (- w inner-gap) split-ratio)))) w))
-                     (split-h (if is-horizontal? h (max 1 (inexact->exact (round (* (- h inner-gap) split-ratio)))))))
-                
-                (%container-x-set! c x) (%container-y-set! c y)
-                (%container-width-set! c split-w) (%container-height-set! c split-h)
-                
-                (let ((win (container-window-current c)))
-                  (when win
-					(window-show! win)
-                    (window-position-set! win x y)
-                    (window-dimensions-propose! win split-w split-h))
-                  (for-each window-hide! (delq win (container-windows c))))
-
-                (if is-horizontal?
-                    (loop (cdr conts) (+ x split-w inner-gap) y (max 1 (- w split-w inner-gap)) h next-dir)
-                    (loop (cdr conts) x (+ y split-h inner-gap) w (max 1 (- h split-h inner-gap)) next-dir)))))))))
+  	  (else
+	   ;; case 2: the container to be created is at a given index
+	   ;; a container should be created by copying the given index
+	   ;; container position and size, then all the containers after
+	   ;; should each copy the position and size of the container after
+	   ;; the last two containers will have their size and position
+	   ;; altered the same way as in case 2
+  	   (let* ((tail? (>= index containers-count))
+  			  (prev-container (list-ref containers index))
+  			  (container
+  			   (make-container #:workspace workspace
+  							   #:width (container-width prev-container)
+  							   #:height (container-height prev-container))))
+		 (log-info "case 2: the container to be created is at a given index")
+  		 (container-add! container))))))
 
 (define (layout-laternating-update hook-name workspace container window)
   "Main orchestrator for the alternating layout."
-  (log-debug "layout-laternating-update ~a ~a ~a ~a" hook-name workspace container window)
+  (log-info "layout-laternating-update ~a ~a ~a ~a" hook-name workspace container window)
+  (log-info (manager-print-tree))
   (when (and hook-name workspace)
 	(let* ((layout-cfg (workspace-layout workspace))
            (layout-name (if (list? layout-cfg) (assq-ref layout-cfg 'layout) layout-cfg)))
 
       (when (eq? layout-name 'alternating)
-		(log-debug (manager-print-tree))
-		
 		(let* ((append-method (get-param layout-cfg 'append-method 'tail))
 		       (max-depth (get-param layout-cfg 'max-depth #f))
-		       (all-windows (gather-target-windows workspace hook-name window append-method)))
+			   (containers (workspace-containers workspace))
+			   (containers-count (length containers))
+			   (windows (workspace-windows workspace))
+			   (windows-count (length windows))
+			   (max-depth-reached? (and max-depth (< windows-count max-depth)))
+			   (first-window? (and (= 1 windows-count) (= 1 containers-count)))
+			   (focus-idx (list-index (lambda (x) (eq? x container)) containers))
+			   (append-tail? (eq? append-method 'tail))
+			   (target-idx (if (or append-tail?) containers-count focus-idx))
+			   )
 
-		  (if (null? all-windows)
-		      ;; fallback: ensure at least one empty container exists
-		      (let ((first-container (if (null? (workspace-containers workspace))
-		                                 (make-container #:workspace workspace)
-		                                 (car (workspace-containers workspace)))))
-		        (for-each container-remove! (cdr (workspace-containers workspace)))
-		        (%container-windows-set! first-container '())
-		        (%workspace-containers-set! workspace (list first-container)))
+		  (when (eq? hook-name 'window-created)
+			;; create a new tailing container if max-depth isn't reached yet
+			;; and the target window isn't the first one to be added
+			(unless (and max-depth-reached? first-window?)
+			  (log-info "creating new container at ~a" target-idx)
+			  (layout-laternating-create-container workspace target-idx))
 
-		      ;; standard flow
-		      (let* ((window-groups (group-windows all-windows max-depth))
-		             (active-containers (sync-containers-to-groups! workspace window-groups)))
+			;; if append method is tail then place the new window in last container
+			(when append-tail?
+			  (log-info "appending to tail")
+			  (let ((ncontainer (last (workspace-containers workspace))))
+				(log-info "window-move-to-container! ~a ~a" window ncontainer)				
+				(window-move-to-container! window ncontainer)))
 
-		        ;; calculate and apply geometry
-		        (apply-geometry! active-containers workspace layout-cfg))))
+			;; if append method is current, then place the new window in current container
+			;; also shift all windows inside each container after current to the next one
 
-		(log-debug "finished layout")
-		(log-debug (manager-print-tree))))
+			
+			;; (layout-laternating-on-window-create workspace container window append-method)
+			(log-info (manager-print-tree)))
+
+		  )))
 	#t))
 
 (gliver-hook-add! *manager-layout-changed-hook* layout-laternating-update)
+
