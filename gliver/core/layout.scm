@@ -6,6 +6,7 @@
 (define-module (gliver core layout)
   #:use-module (gliver core hooks)
   #:use-module (gliver core types)
+  #:use-module (gliver core logs)
   #:use-module (gliver contrib layout alternating)
   #:export (setup-layout-manager!))
 
@@ -18,6 +19,8 @@
                             (and window (window-container window))))
              (workspace (cond ((eq? type 'output)
                                (output-workspace-current (if (pair? args) (car args) (output-current))))
+							  ((eq? type 'workspace)
+                               (car args))
                               (container
                                (container-workspace container))
                               (else #f))))
@@ -30,7 +33,7 @@
   (for-each (lambda (hook)
               (gliver-hook-add! hook (make-handler 'window (gliver-hook-name hook))))
             (list *window-created-hook*
-                  *window-destroy-hook*
+                  *window-destroyed-hook*
                   *window-place-hook*
                   *window-float-hook*
 				  *window-focused-hook*
@@ -49,6 +52,10 @@
             (list *container-split-hook*
                   *container-destroy-hook*
                   *container-resize-hook*))
+
+  (for-each (lambda (hook)
+              (gliver-hook-add! hook (make-handler 'workspace (gliver-hook-name hook))))
+            (list *workspace-created-hook*))
 
   (for-each (lambda (hook)
               (gliver-hook-add! hook (make-handler 'output (gliver-hook-name hook))))

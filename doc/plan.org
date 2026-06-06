@@ -16,3 +16,5 @@ this will allow modules to add their metadata to types so they can persist and b
 no need for implementation now, but common functions should be used and expect animations to be introduced later. There should be no call changes to introduce animations.
 
 ** TODO make default layout manual
+
+** TODO check out dirty manager sequences and imperfect frames

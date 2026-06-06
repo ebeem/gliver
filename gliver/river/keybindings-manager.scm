@@ -157,8 +157,8 @@ Records the action for execution in the upcoming manage_start handler."
   (log-debug "Key stop-repeat"))
 
 (define (on-bindings-seat-ate data seat-proxy)
-  "Handle an unbound key press in prefix/submap mode — abort to normal."
-  (log-debug "Ate unbound key — will abort prefix mode")
+  "Handle an unbound key press in prefix/submap mode."
+  (log-debug "Ate unbound key, abort prefix mode")
   ;; queue a prefix-abort action for the next manage sequence
   (set! *pending-key-action* 'prefix-abort))
 

@@ -1,4 +1,4 @@
-;;; gliver/render.scm --- Surface rendering utilities
+;;; gliver/contrib/ui/render.scm --- Surface rendering utilities
 ;;;
 ;;; Copyright (C) 2026 Gliver Contributors
 ;;; SPDX-License-Identifier: GPL-3.0-or-later
@@ -7,7 +7,7 @@
 ;;; Uses wlr-layer-shell + wl_shm for real Wayland surface rendering
 ;;; with a built-in bitmap font for text.
 
-(define-module (gliver render)
+(define-module (gliver contrib ui render)
   #:use-module (ice-9 format)
   #:use-module (rnrs bytevectors)
   #:use-module (system foreign)

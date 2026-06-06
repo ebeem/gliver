@@ -1,4 +1,4 @@
-(define-module (gliver contrib systemd)
+(define-module (gliver contrib utils systemd)
   #:use-module (ice-9 popen)
   #:use-module (ice-9 rdelim)
   #:use-module (gliver core)

@@ -27,8 +27,6 @@ MODULES =   gliver/core/logs.scm \
 			gliver/core.scm \
 			gliver/commands.scm \
 			gliver/window-rules.scm \
-			gliver/render.scm \
-			gliver/message-bar.scm \
 			gliver/wayland/client.scm \
 			gliver/wayland/gen/wayland.scm \
 			gliver/wayland/gen/river-input-management-v1.scm \
@@ -42,11 +40,12 @@ MODULES =   gliver/core/logs.scm \
 			gliver/river/window-manager.scm \
 			gliver/river/wm-seat-manager.scm \
 			gliver/river/keybindings-manager.scm \
-			gliver/ipc.scm \
-			gliver/repl.scm \
-			gliver/contrib/gaps.scm \
-			gliver/contrib/systemd.scm \
-			gliver/contrib/which-key.scm \
+			gliver/contrib/debug/ipc.scm \
+			gliver/contrib/debug/repl.scm \
+			gliver/contrib/utils/systemd.scm \
+			gliver/contrib/ui/render.scm \
+			gliver/contrib/ui/message-bar.scm \
+			gliver/contrib/ui/which-key.scm \
 			gliver/contrib/keybindings/stumpwm.scm \
 			gliver/contrib/keybindings/sway.scm \
 			gliver/contrib/layout/alternating.scm

@@ -205,23 +205,23 @@ This integrates Wayland event dispatching with IPC and REPL polling."
             ;; prepare to read events
             (let ((prep (wl-display-prepare-read *wl-display*)))
               (if (not (zero? prep))
-                  ;; events already pending — dispatch them
+                  ;; events already pending, dispatch them
                   (let ((ret (wl-display-dispatch-pending *wl-display*)))
                     (when (< ret 0)
                       (log-error "Wayland dispatch error")
                       (set! *connected* #f)))
-                  ;; lock acquired — poll the fd before reading
+                  ;; lock acquired, poll the fd before reading
                   ;; use select with a 16ms timeout to avoid busy-waiting
                   (let ((ready (select (list wl-fd) '() '() 0 16000)))
                     (if (pair? (car ready))
-                        ;; data available — read and dispatch
+                        ;; data available, read and dispatch
                         (begin
                           (wl-display-read-events *wl-display*)
                           (let ((ret (wl-display-dispatch-pending *wl-display*)))
                             (when (< ret 0)
                               (log-error "Wayland dispatch error")
                               (set! *connected* #f))))
-                        ;; timeout — no events, cancel the read lock
+                        ;; timeout, no events, cancel the read lock
                         (wl-display-cancel-read *wl-display*)))))))
 
         (lambda (key . args)

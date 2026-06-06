@@ -199,7 +199,7 @@ The actual input is handled via handle-input-key callbacks."
   (set! *input-completions* completions)
   ;; display prompt
   (log-debug "~a" prompt)
-  ;; return #f — the actual result comes via callback
+  ;; return #f, the actual result comes via callback
   #f)
 
 (define (read-yes-or-no prompt)

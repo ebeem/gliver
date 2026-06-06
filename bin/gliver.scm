@@ -21,14 +21,13 @@
              (gliver core)
              (gliver river)
              (gliver commands)
-             (gliver window-rules)
-             (gliver message-bar)
-             (gliver ipc)
-             (gliver repl)
              (gliver river connector)
              (gliver river window-manager)
              (gliver river keybindings-manager)
-			 (gliver contrib keybindings stumpwm))
+			 (gliver contrib keybindings stumpwm)
+			 (gliver contrib debug ipc-server)
+             (gliver contrib debug repl-server)
+)
 
 (define *version* "0.0.3")
 
@@ -125,16 +124,14 @@
               (manager-config-ref 'border-color-focused)
               (manager-config-ref 'border-color-unfocused))
 
-    ;; step 14: install message bar callback
-    (message-callback-install!)
-
-    ;; step 15: run startup hook
     (log-info "Running startup hooks...")
     (gliver-hook-run! *startup-hook*)
 
+	;; NOTE: this should be calling the message module so it's visible
+	;; inside the window manager, it should probably be moved to a module
     ;; show startup message
     (when *startup-message*
-      (message "Welcome to Gliver ~a. Press C-t ? for help." *version*))
+      (log-info "Welcome to Gliver ~a. Press C-t ? for help." *version*))
 
     (log-info "Startup complete.")))
 

@@ -1,4 +1,4 @@
-;;; gliver/contrib/which-key.scm --- Display available keys in submaps
+;;; gliver/contrib/ui/which-key.scm --- Display available keys in submaps
 ;;;
 ;;; Copyright (C) 2026 Gliver Contributors
 ;;; SPDX-License-Identifier: GPL-3.0-or-later
@@ -8,19 +8,19 @@
 ;;; message bar.
 ;;;
 ;;; Usage:
-;;;   (use-modules (gliver contrib which-key))
+;;;   (use-modules (gliver contrib ui which-key))
 ;;;   (which-key-enable!)
 ;;;
 ;;; Customization:
 ;;;   (set! *which-key-separator* " | ")
 ;;;   (set! *which-key-show-docstrings* #f)
 
-(define-module (gliver contrib which-key)
+(define-module (gliver contrib ui which-key)
   #:use-module (ice-9 format)
   #:use-module (srfi srfi-1)
   #:use-module (gliver core)
   #:use-module (gliver commands)
-  #:use-module (gliver message-bar)
+  #:use-module (gliver contrib ui message-bar)
   #:declarative? #f
   #:export (which-key-enable!
             which-key-disable!
@@ -87,7 +87,7 @@ Returns the keymap or #f if not found."
   "Hook handler: show bindings when entering a non-normal mode."
   (cond
    ((eq? mode-name 'normal)
-    ;; Returned to normal mode — nothing to show
+    ;; returned to normal mode nothing to show
 	(message-bar-hide!)
     #f)
    (else

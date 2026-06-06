@@ -266,7 +266,7 @@
     (hash-set! cfg 'border-color-unfocused "#1e2030")
     (hash-set! cfg 'border-color-urgent    "#ed8796")
     (hash-set! cfg 'container-inner-gap    12)
-    (hash-set! cfg 'container-outer-gap    4)
+    (hash-set! cfg 'container-outer-gap    12)
     (hash-set! cfg 'running?               #f)
     (hash-set! cfg 'window-number-next     0)
     (hash-set! cfg 'container-id-next  0)
@@ -404,7 +404,10 @@ Other parameters (x, y, width, height, wl-proxy) can be provided as keyword argu
 (define* (make-container #:key (workspace #f) (x 0) (y 0) (width 0) (height 0))
   "Create a new flat container."
   (%make-container (container-id-next!) workspace '() #f #f
-                   x y width height))
+                   (inexact->exact (floor x))
+				   (inexact->exact (floor y))
+				   (inexact->exact (floor width))
+				   (inexact->exact (floor height))))
 
 ;;; window: similar to an emacs buffer and stumpwm window
 ;;; a single application (like a terminal, a browser, or an editor)

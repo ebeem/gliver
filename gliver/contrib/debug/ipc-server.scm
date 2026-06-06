@@ -1,4 +1,4 @@
-;;; gliver/ipc.scm --- IPC socket server for Gliver
+;;; gliver/contrib/debug/ipc-server.scm --- IPC socket server for Gliver
 ;;;
 ;;; Copyright (C) 2026 Gliver Contributors
 ;;; SPDX-License-Identifier: GPL-3.0-or-later
@@ -6,7 +6,7 @@
 ;;; Provides a UNIX domain socket server that accepts commands
 ;;; from gliver-msg and other clients.
 
-(define-module (gliver ipc)
+(define-module (gliver contrib debug ipc-server)
   #:use-module (ice-9 format)
   #:use-module (ice-9 rdelim)
   #:use-module (ice-9 match)

@@ -1,4 +1,4 @@
-;;; gliver/message-bar.scm --- Message bar for Gliver
+;;; gliver/contrib/ui/message-bar.scm --- Message bar for Gliver
 ;;;
 ;;; Copyright (C) 2026 Gliver Contributors
 ;;; SPDX-License-Identifier: GPL-3.0-or-later
@@ -6,10 +6,10 @@
 ;;; The message bar is a transient overlay for displaying messages,
 ;;; interactive prompts, and key sequence echoes.
 
-(define-module (gliver message-bar)
+(define-module (gliver contrib ui message-bar)
   #:use-module (ice-9 format)
   #:use-module (gliver core)
-  #:use-module (gliver render)
+  #:use-module (gliver contrib ui render)
   #:use-module (gliver commands)
   #:declarative? #f
   #:export (message-bar-show!

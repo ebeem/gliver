@@ -100,7 +100,7 @@ to be properly initialized."
 ;;; window requests
 (define (wm-window-close proxy-window)
   "Close a window, the window may take time to respond or
-completely ignore the request. listen for *window-destroy-hook*
+completely ignore the request. listen for *window-destroyed-hook*
 in case an action other than clearing state needs to be executed."
   (when proxy-window
     (log-debug "closing window ~a" proxy-window)
@@ -297,10 +297,10 @@ Must be called in a ~manage_sequence~."
 (define (on-window-closed data proxy-window)
   "Window was closed by the client. This will take care of
 Removing the window record and clearing up memory.
-Hook: *window-destroy-hook*"
+Hook: *window-destroyed-hook*"
   ;; just let the window manager handle it
   (log-debug "Window closed: ~a" proxy-window)
-  (gliver-hook-run! %window-destroy-hook data proxy-window))
+  (gliver-hook-run! %window-destroyed-hook data proxy-window))
 
 (define (on-window-dimensions-hint data proxy-window min-w min-h max-w max-h)
   "Window shared its preferred min/max dimensions excluding borders and decorations.

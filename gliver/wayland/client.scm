@@ -69,7 +69,7 @@
 
 (define %null-pointer (make-pointer 0))
 
-;;; helper to look up a function — returns a dummy if the lib is unavailable
+;;; helper to look up a function, returns a dummy if the lib is unavailable
 (define (wl-func name return-type arg-types)
   (if libwayland-client
       (pointer->procedure return-type
@@ -201,7 +201,7 @@ NAME is the global name (uint32).  VERSION is the desired version."
   (wl-func "wl_proxy_marshal_flags" '* (list '* uint32 '* uint32 uint32)))
 
 (define (wl-proxy-marshal-flags proxy opcode interface version flags . args)
-  ;; simplified — real implementation needs variadic ffi
+  ;; real implementation needs variadic ffi
   (%wl-proxy-marshal-flags proxy opcode interface version flags))
 
 ;;; interface construction
@@ -217,7 +217,7 @@ NAME is the global name (uint32).  VERSION is the desired version."
 
 (define (make-wl-interface name version)
   "Create a minimal wl_interface struct with NAME and VERSION.
-Methods and events are set to NULL/0 — sufficient for wl_registry_bind."
+Methods and events are set to NULL/0, sufficient for wl_registry_bind."
   (let* ((name-ptr (wl-gc-protect! (string->pointer name)))
          ;; 6 fields: name*, version (int), method_count (int),
          ;;           methods*, event_count (int), events*
@@ -301,11 +301,11 @@ Returns a pointer to the listener struct."
 (define (make-wl-args args)
   "Create a wl_argument bytevector from a list of tagged argument values.
 Each element is one of:
-  ('uint . value)    — uint32
-  ('int . value)     — int32
-  ('object . ptr)    — object reference (pointer)
-  ('string . str)    — C string pointer
-  ('new-id . 0)      — placeholder for new_id (filled by marshal)"
+  ('uint . value)    uint32
+  ('int . value)     int32
+  ('object . ptr)    object reference (pointer)
+  ('string . str)    C string pointer
+  ('new-id . 0)      placeholder for new_id (filled by marshal)"
   (let* ((n (length args))
          (arg-size (sizeof '*))  ;; sizeof(wl_argument) = pointer size
          (bv (wl-gc-protect! (make-bytevector (* n arg-size) 0))))

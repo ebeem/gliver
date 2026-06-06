@@ -103,11 +103,12 @@
 		 (container (or (window-container window)
 						(container-current)))
 		 (all-windows (append (manager-windows *manager*) (list window))))
-	;; add window to provided container (current focused if none is provided)
-	(%window-container-add! window container
-							#:focus *wm-behavior-focus-new-window*)
+	;; move window to the given container, delete the container reference
+	(window-apply-defaults! window)
 	;; windows are stored in the manager for quick lookups
 	(%manager-windows-set! *manager* all-windows)
+	(%window-container-set! window #f)
+	(window-move-to-container! window container #:focus #f)
 	(gliver-hook-run! *window-created-hook* window)))
 
 (define (window-apply-defaults! window)
@@ -120,10 +121,7 @@
 	(window-capabilities-inform! window *wm-behavior-default-capabilties*)	
 	(window-unmaximized-inform! window)
     (window-fullscreen-exit-inform! window)
-    (window-tiled-set! window *wm-behavior-default-edges*)
-	(window-dimensions-propose! window
-								(output-width output)
-								(output-height output))))
+    (window-tiled-set! window *wm-behavior-default-edges*)))
 
 (define (window-remove! window)
   "Remove a window from the display."
@@ -132,7 +130,7 @@
 	;; make sure the window is removed properly from container so
 	;; another window is focused
 	(%window-container-remove! window)
-    (gliver-hook-run! *window-destroy-hook* window)))
+    (gliver-hook-run! *window-destroyed-hook* window)))
 
 (define* (%window-container-remove! window #:key (focus #t))
   "Remove a window from the container. This function makes the window state
@@ -145,11 +143,10 @@ invalid as the window should always have a container."
       (%container-windows-set! container container-remaining)
 	  (gliver-hook-run! %window-container-removed-hook* window container)
 	  ;; if removed window is currently focused, focus next window in container
-      (when (and window-target
-				 (eq? (container-window-current container) window))
+      (when (eq? (container-window-current container) window)
 		;; if focus parameter is true, another window in the container will be focused
 		;; otherwise the container will just have it as current window without seat focusing it
-		(if focus
+		(if (and focus window-target)
 			(window-focus! window-target)
 			(%container-window-current-set! container window-target)))))
 
@@ -183,6 +180,12 @@ always better to call ~%window-container-remove!~ before calling this function."
 	  (%window-container-remove! window #:focus #f))
 	;; moves the window to the new container
 	(%window-container-add! window container #:focus focus)
+	(log-debug "set window=~a geometry to ~ax~a+~a+~a"
+			   window
+			   (container-width container)
+			   (container-height container)
+			   (container-x container)
+			   (container-y container))
 	(window-position-set! window
 						  (container-x container)
 						  (container-y container))
@@ -222,7 +225,7 @@ always better to call ~%window-container-remove!~ before calling this function."
 
 (define (window-close! window)
   "Close a WINDOW, the window may take time to respond or
-completely ignore the request. listen for *window-destroy-hook*
+completely ignore the request. listen for *window-destroyed-hook*
 in case an action other than clearing state needs to be executed."
   (when window
     (let ((proxy-window (window-wl-proxy window)))
@@ -237,22 +240,24 @@ window record will be updated accordingly to have a node reference."
   (when window
     (let ((proxy-window (window-wl-proxy window))
           (cached-node (window-wl-node-proxy window)))
-      (unless cached-node
-        (let ((proxy-node (wm-window-node-get proxy-window)))
-          (log-debug "Setting node of window: ~a to ~a" proxy-window proxy-node)
-          (%window-wl-node-proxy-set! window proxy-node)
-          proxy-node))
-      cached-node)))
+	  ;; return cached node if it's available
+      (if cached-node
+		  cached-node
+		  ;; otherwise get a new node proxy, store it and return it
+          (let ((proxy-node (wm-window-node-get proxy-window)))
+			(log-debug "Setting node of window: ~a to ~a" proxy-window proxy-node)
+			(%window-wl-node-proxy-set! window proxy-node)
+			proxy-node)))))
 
 (define* (window-dimensions-propose! window width height #:key (animate #t))
   "Propose dimensions (width and height) for a window.
 Must be called in a ~manage_sequence~."
   (when window
-    (let ((proxy-window (window-wl-proxy window)))
+    (let ((proxy-window (window-wl-proxy window))
+		  (int-w (inexact->exact (floor width)))
+		  (int-h (inexact->exact (floor height))))
 	  (with-manage-sequence
-	   (wm-window-dimensions-propose proxy-window
-									 (inexact->exact (floor width))
-									 (inexact->exact (floor height)))))))
+	   (wm-window-dimensions-propose proxy-window int-w int-h)))))
 
 (define (window-hide! window)
   "Request that the window be hidden.
@@ -479,9 +484,9 @@ Must be called in a ~render_sequence~."
   (let ((node (window-node-get! window))
 		(int-x (inexact->exact (floor x)))
 		(int-y (inexact->exact (floor y))))
+	(%window-x-set! window int-x)
+	(%window-y-set! window int-y)
 	(when node
-	  (%window-x-set! window int-x)
-	  (%window-y-set! window int-y)
       (with-render-sequence
        ((@ (gliver river wm-node-manager) wm-node-position-set!) node int-x int-y)))))
 
@@ -496,7 +501,7 @@ Must be called in a ~render_sequence~."
   "Handle a new window event from the compositor."
   (let ((window (window-find-by-proxy proxy-window)))
     (window-remove! window)))
-(gliver-hook-add! %window-destroy-hook on-window-closed)
+(gliver-hook-add! %window-destroyed-hook on-window-closed)
 
 (define (on-window-focused window)
   "Handle window focused event."

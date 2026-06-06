@@ -1,4 +1,4 @@
-;;; gliver/repl.scm --- REPL server for Gliver
+;;; gliver/contrib/debug/repl-server.scm --- REPL server for Gliver
 ;;;
 ;;; Copyright (C) 2026 Gliver Contributors
 ;;; SPDX-License-Identifier: GPL-3.0-or-later
@@ -6,7 +6,7 @@
 ;;; Provides a Guile REPL over a UNIX domain socket.
 ;;; Compatible with Geiser (Emacs) for interactive development.
 
-(define-module (gliver repl)
+(define-module (gliver contrib debug repl-server)
   #:use-module (ice-9 format)
   #:use-module (ice-9 rdelim)
   #:use-module (ice-9 textual-ports)
