@@ -17,7 +17,8 @@
   #:use-module (gliver core hooks)
   #:autoload (gliver core window) (window-focus!
 								   window-position-set!
-								   window-dimensions-propose!)
+								   window-dimensions-propose!
+								   window-move-to-container!)
   #:export (
 			container-next
 			container-prev
@@ -123,17 +124,28 @@
 
 	(gliver-hook-run! *container-created-hook* container)))
 
-(define (container-remove! container)
+(define (container-move-windows-to-container! source-container target-container)
+  "Moves all the windows under source-container to target-container"
+  (for-each (lambda (window)
+            (window-move-to-container! window target-container #:focus #f))
+          (container-windows source-container)))
+
+(define* (container-remove! container #:key (target-container #f))
   "Remove CONTAINER from its workspace."
   (let* ((workspace (container-workspace container))
-		 (container-target (or (container-next container #:recursive #f)
+		 (container-target (or target-container
+							   (container-next container #:recursive #f)
 							   (container-prev container #:recursive #f))))
     (when workspace
+	  (unless (null? (container-windows container))
+		(container-move-windows-to-container! container container-target))
+
       ;; remove container from workspace's container list
       (%workspace-containers-set! workspace
                                  (delete container (workspace-containers workspace)))
       ;; focus a new container if the current focused container will be removed
       (when (eq? (workspace-container-current workspace) container)
+		;; if we have any windows in the container, they should move to focused container
         (container-focus! container-target))
       (log-debug "Running *container-destroy-hook*")
       (gliver-hook-run! *container-destroy-hook* container workspace))))

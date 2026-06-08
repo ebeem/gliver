@@ -10,30 +10,40 @@
   #:use-module (gliver contrib layout alternating)
   #:export (setup-layout-manager!))
 
-(define (setup-layout-manager!)
-  (define (make-handler type hook-name)
-    (lambda args
-      (let* ((window (if (eq? type 'window) (car args) #f))
-             (container (if (eq? type 'container)
-                            (car args)
-                            (and window (window-container window))))
-             (workspace (cond ((eq? type 'output)
-                               (output-workspace-current (if (pair? args) (car args) (output-current))))
-							  ((eq? type 'workspace)
-                               (car args))
-                              (container
-                               (container-workspace container))
-                              (else #f))))
-        (gliver-hook-run! *manager-layout-changed-hook*
-                          hook-name
-                          workspace
-                          container
-                          window))))
+(define (make-window-handler hook-name)
+  (lambda args
+    (let* ((window (car args))
+           (container (if window (window-container window) #f))
+		   (workspace (if container (container-workspace container) #f)))
+	  (gliver-hook-run! *manager-layout-changed-hook*
+						hook-name workspace container window))))
 
+(define (make-container-handler hook-name)
+  (lambda args
+    (let* ((container (car args))
+		   (workspace (if container (container-workspace container) #f)))
+	  (gliver-hook-run! *manager-layout-changed-hook*
+						hook-name workspace container #f))))
+
+(define (make-workspace-handler hook-name)
+  (lambda args
+    (let* ((workspace (car args)))
+	  (gliver-hook-run! *manager-layout-changed-hook*
+						hook-name workspace container #f))))
+
+(define (make-output-handler hook-name)
+  (lambda args
+    (let* ((output (car args))
+		   (workspace (output-workspaces output)))
+	  (gliver-hook-run! *manager-layout-changed-hook*
+						hook-name workspace container #f))))
+
+(define (setup-layout-manager!)
+
+  ;; window handlers
   (for-each (lambda (hook)
-              (gliver-hook-add! hook (make-handler 'window (gliver-hook-name hook))))
+              (gliver-hook-add! hook (make-window-handler (gliver-hook-name hook))))
             (list *window-created-hook*
-                  *window-destroyed-hook*
                   *window-place-hook*
                   *window-float-hook*
 				  *window-focused-hook*
@@ -47,18 +57,31 @@
                   *window-maximized-hook*
                   *window-unmaximized-hook*))
 
+  ;; custom window handlers
+  ;; *window-destroyed-hook* handler
+  (gliver-hook-add! *window-destroyed-hook*
+					(lambda args
+					  (gliver-hook-run! *manager-layout-changed-hook*
+										(gliver-hook-name *window-destroyed-hook*)
+										(list-ref args 2)
+										(list-ref args 1)
+										(list-ref args 0))))
+
+  ;; containers handlers
   (for-each (lambda (hook)
-              (gliver-hook-add! hook (make-handler 'container (gliver-hook-name hook))))
+              (gliver-hook-add! hook (make-container-handler (gliver-hook-name hook))))
             (list *container-split-hook*
                   *container-destroy-hook*
                   *container-resize-hook*))
 
+  ;; workspaces handlers
   (for-each (lambda (hook)
-              (gliver-hook-add! hook (make-handler 'workspace (gliver-hook-name hook))))
+              (gliver-hook-add! hook (make-workspace-handler (gliver-hook-name hook))))
             (list *workspace-created-hook*))
 
+  ;; outputs handlers
   (for-each (lambda (hook)
-              (gliver-hook-add! hook (make-handler 'output (gliver-hook-name hook))))
+              (gliver-hook-add! hook (make-output-handler (gliver-hook-name hook))))
             (list *output-dimensions-changed-hook*)))
 
-(setup-layout-manager!)
+  (setup-layout-manager!)

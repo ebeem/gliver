@@ -252,7 +252,7 @@ If a function fails, the error is logged and the script is terminated."
 
 (define *window-created-hook*						(make-gliver-hook 'window-created 1))
 (define *window-container-moved-hook*				(make-gliver-hook 'window-container-removed 3))
-(define *window-destroyed-hook*						(make-gliver-hook 'window-destroyed 1))
+(define *window-destroyed-hook*						(make-gliver-hook 'window-destroyed 3))
 (define *window-focused-hook*						(make-gliver-hook 'window-focused 1))
 (define *window-unfocused-hook*						(make-gliver-hook 'window-unfocused 1))
 (define *window-place-hook*							(make-gliver-hook 'window-place 2))

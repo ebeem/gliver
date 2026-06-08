@@ -72,7 +72,7 @@
 
 (define* (window-next current #:key (recursive #t))
   "Return the next window after CURRENT in WORKSPACE's list."
-  (let* ((container (window-container current))
+  (and-let* ((container (window-container current))
 		 (windows (container-windows container))
          (idx (list-index (lambda (f) (eq? f current)) windows)))
     (cond
@@ -85,7 +85,7 @@
 
 (define* (window-prev current #:key (recursive #t))
   "Return the previous window before CURRENT in WORKSPACE's list."
-  (let* ((container (window-container current))
+  (and-let* ((container (window-container current))
 		 (windows (container-windows container))
          (idx (list-index (lambda (f) (eq? f current)) windows)))
     (cond
@@ -125,34 +125,41 @@
 
 (define (window-remove! window)
   "Remove a window from the display."
-  (let ((remaining-windows (delete window (manager-windows *manager*))))
+  (let* ((remaining-windows (delete window (manager-windows *manager*)))
+		 (container (window-container window))
+		 (workspace (container-workspace container)))
     (%manager-windows-set! *manager* remaining-windows)
 	;; make sure the window is removed properly from container so
 	;; another window is focused
 	(%window-container-remove! window)
-    (gliver-hook-run! *window-destroyed-hook* window)))
+    (gliver-hook-run! *window-destroyed-hook* window container workspace)))
 
 (define* (%window-container-remove! window #:key (focus #t))
   "Remove a window from the container. This function makes the window state
 invalid as the window should always have a container."
   (and-let* ((container (window-container window))
-			 (container-remaining (delete window (container-windows container)))
-			 (window-target (or (window-next window #:recursive #f)
-								(window-prev window #:recursive #f))))
-      (%window-container-set! window #f)
-      (%container-windows-set! container container-remaining)
-	  (gliver-hook-run! %window-container-removed-hook* window container)
-	  ;; if removed window is currently focused, focus next window in container
-      (when (eq? (container-window-current container) window)
-		;; if focus parameter is true, another window in the container will be focused
-		;; otherwise the container will just have it as current window without seat focusing it
+			 (windows (container-windows container))
+			 (windows-remaining (delete window windows)))
+    (%window-container-set! window #f)
+    (%container-windows-set! container windows-remaining)
+	(gliver-hook-run! %window-container-removed-hook* window container)
+	;; if removed window is currently focused, focus next window in container
+    (when (eq? (container-window-current container) window)
+	  ;; if focus parameter is true, another window in the container will be focused
+	  ;; otherwise the container will just have it as current window without seat focusing it
+	  (log-info "ya focusing window ~a" window)
+	  (let ((window-target (or (window-next window #:recursive #f)
+							   (window-prev window #:recursive #f))))
+		(log-info "focusing window ~a" window-target)
 		(if (and focus window-target)
 			(window-focus! window-target)
-			(%container-window-current-set! container window-target)))))
+			(%container-window-current-set! container window-target))))))
 
 (define* (%window-container-add! window container #:key (focus #t))
-  "Add a window to a container. The window should have no container. it's
-always better to call ~%window-container-remove!~ before calling this function."
+  "Add a window to a container. The window should have no container. if it
+does have a container ~%window-container-remove!~ will be called."
+  (when (window-container window)
+	(%window-container-remove! window))
   (let ((container-windows (append (container-windows container) (list window))))
 	(%window-container-set! window container)
 	(%container-windows-set! container container-windows)
@@ -178,6 +185,7 @@ always better to call ~%window-container-remove!~ before calling this function."
 	(log-debug "moving window ~a to container ~a" window container)
 	(when container-current
 	  (%window-container-remove! window #:focus #f))
+	(log-debug "done moving window")
 	;; moves the window to the new container
 	(%window-container-add! window container #:focus focus)
 	(log-debug "set window=~a geometry to ~ax~a+~a+~a"
