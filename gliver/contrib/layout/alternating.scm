@@ -233,7 +233,7 @@ layout rules."
 			   (containers-count (length containers))
 			   (windows (workspace-windows workspace))
 			   (windows-count (length windows))
-			   (max-depth-reached? (and max-depth (>= windows-count max-depth)))
+			   (max-depth-reached? (and max-depth (> windows-count max-depth)))
 			   (first-window? (and (= 1 windows-count) (= 1 containers-count)))
 			   (focus-idx (list-index (lambda (x) (eq? x container)) containers))
 			   (append-tail? (eq? append-method 'tail))
