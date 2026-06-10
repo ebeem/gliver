@@ -24,7 +24,7 @@
 ))
 
 (define* (layout-alternating-make-config #:key
-                                  (initial-split-direction 'vertical)
+                                  (initial-split-direction 'horizontal)
                                   (split-ratio 0.5)
                                   (max-depth 5)
                                   (alternate-direction? #t)
@@ -76,6 +76,7 @@ respects the alternating layout system."
 
 		 ;; get geometry of previous container or output for 1st container
 		 (prev-container (and (> index 0)
+							  (< (- index 1) containers-count)
 							  (list-ref containers (- index 1))))
 		 (prev-x (if prev-container
 					 (container-x prev-container)
@@ -94,7 +95,8 @@ respects the alternating layout system."
 		 (split-ratio (if tail? 1 (get-param layout-cfg 'split-ratio 0.5)))
 		 (initial-dir (get-param layout-cfg 'initial-split-direction 'vertical))
 		 (other-dir (if (eq? initial-dir 'vertical) 'horizontal 'vertical))
-		 (split (if (even? index) initial-dir other-dir)))
+		 (split (if (even? index) initial-dir other-dir))
+		 (prev-split (if (even? index) other-dir initial-dir)))
 
 	(log-info "total inner-gap=~a, outer-gap=~a" total-inner-gap total-outer-gap)
 	(cond
@@ -102,44 +104,69 @@ respects the alternating layout system."
 	 ((not container)
       (log-info "case-0: no container is available at the index ~a" index))
 
-	 ((and (= 0 index) tail?)
-	  ;; first container should just occupy the space of the output)
-	  (let* ((curr-width (- prev-width (* 2 total-outer-gap)))
-			 (curr-height (- prev-height (* 2 total-outer-gap)))
-			 (curr-x (+ prev-x total-outer-gap))
-			 (curr-y (+ prev-y total-outer-gap)))
-		(log-info "case-1: first container tail geometry to be returned ~ax~a@(~a+~a)" curr-width curr-height curr-x curr-y)
+	 ((= 0 index)
+	  (let* ((avail-width (- ow (* 2 total-outer-gap)))
+			 (avail-height (- oh (* 2 total-outer-gap)))
+			 (curr-width (if (eq? split 'horizontal)
+							 (- (* avail-width split-ratio) total-inner-gap)
+							 avail-width))
+			 (curr-height (if (eq? split 'vertical)
+							  (- (* avail-height split-ratio) total-inner-gap)
+							  avail-height))
+			 (curr-x total-outer-gap)
+			 (curr-y total-outer-gap))
+		(log-info "case-1: first container geometry to be returned ~ax~a@(~a+~a)" curr-width curr-height curr-x curr-y)
 		(container-size-set! container curr-width curr-height)
 		(container-position-set! container curr-x curr-y)))
 
 	 (tail?
-	  ;; tail windows just need occupy the remaining space
-	  (let* ((curr-width prev-width)
-			 (curr-height prev-height)
-			 (curr-x (if (eq? split 'vertical)
-						 prev-x
-						 (+ prev-x prev-width (* 2 total-inner-gap))))
-			 (curr-y (if (eq? split 'vertical)
-						 (+ prev-y prev-height (* 2 total-inner-gap))
-						 prev-y)))
+	  ;; tail container just need occupy the remaining space
+	  (let* ((curr-x (if (eq? prev-split 'vertical)
+						 (container-x prev-container)
+						 (+ (container-x prev-container)
+							(container-width prev-container)
+							(* 2 total-inner-gap))))
+			 (curr-y (if (eq? prev-split 'vertical)
+						 (+ (container-y prev-container)
+							(container-height prev-container)
+							(* 2 total-inner-gap))
+						 (container-y prev-container)))
+			 (curr-width (if (eq? prev-split 'vertical)
+							 (container-width prev-container)
+							 (- ow curr-x total-outer-gap)))
+			 (curr-height (if (eq? prev-split 'vertical)
+							  (- oh curr-y total-outer-gap)
+							  (container-height prev-container))))
 		(log-info "case-2: last container geometry to be returned ~ax~a@(~a+~a)" curr-width curr-height curr-x curr-y)
 		(container-size-set! container curr-width curr-height)
 		(container-position-set! container curr-x curr-y)))
 
-	 ;; case-3: the container has some containers after it
+	 ;; case-3: the container has some containers after and before it
   	 (else
-	  (let* ((curr-width (if (eq? split 'vertical)
-							 (- (* prev-width split-ratio) total-inner-gap)
-							 prev-width))
+	  (let* ((curr-x (if (eq? prev-split 'vertical)
+						 (container-x prev-container)
+						 (+ (container-x prev-container)
+							(container-width prev-container)
+							(* 2 total-inner-gap))))
+			 (curr-y (if (eq? prev-split 'vertical)
+						 (+ (container-y prev-container)
+							(container-height prev-container)
+							(* 2 total-inner-gap))
+						 (container-y prev-container)))
+
+			 (remaining-width (if (eq? prev-split 'vertical)
+								  (container-width prev-container)
+								  (- ow curr-x total-outer-gap)))
+			 (remaining-height (if (eq? prev-split 'vertical)
+								   (- oh curr-y total-outer-gap)
+								   (container-height prev-container)))
+
+			 (curr-width (if (eq? split 'horizontal)
+							 (- (* remaining-width split-ratio) total-inner-gap)
+							 remaining-width))
 			 (curr-height (if (eq? split 'vertical)
-							  prev-height
-							  (- (* prev-height split-ratio) total-inner-gap)))
-			 (curr-x (if (eq? split 'vertical)
-						 prev-x
-						 (+ prev-x prev-width (* 2 total-inner-gap))))
-			 (curr-y (if (eq? split 'vertical)
-						 (+ prev-y prev-height (* 2 total-inner-gap))
-						 prev-y)))
+							  (- (* remaining-height split-ratio) total-inner-gap)
+							  remaining-height)))
 		(log-info "case-3: middle container geometry to be returned ~ax~a@(~a+~a)" curr-width curr-height curr-x curr-y)
 		(container-size-set! container curr-width curr-height)
 		(container-position-set! container curr-x curr-y))))))
