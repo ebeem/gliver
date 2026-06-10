@@ -15,6 +15,9 @@ this will allow modules to add their metadata to types so they can persist and b
 ** TODO plan animations
 no need for implementation now, but common functions should be used and expect animations to be introduced later. There should be no call changes to introduce animations.
 
+** TODO maybe improve automatic layout
+the implementation used to check for specific events like window creation and apply only needed changes to the layout. It's much easier to just reload the whole layout on some specific events needed by the layout. Check performance difference and change the logic accordingly. If there is no huge impact in performance keep current approach because it's much easier to read and maintain.
+
 ** TODO make default layout manual
 
 ** TODO check out dirty manager sequences and imperfect frames
