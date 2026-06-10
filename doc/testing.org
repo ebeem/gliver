@@ -34,3 +34,7 @@ Some of the functions below can have automated tests, but due to reliance on ~Ri
 ** TODO seat-on-op-delta
 ** TODO seat-on-op-release
 ** DONE seat-on-pointer-position
+
+* bugs
+** TODO focusing window should focus container and workspace and output
+maybe have a global focused variables in manager, you should also ensure that focusing a container will focus its current window and its workspace and output, similarly for output and workspace.

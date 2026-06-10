@@ -108,10 +108,10 @@ respects the alternating layout system."
 	  (let* ((avail-width (- ow (* 2 total-outer-gap)))
 			 (avail-height (- oh (* 2 total-outer-gap)))
 			 (curr-width (if (eq? split 'horizontal)
-							 (- (* avail-width split-ratio) total-inner-gap)
+							 (* avail-width split-ratio)
 							 avail-width))
 			 (curr-height (if (eq? split 'vertical)
-							  (- (* avail-height split-ratio) total-inner-gap)
+							  (* avail-height split-ratio)
 							  avail-height))
 			 (curr-x total-outer-gap)
 			 (curr-y total-outer-gap))
@@ -170,16 +170,6 @@ respects the alternating layout system."
 		(log-info "case-3: middle container geometry to be returned ~ax~a@(~a+~a)" curr-width curr-height curr-x curr-y)
 		(container-size-set! container curr-width curr-height)
 		(container-position-set! container curr-x curr-y))))))
-
-(define (layout-alternating-add-container workspace)
-  "Creates a new empty container and returns it."
-  (let ((container (make-container #:workspace workspace
-  								   #:x 0
-  								   #:y 0
-  								   #:width 0
-  								   #:height 0)))
-	(container-add! container)
-	container))
 
 (define* (layout-alternating-reload workspace #:key (complete #f))
   "Reload function that ensures current workspace adheres to the
@@ -254,51 +244,7 @@ layout rules."
            (layout-name (if (list? layout-cfg) (assq-ref layout-cfg 'layout) layout-cfg)))
 
       (when (equal? layout-name 'alternating)
-		(let* ((append-method (get-param layout-cfg 'append-method 'tail))
-		       (max-depth (get-param layout-cfg 'max-depth #f))
-			   (containers (workspace-containers workspace))
-			   (containers-count (length containers))
-			   (windows (workspace-windows workspace))
-			   (windows-count (length windows))
-			   (max-depth-reached? (and max-depth (> windows-count max-depth)))
-			   (first-window? (and (= 1 windows-count) (= 1 containers-count)))
-			   (focus-idx (list-index (lambda (x) (eq? x container)) containers))
-			   (append-tail? (eq? append-method 'tail))
-			   (target-idx (if (or append-tail?) containers-count focus-idx)))
-
-		  (when (or (equal? hook-name 'workspace-created)
-					(equal? hook-name 'output-dimensions-changed))
-			(log-info "workspace created, reload layout ~a" workspace)
-			(layout-alternating-reload workspace #:complete #t))
-
-		  (when (equal? hook-name 'window-created)
-			;; create a new container if needed
-			(when (and (not max-depth-reached?)
-					   (> windows-count containers-count))
-			  (layout-alternating-add-container workspace)
-
-			  ;; update previous container before updating the new one
-			  (layout-alternating-update-container workspace (- containers-count 1))
-			  (layout-alternating-update-container workspace containers-count))
-
-			;; if append method is tail then place the new window in last container
-			(when append-tail?
-			  (log-info "appending to tail")
-			  (let ((ncontainer (last (workspace-containers workspace))))
-				(log-info "window-move-to-container! ~a ~a" window ncontainer)
-				(unless (eq? ncontainer (window-container window))
-				  (window-move-to-container! window ncontainer))))
-
-			;; TODO: if append method is current, then place the new window in current container
-			;; also shift all windows inside each container after current to the next one
-			)
-
-		  (when (equal? hook-name 'window-destroyed)
-			;; remove the window container
-			(log-info "window removed")
-			(layout-alternating-reload workspace))
-		  )))
-	#t))
+		(layout-alternating-reload workspace #:complete #t)))))
 
 (gliver-hook-add! *manager-layout-changed-hook* layout-alternating-update)
 
