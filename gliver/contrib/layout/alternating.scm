@@ -79,16 +79,16 @@ respects the alternating layout system."
 							  (list-ref containers (- index 1))))
 		 (prev-x (if prev-container
 					 (container-x prev-container)
-					 total-outer-gap))
+					 0))
 		 (prev-y (if prev-container
 					 (container-y prev-container)
-					 total-outer-gap))
+					 0))
 		 (prev-width (if prev-container
 						 (container-width prev-container)
-						 (- ow (* 2 prev-x))))
+						 ow))
 		 (prev-height (if prev-container
 						  (container-height prev-container)
-						  (- oh (* 2 prev-y))))
+						  oh))
 
 		 ;; get index direction split, vertical or horizontal split
 		 (split-ratio (if tail? 1 (get-param layout-cfg 'split-ratio 0.5)))
@@ -96,22 +96,19 @@ respects the alternating layout system."
 		 (other-dir (if (eq? initial-dir 'vertical) 'horizontal 'vertical))
 		 (split (if (even? index) initial-dir other-dir)))
 
+	(log-info "total inner-gap=~a, outer-gap=~a" total-inner-gap total-outer-gap)
 	(cond
 
 	 ((not container)
       (log-info "case-0: no container is available at the index ~a" index))
 
-	 ((= 0 index)
+	 ((and (= 0 index) tail?)
 	  ;; first container should just occupy the space of the output)
-	  (let* ((curr-width (if (eq? split 'vertical)
-							 (- (* prev-width split-ratio) total-inner-gap)
-							 prev-width))
-			 (curr-height (if (eq? split 'vertical)
-							  prev-height
-							  (- (* prev-height split-ratio) total-inner-gap)))
-			 (curr-x prev-x)
-			 (curr-y prev-y))
-		(log-info "case-1: first container geometry to be returned ~ax~a@(~a+~a)" curr-width curr-height curr-x curr-y)
+	  (let* ((curr-width (- prev-width (* 2 total-outer-gap)))
+			 (curr-height (- prev-height (* 2 total-outer-gap)))
+			 (curr-x (+ prev-x total-outer-gap))
+			 (curr-y (+ prev-y total-outer-gap)))
+		(log-info "case-1: first container tail geometry to be returned ~ax~a@(~a+~a)" curr-width curr-height curr-x curr-y)
 		(container-size-set! container curr-width curr-height)
 		(container-position-set! container curr-x curr-y)))
 
@@ -183,8 +180,8 @@ layout rules."
 		;; now that containers are added, we should recalculate the geometry
 		;; of all the new containers in addition to the container previous
 		;; last container as it will also have its size updated
-		(do ((i (max (- containers-count 1) 0) (1+ i)))  ;; start with previous last container if available
-			((>= i max-containers))        ;; stop when i is last container
+		(do ((i 0 (1+ i)))
+			((>= i max-containers))
 		  (log-info "updating geometry of container ~a" i)
 		  (layout-alternating-update-container workspace i))))
 

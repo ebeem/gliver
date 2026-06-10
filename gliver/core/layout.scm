@@ -34,9 +34,10 @@
 (define (make-output-handler hook-name)
   (lambda args
     (let* ((output (car args))
-		   (workspace (output-workspaces output)))
+		   (workspace (or (output-workspace-current output)
+						  (car (output-workspaces output)))))
 	  (gliver-hook-run! *manager-layout-changed-hook*
-						hook-name workspace container #f))))
+						hook-name workspace #f #f))))
 
 (define (setup-layout-manager!)
 
@@ -84,4 +85,4 @@
               (gliver-hook-add! hook (make-output-handler (gliver-hook-name hook))))
             (list *output-dimensions-changed-hook*)))
 
-  (setup-layout-manager!)
+(setup-layout-manager!)
