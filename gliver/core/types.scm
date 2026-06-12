@@ -7,6 +7,7 @@
   #:use-module (ice-9 format)
   #:use-module (ice-9 match)
   #:use-module (srfi srfi-1)
+  #:use-module (srfi srfi-2)
   #:use-module (srfi srfi-9)
   #:use-module (srfi srfi-9 gnu)
   #:use-module (gliver core keybindings)
@@ -538,8 +539,9 @@ Other parameters (x, y, width, height, wl-proxy) can be provided as keyword argu
 
 (define (workspace-current)
   "Return the current active workspace"
-  (and (output-current)
-       (output-workspace-current (output-current))))
+  (and-let* ((output (output-current))
+			 (workspace (output-workspace-current output)))
+	workspace))
 
 (define (container-find-by-number n workspace)
   "Find container with number N in WORKSPACE."
@@ -548,8 +550,9 @@ Other parameters (x, y, width, height, wl-proxy) can be provided as keyword argu
 
 (define (container-current)
   "Return the current focused container based on the active workspace."
-  (let ((g (workspace-current)))
-    (and g (workspace-container-current g))))
+  (and-let* ((workspace (workspace-current))
+			 (container (workspace-container-current workspace)))
+	container))
 
 (define (window-find-by-proxy proxy)
   "Look up the <window> record by comparing the raw memory address of the proxy."
@@ -570,8 +573,9 @@ Other parameters (x, y, width, height, wl-proxy) can be provided as keyword argu
 
 (define (window-current)
   "Return the currently focused window."
-  (let ((f (container-current)))
-    (and f (container-window-current f))))
+  (and-let* ((container (container-current))
+			 (window (container-window-current container)))
+	window))
 
 (define (window-workspace window)
   "Return the window workspace."

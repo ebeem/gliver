@@ -64,17 +64,23 @@
         (and (pair? remaining) (car remaining))))
     (gliver-hook-run! *output-removed-hook* output)))
 
+(define (output-focused? output)
+  "Returns true if the output is currently focused"
+  (eq? output (manager-output-current *manager*)))
+
 (define (output-focus! output)
   "Focus active workspace in the output"
   ;; focus the current manager, it's actually an error
   ;; not to have a current workspace
-  (let* ((workspace (or (output-workspace-current output)
-						(car (output-workspaces output))))
-		 (prev-output (manager-output-current *manager*)))
-	(%manager-output-previous-set! *manager* prev-output)
-	(%manager-output-current-set! *manager* output)
-	(when workspace
-	  (workspace-focus! workspace))))
+  (unless (output-focused? output)
+	(let* ((workspaces (output-workspaces output))
+		   (workspace (or (output-workspace-current output)
+						  (and (pair? workspaces) (car workspaces))))
+		   (prev-output (manager-output-current *manager*)))
+	  (%manager-output-previous-set! *manager* prev-output)
+	  (%manager-output-current-set! *manager* output)
+	  (when workspace
+		(workspace-focus! workspace)))))
 
 (define (output-next)
   (let* ((outputs (manager-outputs *manager*))

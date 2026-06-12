@@ -20,6 +20,7 @@
   ;; lazy loaded, core type functions shouldn't be imported here
   ;; maybe using hooks is a better idea
   #:autoload (gliver core seat) (seat-wm-window-focus)
+  #:autoload (gliver core container) (container-focus!)
   #:export (
 			window-next
 			window-prev
@@ -73,8 +74,8 @@
 (define* (window-next current #:key (recursive #t))
   "Return the next window after CURRENT in WORKSPACE's list."
   (and-let* ((container (window-container current))
-		 (windows (container-windows container))
-         (idx (list-index (lambda (f) (eq? f current)) windows)))
+			 (windows (container-windows container))
+			 (idx (list-index (lambda (f) (eq? f current)) windows)))
     (cond
      ((not idx)
       (and (pair? windows) (car windows)))
@@ -86,8 +87,8 @@
 (define* (window-prev current #:key (recursive #t))
   "Return the previous window before CURRENT in WORKSPACE's list."
   (and-let* ((container (window-container current))
-		 (windows (container-windows container))
-         (idx (list-index (lambda (f) (eq? f current)) windows)))
+			 (windows (container-windows container))
+			 (idx (list-index (lambda (f) (eq? f current)) windows)))
     (cond
      ((not idx)
       (and (pair? windows) (last windows)))
@@ -147,10 +148,9 @@ invalid as the window should always have a container."
     (when (eq? (container-window-current container) window)
 	  ;; if focus parameter is true, another window in the container will be focused
 	  ;; otherwise the container will just have it as current window without seat focusing it
-	  (log-info "ya focusing window ~a" window)
 	  (let ((window-target (or (window-next window #:recursive #f)
 							   (window-prev window #:recursive #f))))
-		(log-info "focusing window ~a" window-target)
+		(log-debug "current window deleted, focusing window ~a" window-target)
 		(if (and focus window-target)
 			(window-focus! window-target)
 			(%container-window-current-set! container window-target))))))
@@ -170,13 +170,19 @@ does have a container ~%window-container-remove!~ will be called."
 		(window-focus! window)
 		(%container-window-current-set! container window))))
 
-(define (window-focus! window)
+(define* (window-focus! window #:key (seat (seat-current)))
   "Focus a window from the display."
-  (let ((seat (seat-current)))
+  (let ((container (window-container window))
+		(window-current (window-current)))
 	(when seat
-	  (seat-wm-window-focus seat window)
-	  (%container-window-current-set! (window-container window) window)
-	  (gliver-hook-run! *window-focused-hook* window))))
+	  (seat-wm-window-focus seat window))
+	;; unfocus previous window
+	(when window-current
+	  (log-debug "window current is ~a" window-current)
+	  (gliver-hook-run! *window-unfocused-hook* window-current))
+	(%container-window-current-set! container window)
+	(container-focus! container)
+	(gliver-hook-run! *window-focused-hook* window)))
 
 (define* (window-move-to-container! window container #:key (focus #t))
   "Move a window to a container."
@@ -584,3 +590,9 @@ Must be called in a ~render_sequence~."
     (when window
 	  (%window-decoration-hint-set! window hint))))
 (gliver-hook-add! %window-decoration-hint-changed-hook on-window-decoration-hint)
+
+(define (on-seat-window-focused seat window)
+  (log-debug "window seat has focused ~a" window)
+  (when window
+	(window-focus! window #:seat #f)))
+(gliver-hook-add! *seat-window-focused-hook* on-seat-window-focused)

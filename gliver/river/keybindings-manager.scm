@@ -201,7 +201,7 @@ When PERSIST is #f, the mode returns to normal after execution."
   "Switch to a keybinding mode by enabling/disabling binding sets.
 MODE-NAME is a symbol: 'normal or 'prefix or a submap name.
 Must be called during a manage sequence."
-  (log-info "Switching to mode: ~a" mode-name)
+  (log-debug "Switching to mode: ~a" mode-name)
   (gliver-hook-run! *keymap-change-hook* mode-name)
   (set! *current-mode* mode-name)
   ;; enable bindings matching the target mode, disable others

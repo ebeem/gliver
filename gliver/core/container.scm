@@ -19,6 +19,7 @@
 								   window-position-set!
 								   window-dimensions-propose!
 								   window-move-to-container!)
+  #:autoload (gliver core workspace) (workspace-focus!)
   #:export (
 			container-next
 			container-prev
@@ -150,19 +151,24 @@
       (log-debug "Running *container-destroy-hook*")
       (gliver-hook-run! *container-destroy-hook* container workspace))))
 
+(define (container-focused? container)
+  "Returns true if the container is currently focused"
+  (eq? container (container-current)))
+
 (define (container-focus! container)
   "Focus a container by focusing its last focused window."
   ;; target window is current focused or first window
-  (log-debug "focusing container ~a" container)
-  (let* ((windows (container-windows container))
-		 (window (or (container-window-current container)
-					 (and (pair? windows) (car windows))))
-		 (workspace (container-workspace container))
-		 (prev-container (workspace-container-current workspace)))
-	(%workspace-container-previous-set! workspace prev-container)
-	(%workspace-container-current-set! workspace container)
-	(when window
-	  (window-focus! window))))
+  (unless (container-focused? container)
+	(let* ((windows (container-windows container))
+		   (window (or (container-window-current container)
+					   (and (pair? windows) (car windows))))
+		   (workspace (container-workspace container))
+		   (prev-container (workspace-container-current workspace)))
+	  (%workspace-container-previous-set! workspace prev-container)
+	  (%workspace-container-current-set! workspace container)
+	  (workspace-focus! workspace)
+	  (when window
+		(window-focus! window)))))
 
 (define* (container-size-set! container width height #:key (animate #t))
   "Resize the container to the provided width and height."

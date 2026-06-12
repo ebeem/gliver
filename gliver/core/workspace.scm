@@ -11,6 +11,7 @@
   #:use-module (ice-9 format)
   #:use-module (ice-9 match)
   #:use-module (srfi srfi-1)
+  #:use-module (srfi srfi-2)
   #:use-module (srfi srfi-9)
   #:use-module (srfi srfi-9 gnu)
   #:use-module (system foreign)
@@ -19,6 +20,7 @@
   #:use-module (gliver core hooks)
   #:use-module (gliver core types)
   #:autoload (gliver core container) (container-focus! container-add!)
+  #:autoload (gliver core output) (output-focus!)
   #:export (
 			workspace-add!
 			%workspace-remove-target
@@ -121,17 +123,25 @@ and then @var{s-workspace}'s container list is emptied."
         (%output-workspace-current-set! output (car (output-workspaces output))))
       (gliver-hook-run! *workspace-destroy-hook* workspace t-workspace))))
 
+(define (workspace-focused? workspace)
+  "Returns true if the workspace is currently focused"
+  (eq? workspace (workspace-current)))
+
 (define (workspace-focus! workspace)
   "Focus active container in the workspace"
   ;; focus the current container, it's actually an error
   ;; not to have a current container
-  (let* ((container (workspace-container-current workspace))
-		 (output (workspace-output workspace))
-		 (prev-workspace (output-workspace-current output)))
-	(%output-workspace-previous-set! output prev-workspace)
-	(%output-workspace-current-set! output workspace)
-	(when container
-	  (container-focus! container))))
+  (unless (workspace-focused? workspace)
+	(let* ((containers (workspace-containers workspace))
+		   (container (or (workspace-container-current workspace)
+						  (and (pair? containers) (car containers))))
+		   (output (workspace-output workspace))
+		   (prev-workspace (output-workspace-current output)))
+	  (%output-workspace-previous-set! output prev-workspace)
+	  (%output-workspace-current-set! output workspace)
+	  (output-focus! output)
+	  (when container
+		(container-focus! container)))))
 
 (define (workspace-next workspace)
   (let* ((output (workspace-output workspace))
