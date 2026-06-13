@@ -143,8 +143,11 @@
 Records the action for execution in the upcoming manage_start handler."
   (let ((spec (find-spec-for-proxy binding-proxy)))
     (when spec
-      (log-debug "Key pressed: action=~a mode=~a persist=~a"
-                 (gliver-binding-spec-action spec) (gliver-binding-spec-mode spec)
+      (log-debug "Key pressed: key=~a+~a action=~a mode=~a persist=~a"
+                 (gliver-binding-spec-modifiers spec)
+                 (gliver-binding-spec-keysym spec)
+                 (gliver-binding-spec-action spec)
+				 (gliver-binding-spec-mode spec)
                  (gliver-binding-spec-persist spec))
       (set! *pending-key-action*
             (cons (gliver-binding-spec-action spec)
@@ -197,31 +200,32 @@ When PERSIST is #f, the mode returns to normal after execution."
     (log-warn "Unknown binding action type: ~a" action))))
 
 ;;; mode / keybinding management
-(define (switch-to-mode! mode-name)
+(define* (switch-to-mode! mode-name #:key (force #f))
   "Switch to a keybinding mode by enabling/disabling binding sets.
 MODE-NAME is a symbol: 'normal or 'prefix or a submap name.
 Must be called during a manage sequence."
-  (log-debug "Switching to mode: ~a" mode-name)
-  (gliver-hook-run! *keymap-change-hook* mode-name)
-  (set! *current-mode* mode-name)
-  ;; enable bindings matching the target mode, disable others
-  (for-each
-   (lambda (pair)
-     (let ((spec (car pair))
-           (proxy (cdr pair)))
-       (let ((spec-mode (gliver-binding-spec-mode spec)))
-         (if (or (eq? spec-mode mode-name)
-                 ;; submap bindings are part of the prefix map, so when
-                 ;; in a submap, we want prefix bindings to be active.
-                 (and (not (eq? mode-name 'normal))
-                      (eq? spec-mode 'prefix)))
-             (river-xkb-binding-v1-enable proxy)
-             (river-xkb-binding-v1-disable proxy)))))
-   *active-bindings*)
-  ;; if entering a prefix or submap mode, eat unbound keys
-  (when (and (not (eq? mode-name 'normal))
-             (not (null-pointer? *xkb-bindings-seat*)))
-    (river-xkb-bindings-seat-v1-ensure-next-key-eaten *xkb-bindings-seat*)))
+  (unless (and (not force) (eq? mode-name *current-mode*))
+	(log-debug "Switching to mode: ~a" mode-name)
+	(gliver-hook-run! *keymap-change-hook* mode-name)
+	(set! *current-mode* mode-name)
+	;; enable bindings matching the target mode, disable others
+	(for-each
+	 (lambda (pair)
+       (let ((spec (car pair))
+			 (proxy (cdr pair)))
+		 (let ((spec-mode (gliver-binding-spec-mode spec)))
+           (if (or (eq? spec-mode mode-name)
+                   ;; submap bindings are part of the prefix map, so when
+                   ;; in a submap, we want prefix bindings to be active.
+                   (and (not (eq? mode-name 'normal))
+						(eq? spec-mode 'prefix)))
+               (river-xkb-binding-v1-enable proxy)
+               (river-xkb-binding-v1-disable proxy)))))
+	 *active-bindings*)
+	;; if entering a prefix or submap mode, eat unbound keys
+	(when (and (not (eq? mode-name 'normal))
+               (not (null-pointer? *xkb-bindings-seat*)))
+      (river-xkb-bindings-seat-v1-ensure-next-key-eaten *xkb-bindings-seat*))))
 
 (define (sync-all-keybindings!)
   "Synchronize all Gliver keybindings with River.
