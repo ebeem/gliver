@@ -40,8 +40,8 @@ MODULES =   gliver/core/logs.scm \
 			gliver/river/window-manager.scm \
 			gliver/river/wm-seat-manager.scm \
 			gliver/river/keybindings-manager.scm \
-			gliver/contrib/debug/ipc.scm \
-			gliver/contrib/debug/repl.scm \
+			gliver/contrib/debug/ipc-server.scm \
+			gliver/contrib/debug/repl-server.scm \
 			gliver/contrib/utils/systemd.scm \
 			gliver/contrib/ui/render.scm \
 			gliver/contrib/ui/message-bar.scm \
