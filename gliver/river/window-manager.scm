@@ -153,7 +153,7 @@ manage_start event is sent by the server."
 (define (wm-manager-render-finish proxy-manager)
   "Client has made all changes to render state
 server should atomically apply and display them."
-  (log-debug "Dirty manage sequence ~a" proxy-manager)
+  (log-debug "Finishing render sequence ~a" proxy-manager)
   (when proxy-manager
 	(river-window-manager-v1-render-finish proxy-manager)))
 
