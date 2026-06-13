@@ -51,7 +51,6 @@
 (define (layout-alternating-update-container workspace index)
   "Modify the target container at the provided index so that it
 respects the alternating layout system."
-  (log-debug "layout-alternating-update-container ~a ~a" index (workspace-containers workspace))
   (let* ((output (workspace-output workspace))
 		 (ow (output-width output))
 		 (oh (output-height output))
@@ -98,7 +97,6 @@ respects the alternating layout system."
 		 (split (if (even? index) initial-dir other-dir))
 		 (prev-split (if (even? index) other-dir initial-dir)))
 
-	(log-debug "total inner-gap=~a, outer-gap=~a" total-inner-gap total-outer-gap)
 	(cond
 
 	 ((not container)
@@ -115,7 +113,6 @@ respects the alternating layout system."
 							  avail-height))
 			 (curr-x total-outer-gap)
 			 (curr-y total-outer-gap))
-		(log-debug "case-1: first container geometry to be returned ~ax~a@(~a+~a)" curr-width curr-height curr-x curr-y)
 		(container-size-set! container curr-width curr-height)
 		(container-position-set! container curr-x curr-y)))
 
@@ -137,7 +134,6 @@ respects the alternating layout system."
 			 (curr-height (if (eq? prev-split 'vertical)
 							  (- oh curr-y total-outer-gap)
 							  (container-height prev-container))))
-		(log-debug "case-2: last container geometry to be returned ~ax~a@(~a+~a)" curr-width curr-height curr-x curr-y)
 		(container-size-set! container curr-width curr-height)
 		(container-position-set! container curr-x curr-y)))
 
@@ -167,14 +163,13 @@ respects the alternating layout system."
 			 (curr-height (if (eq? split 'vertical)
 							  (- (* remaining-height split-ratio) total-inner-gap)
 							  remaining-height)))
-		(log-debug "case-3: middle container geometry to be returned ~ax~a@(~a+~a)" curr-width curr-height curr-x curr-y)
 		(container-size-set! container curr-width curr-height)
 		(container-position-set! container curr-x curr-y))))))
 
 (define* (layout-alternating-reload workspace #:key (complete #f))
   "Reload function that ensures current workspace adheres to the
 layout rules."
-  (log-debug "layout-alternating-reload")
+  (log-debug "layout-alternating-reload on workspace ~a" workspace)
   (let* ((layout-cfg (workspace-layout workspace))
 		 (max-depth (get-param layout-cfg 'max-depth 99))
 		 (windows (workspace-windows workspace))
@@ -186,12 +181,10 @@ layout rules."
 	(let* ((containers (workspace-containers workspace))
 		   (containers-count (length containers))
 		   (pre-fix-container (- containers-count 1)))
-	  (log-debug "check-1: creating missing containers ~a ~a" containers-count max-containers)
 	  ;; we will also update geometry if the complete argument is passed
 	  (when (or complete (< containers-count max-containers))
 		(do ((i containers-count (1+ i)))  ;; start with container i=containers-count
 			((>= i max-containers))        ;; stop when i is last container
-		  (log-debug "creating container ~a" i)
 		  (layout-alternating-add-container workspace))
 
 		;; now that containers are added, we should recalculate the geometry
@@ -199,27 +192,22 @@ layout rules."
 		;; last container as it will also have its size updated
 		(do ((i 0 (1+ i)))
 			((>= i max-containers))
-		  (log-debug "updating geometry of container ~a" i)
 		  (layout-alternating-update-container workspace i))))
 
 	;; since containers are altered, we have to get them again
 	(let* ((containers (workspace-containers workspace))
 		   (containers-count (length containers)))
-	  (log-debug "check-2: reorganize windows ~a into containers ~a" windows-count containers-count)
 	  ;; reorganize windows by moving each window to its matching container
 	  (do ((i 0 (1+ i)))            ;; start with window i=0
 		  ((>= i windows-count))    ;; stop when i is last window
 		(let* ((window (list-ref windows i))
 			   (current-container (window-container window))
 			   (target-container (list-ref containers (min i (- containers-count 1)))))
-		  (log-debug "moving window ~a from container ~a to container ~a"
-					window current-container current-container)
 		  (window-move-to-container! window target-container)))
 
 	  ;; remove any extra empty containers
 	  ;; we shouldn't need to apply any focus logic as all deleted containers
 	  ;; should be tail ones that have no windows at this point
-	  (log-debug "check-3: removing empty containers ~a" containers-count)
 	  (do ((i 0 (1+ i)))                 ;; start with container i=0
 		  ((>= i containers-count))      ;; stop when i is last container
 		(let ((container (list-ref containers i)))
@@ -228,13 +216,10 @@ layout rules."
 		  ;; one empty container must remain available
 		  (when (and (null? (container-windows container))
 					 (> (length (workspace-containers workspace)) 1))
-			(log-debug "removing extra containers, current are ~a containers, ~a windows" containers-count windows-count)
 			(container-remove! container)))))
 
 	  ;; update last container's geometry
-	  (layout-alternating-update-container workspace (- (length (workspace-containers workspace)) 1))
-
-	(log-debug "done")))
+	  (layout-alternating-update-container workspace (- (length (workspace-containers workspace)) 1))))
 
 (define (layout-alternating-add-container workspace)
   "Creates a new empty container and returns it."
@@ -253,7 +238,6 @@ layout rules."
 
 (define (layout-alternating-update hook workspace container window)
   "Main orchestrator for the alternating layout."
-  (log-debug "layout-alternating-update ~a ~a ~a ~a" hook workspace container window)
   (when (and hook workspace)
 	(let* ((layout-cfg (workspace-layout workspace))
            (layout-name (if (list? layout-cfg) (assq-ref layout-cfg 'layout) layout-cfg)))
