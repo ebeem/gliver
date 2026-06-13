@@ -27,7 +27,8 @@
 
 (define (make-workspace-handler hook-name)
   (lambda args
-    (let* ((workspace (car args)))
+    (let* ((workspace (car args))
+		   (container (workspace-container-current workspace)))
 	  (gliver-hook-run! *manager-layout-changed-hook*
 						hook-name workspace container #f))))
 
