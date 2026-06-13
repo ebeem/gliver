@@ -57,17 +57,6 @@ build/%.go: %.scm
 	@mkdir -p $(dir $@)
 	@guild compile -L . -o $@ $<
 
-TESTS = tests/test-hooks.scm \
-		tests/test-keybindings.scm \
-		tests/test-core.scm \
-		tests/test-config.scm \
-		tests/test-ipc.scm \
-		tests/test-render.scm \
-		tests/test-message-bar.scm \
-		tests/test-repl.scm \
-		tests/test-window-rules.scm \
-		tests/contrib/test-gaps.scm 
-
 .PHONY: all compile test install uninstall clean gen check lint
 
 all: compile
