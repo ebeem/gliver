@@ -176,7 +176,8 @@ If multiple functions share the same order, they execute in the order they were 
             (gliver-hook-functions hook))))
 
 (define (%gliver-hook-run hook strict? args)
-  (log-debug "Running hook ~a ~a" (gliver-hook-name hook) args)
+  (when *log-hooks*
+	(log-debug "Running hook ~a ~a" (gliver-hook-name hook) args))
   (for-each
    (lambda (pair)
      (let ((fn (cdr pair)))

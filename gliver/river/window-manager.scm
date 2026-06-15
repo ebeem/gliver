@@ -139,7 +139,8 @@ will be automatically managed and called when needed."
 (define (wm-manager-manage-finish proxy-manager)
   "Client has made all changes to window management
 state it wishes to include in the current manage sequence."
-  (log-debug "Finishing manage sequence ~a" proxy-manager)
+  (when *log-sequences*
+	(log-debug "Finishing manage sequence ~a" proxy-manager))
   (when proxy-manager
 	(river-window-manager-v1-manage-finish proxy-manager)))
 
@@ -153,7 +154,8 @@ manage_start event is sent by the server."
 (define (wm-manager-render-finish proxy-manager)
   "Client has made all changes to render state
 server should atomically apply and display them."
-  (log-debug "Finishing render sequence ~a" proxy-manager)
+  (when *log-sequences*
+	(log-debug "Finishing render sequence ~a" proxy-manager))
   (when proxy-manager
 	(river-window-manager-v1-render-finish proxy-manager)))
 
@@ -218,7 +220,8 @@ Creates an output and attaches the output event listener."
   "Handle manage start: execute pending actions and finish the sequence.
 All window management state changes (keybinding enable/disable, focus
 changes, etc.) must happen between manage_start and manage_finish."
-  (log-debug "Start manage sequence")
+  (when *log-sequences*
+	(log-debug "Start manage sequence"))
   (set! *in-manage-sequence* #t)
 
   (catch #t
@@ -235,7 +238,8 @@ changes, etc.) must happen between manage_start and manage_finish."
       (log-error "Error in manage sequence: ~a ~a" key args)))
 
   ;; always finish the manage sequence
-  (log-debug "Finish manage sequence")
+  (when *log-sequences*
+	(log-debug "Finish manage sequence"))
   (wm-manager-manage-finish proxy-manager)
   (set! *in-manage-sequence* #f))
 
@@ -243,7 +247,8 @@ changes, etc.) must happen between manage_start and manage_finish."
   "Handle render start: position, show, and style all windows, then finish.
 The server sends window dimension events before this, so nodes can be
 positioned accurately."
-  (log-debug "Start render sequence")
+  (when *log-sequences*
+	(log-debug "Start render sequence"))
   (set! *in-render-sequence* #t)
 
   (catch #t
@@ -261,7 +266,8 @@ positioned accurately."
 
   ;; always finish the render sequence
   (wm-manager-render-finish proxy-manager)
-  (log-debug "Finish render sequence")
+  (when *log-sequences*
+	(log-debug "Finish render sequence"))
   (set! *in-render-sequence* #f))
 
 (define-syntax with-manage-sequence

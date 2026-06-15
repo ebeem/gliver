@@ -17,8 +17,12 @@
   #:use-module (srfi srfi-19)
   #:export (
 			*log-level*
+			*log-hooks*
+			*log-sequences*
 			*log-port*
 			*log-file-path*
+			*thread-padding*
+			*logger-padding*
 			*log-levels*
 			log-level-value
 			log-level-set!
@@ -31,6 +35,8 @@
 ))
 
 (define *log-level* (make-parameter 'info))
+(define *log-hooks* #f)
+(define *log-sequences* #f)
 (define *log-port* (make-parameter (current-error-port)))
 (define *log-file-path* (make-parameter #f))
 (define *thread-padding* 6)
