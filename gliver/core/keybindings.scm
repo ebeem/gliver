@@ -12,6 +12,7 @@
   #:use-module (srfi srfi-69)
   #:use-module (system foreign)
   #:use-module (gliver core logs)
+  #:use-module (rnrs bytevectors)
   #:export (
 			*modifier-map*
 			*modifier-bitmask-map*
@@ -57,6 +58,7 @@
 			gliver-binding-spec-keysym
 			gliver-binding-spec?
 			make-gliver-binding-spec
+			gliver-binding-spec->string
 			gliver-binding-spec-generate
 ))
 
@@ -149,6 +151,18 @@ Returns a pair: (modifier-bitmask . xkb-keysym-uint)."
           0)
         ;; otherwise, return the actual hex value
         val)))
+
+(define xkb-keysym-get-name
+  (pointer->procedure int
+                      (dynamic-func "xkb_keysym_get_name" xkb-lib-common)
+                      (list uint32 '* size_t)))
+
+(define (xkb-value->keysym-name val)
+  "Convert a uint value to its keysym string name via libxkbcommon."
+  (let ((ptr (bytevector->pointer (make-bytevector 64))))
+    (if (> (xkb-keysym-get-name val ptr 64) 0)
+        (pointer->string ptr)
+        #f)))
 
 ;; kbd doesn't have a prefix (gliver-kbd) because I want to maintain
 ;; this keyword since it's very common for emacs and stumpwm users
@@ -267,6 +281,28 @@ instead of returning to *top-map*."
   (action    gliver-binding-spec-action)      ;; procedure, symbol, or string
   (mode      gliver-binding-spec-mode)        ;; symbol: 'normal, 'prefix, or submap name
   (persist   gliver-binding-spec-persist))    ;; bool: stay in current keymap after press
+
+(define (gliver-binding-spec->modifiers-list spec)
+  "Converts an integer bitmask into a list of modifier symbols."
+  (filter-map (lambda (pair)
+                (let ((mod-name (car pair))
+                      (mod-bit  (cdr pair)))
+                  (and (not (zero?
+							 (logand (gliver-binding-spec-modifiers spec) mod-bit)))
+                       mod-name)))
+              *modifier-bitmask-map*))
+
+(define (gliver-binding-spec->string spec)
+  "Convert a gliver-binding-spec to its display string, e.g., \"C-t\"."
+  (let* ((mods (map (lambda (m)
+					  (let ((pair (find (lambda (p) (eq? (cdr p) m))
+                                        *modifier-map*)))
+                        (if pair
+                            (car pair)
+                            (symbol->string m))))
+                    (gliver-binding-spec->modifiers-list spec)))
+         (keysym (xkb-value->keysym-name (gliver-binding-spec-keysym spec))))
+    (string-join (append mods (list keysym)) "-")))
 
 (define (gliver-binding-spec-generate top-map root-map prefix-key mode-name)
   "Generate a list of <gliver-binding-spec> records for XKB key bindings.

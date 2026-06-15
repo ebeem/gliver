@@ -143,9 +143,8 @@
 Records the action for execution in the upcoming manage_start handler."
   (let ((spec (find-spec-for-proxy binding-proxy)))
     (when spec
-      (log-debug "Key pressed: key=~a+~a action=~a mode=~a persist=~a"
-                 (gliver-binding-spec-modifiers spec)
-                 (gliver-binding-spec-keysym spec)
+      (log-debug "Key pressed: key=~a action=~a mode=~a persist=~a"
+                 (gliver-binding-spec->string spec)
                  (gliver-binding-spec-action spec)
 				 (gliver-binding-spec-mode spec)
                  (gliver-binding-spec-persist spec))
