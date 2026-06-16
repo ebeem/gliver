@@ -1,0 +1,23 @@
+* avoid defining ~commands/keys~ as anonymous functions.
+
+DON'T
+#+begin_src scheme
+  (define-key *top-map* "s-h" (lambda () (cmd-container-focus-direction 'left)))
+#+end_src
+
+DO
+#+begin_src scheme
+  (define (cmd-container-focus-left)
+    "Focus the container in the left direction."
+    (cmd-container-focus-direction 'left))
+
+  (define-key *top-map* "s-h" cmd-container-focus-left)
+#+end_src
+
+Reason: the ability to have proper procedure name and description
+Logging will also reflect this
+
+#+begin_src
+Key pressed: key=s-h action=#<anonymous procedure> mode=normal persist=#f
+Key pressed: key=s-h action=cmd-container-focus-left mode=normal persist=#f
+#+end_src

@@ -10,6 +10,7 @@
   #:use-module (ice-9 popen)
   #:use-module (ice-9 textual-ports)
   #:use-module (srfi srfi-1)
+  #:use-module (srfi srfi-2)
   #:use-module (srfi srfi-9)
   #:use-module (srfi srfi-69)
   #:use-module (gliver river connector)
@@ -52,12 +53,19 @@
 			cmd-window-mark
 			cmd-window-workspace-move
 			cmd-window-container-move-direction
-			cmd-container-focus-direction
+			cmd-window-container-move-left
+			cmd-window-container-move-right
+			cmd-window-container-move-up
+			cmd-window-container-move-down
 			cmd-window-pull-by-number
 			cmd-window-properties-show
+			cmd-container-focus-direction
+			cmd-container-focus-left
+			cmd-container-focus-right
+			cmd-container-focus-up
+			cmd-container-focus-down
 			cmd-workspace-create
 			cmd-workspace-destroy
-			cmd-workspace-focus
 			cmd-workspace-focus-next
 			cmd-workspace-focus-prev
 			cmd-workspace-focus-last
@@ -341,6 +349,22 @@ The actual input is handled via handle-input-key callbacks."
           (log-debug "Moved to container ~a" (container-id target)))
         (log-debug "Cannot move."))))
 
+(define (cmd-window-container-move-left)
+  "Focus the container in the left direction."
+  (cmd-window-container-move-direction 'left))
+
+(define (cmd-window-container-move-right)
+  "Focus the container in the left direction."
+  (cmd-window-container-move-direction 'right))
+
+(define (cmd-window-container-move-up)
+  "Focus the container in the left direction."
+  (cmd-window-container-move-direction 'up))
+
+(define (cmd-window-container-move-down)
+  "Focus the container in the left direction."
+  (cmd-window-container-move-direction 'down))
+
 (define (cmd-window-pull-by-number n)
   "Pull window N into the current container."
   (let ((win (window-find-by-id n))
@@ -411,9 +435,9 @@ The actual input is handled via handle-input-key callbacks."
 
 (define (cmd-container-focus-direction dir)
   "Focus the container in direction DIR."
-  (let* ((workspace (workspace-current))
-         (container (container-current))
-         (target (and workspace container (container-in-direction dir container workspace))))
+  (and-let* ((workspace (workspace-current))
+			 (container (container-current))
+			 (target (container-in-direction dir container workspace)))
     (if target
         (begin
           ;(workspace-container-current-set! workspace target)
@@ -422,6 +446,22 @@ The actual input is handled via handle-input-key callbacks."
             (when (and win seat)
               (seat-wm-window-focus seat win))))
         (log-debug "Couldn't find focus target"))))
+
+(define (cmd-container-focus-left)
+  "Focus the container in the left direction."
+  (cmd-container-focus-direction 'left))
+
+(define (cmd-container-focus-right)
+  "Focus the container in the left direction."
+  (cmd-container-focus-direction 'right))
+
+(define (cmd-container-focus-up)
+  "Focus the container in the left direction."
+  (cmd-container-focus-direction 'up))
+
+(define (cmd-container-focus-down)
+  "Focus the container in the left direction."
+  (cmd-container-focus-direction 'down))
 
 ;; (define (clamp val lo hi)
 ;;   (max lo (min hi val)))
@@ -668,6 +708,16 @@ The actual input is handled via handle-input-key callbacks."
   ;; (command-register! 'container-focus-prev cmd-container-focus-prev "Focus previous container.")
   ;; (command-register! 'container-balance cmd-container-balance "Balance all containers.")
   (command-register! 'container-focus-direction cmd-container-focus-direction "Focus container in direction.")
+  (command-register! 'container-focus-left cmd-container-focus-left "Focus container in left.")
+  (command-register! 'container-focus-up cmd-container-focus-up "Focus container in up.")
+  (command-register! 'container-focus-right cmd-container-focus-right "Focus container in right.")
+  (command-register! 'container-focus-down cmd-container-focus-down "Focus container in down.")
+
+  (command-register! 'window-container-move-direction cmd-window-container-move-direction "Window container move in direction.")
+  (command-register! 'window-container-move-left cmd-window-container-move-left "Window container move left.")
+  (command-register! 'window-container-move-up cmd-window-container-move-up "Window container move up.")
+  (command-register! 'window-container-move-right cmd-window-container-move-right "Window container move right.")
+  (command-register! 'window-container-move-down cmd-window-container-move-down "Window container move down.")
 
   ;; workspace
   (command-register! 'workspace-create cmd-workspace-create "Create a new workspace.")

@@ -33,29 +33,29 @@
   ;; basics
   (define-key *top-map* "s-Return" 'terminal-spawn)
   (define-key *top-map* "s-S-q" 'window-kill-window)
-  (define-key *top-map* "s-d" 'cmd-dmenu-run)
+  (define-key *top-map* "s-d" 'dmenu-run)
   (define-key *top-map* "s-S-c" 'config-reload)
   (define-key *top-map* "s-S-e" 'quit)
 
   ;; move focus to direction
-  (define-key *top-map* "s-h" (lambda () (cmd-container-focus-direction 'left)))
-  (define-key *top-map* "s-j" (lambda () (cmd-container-focus-direction 'down)))
-  (define-key *top-map* "s-k" (lambda () (cmd-container-focus-direction 'up)))
-  (define-key *top-map* "s-l" (lambda () (cmd-container-focus-direction 'right)))
-  (define-key *top-map* "s-Left" (lambda () (cmd-container-focus-direction 'left)))
-  (define-key *top-map* "s-Down" (lambda () (cmd-container-focus-direction 'down)))
-  (define-key *top-map* "s-Up" (lambda () (cmd-container-focus-direction 'up)))
-  (define-key *top-map* "s-Right" (lambda () (cmd-container-focus-direction 'right)))
+  (define-key *top-map* "s-h" 'container-focus-left)
+  (define-key *top-map* "s-j" 'container-focus-down)
+  (define-key *top-map* "s-k" 'container-focus-up) 
+  (define-key *top-map* "s-l" 'container-focus-right)
+  (define-key *top-map* "s-Left" 'container-focus-left)
+  (define-key *top-map* "s-Down" 'container-focus-down)
+  (define-key *top-map* "s-Up" 'container-focus-up)
+  (define-key *top-map* "s-Right" 'container-focus-right)
 
   ;; move the focused window to direction
-  (define-key *top-map* "s-S-Left" (lambda () (cmd-window-container-move-direction 'left)))
-  (define-key *top-map* "s-S-Down" (lambda () (cmd-window-container-move-direction 'down)))
-  (define-key *top-map* "s-S-Up" (lambda () (cmd-window-container-move-direction 'up)))
-  (define-key *top-map* "s-S-Right" (lambda () (cmd-window-container-move-direction 'right)))
-  (define-key *top-map* "s-S-h" (lambda () (cmd-window-container-move-direction 'left)))
-  (define-key *top-map* "s-S-j" (lambda () (cmd-window-container-move-direction 'down)))
-  (define-key *top-map* "s-S-k" (lambda () (cmd-window-container-move-direction 'up)))
-  (define-key *top-map* "s-S-l" (lambda () (cmd-window-container-move-direction 'right)))
+  (define-key *top-map* "s-S-Left" 'window-container-move-left)
+  (define-key *top-map* "s-S-Down" 'window-container-move-down)
+  (define-key *top-map* "s-S-Up" 'window-container-move-up)
+  (define-key *top-map* "s-S-Right" 'window-container-move-right)
+  (define-key *top-map* "s-S-h" 'window-container-move-left)
+  (define-key *top-map* "s-S-j" 'window-container-move-down)
+  (define-key *top-map* "s-S-k" 'window-container-move-up)
+  (define-key *top-map* "s-S-l" 'window-container-move-right)
 
   ;; focus workspace and move focused window to workspace
   (for-each
