@@ -37,14 +37,14 @@ to be properly initialized."
          wm-on-output-wl-output
          wm-on-output-position
          wm-on-output-dimensions)))
-(gliver-hook-add! *gliver-listeners-attach-hook* gliver-on-listeners-attach 0)
+(gliver-hook-add! *gliver-listeners-attach-hook* 'gliver-on-listeners-attach 0)
 
 (define (wm-on-output data manager output-proxy)
   "Handle a new output event from the compositor."
   (log-debug "New output pointer received: ~a" output-proxy)
   (when *wm-output-listener*
     (wl-proxy-add-listener output-proxy *wm-output-listener* %null-pointer)))
-(gliver-hook-add! %output-created-hook wm-on-output 0)
+(gliver-hook-add! %output-created-hook 'wm-on-output 0)
 
 ;;; output requests
 (define (wm-output-destroy proxy-output)

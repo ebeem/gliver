@@ -245,5 +245,5 @@ layout rules."
 				 (member (symbol->string hook) layout-alternating-hooks))
 		(layout-alternating-reload workspace #:complete #t)))))
 
-(gliver-hook-add! *manager-layout-changed-hook* layout-alternating-update)
+(gliver-hook-add! *manager-layout-changed-hook* 'layout-alternating-update)
 

@@ -1,4 +1,4 @@
-* avoid defining ~commands/keys~ as anonymous functions.
+* define keys using defined functions rather than lambda
 
 DON'T
 #+begin_src scheme
@@ -21,3 +21,7 @@ Logging will also reflect this
 Key pressed: key=s-h action=#<anonymous procedure> mode=normal persist=#f
 Key pressed: key=s-h action=cmd-container-focus-left mode=normal persist=#f
 #+end_src
+
+* add hooks using function symbols rather than function reference or lambda
+
+Reason: more friendly repl experience allowing overwriting the hook function to be applied rather than referencing the old implementation which requires updating the hooks as well.

@@ -102,7 +102,7 @@ Returns the keymap or #f if not found."
 (define (which-key-enable!)
   "Enable which-key: show available keys when entering submaps."
   (unless *which-key-active*
-    (gliver-hook-add! *keymap-change-hook* which-key-on-keymap-change)
+    (gliver-hook-add! *keymap-change-hook* 'which-key-on-keymap-change)
     (set! *which-key-active* #t)
     (log-info "which-key enabled.")))
 

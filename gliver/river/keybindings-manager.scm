@@ -279,9 +279,9 @@ outside a manage sequence."
       (river-window-manager-v1-manage-dirty manager-proxy))))
 
 ;; handle river initialization steps
-(gliver-hook-add! *gliver-globals-bind-hook* gliver-on-globals-bind)
-(gliver-hook-add! *gliver-globals-unbind-hook* gliver-on-globals-unbind)
-(gliver-hook-add! *gliver-globals-verify-hook* gliver-on-globals-verify)
-(gliver-hook-add! *gliver-listeners-attach-hook* gliver-on-listeners-attach)
-(gliver-hook-add! *manager-manage-start-hook* gliver-on-manage-start)
-(gliver-hook-add! *keybinding-sync-request-hook* request-keybinding-sync!)
+(gliver-hook-add! *gliver-globals-bind-hook* 'gliver-on-globals-bind)
+(gliver-hook-add! *gliver-globals-unbind-hook* 'gliver-on-globals-unbind)
+(gliver-hook-add! *gliver-globals-verify-hook* 'gliver-on-globals-verify)
+(gliver-hook-add! *gliver-listeners-attach-hook* 'gliver-on-listeners-attach)
+(gliver-hook-add! *manager-manage-start-hook* 'gliver-on-manage-start)
+(gliver-hook-add! *keybinding-sync-request-hook* 'request-keybinding-sync!)

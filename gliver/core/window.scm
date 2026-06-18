@@ -509,13 +509,13 @@ Must be called in a ~render_sequence~."
   (let ((window (make-window
 				 #:wl-proxy proxy-window)))
     (window-add! window)))
-(gliver-hook-add! %window-created-hook on-window)
+(gliver-hook-add! %window-created-hook 'on-window)
 
 (define (on-window-closed data proxy-window)
   "Handle a new window event from the compositor."
   (let ((window (window-find-by-proxy proxy-window)))
     (window-remove! window)))
-(gliver-hook-add! %window-destroyed-hook on-window-closed)
+(gliver-hook-add! %window-destroyed-hook 'on-window-closed)
 
 (define (on-window-focused window)
   "Handle window focused event."
@@ -523,58 +523,59 @@ Must be called in a ~render_sequence~."
   (window-borders-set! window *wm-behavior-default-border-edges*
 					   (manager-config-ref 'border-width)
 					   (manager-config-ref 'border-color-focused)))
-(gliver-hook-add! *window-focused-hook* on-window-focused)
+(gliver-hook-add! *window-focused-hook* 'on-window-focused)
 
 (define (on-window-unfocused window)
   "Handle window unfocused event."
   ;; colorize the window border with inactive window border color
+  (log-debug "unfocusing window ~a" window)
   (window-borders-set! window *wm-behavior-default-border-edges*
 					   (manager-config-ref 'border-width)
 					   (manager-config-ref 'border-color-unfocused)))
-(gliver-hook-add! *window-unfocused-hook* on-window-unfocused)
+(gliver-hook-add! *window-unfocused-hook* 'on-window-unfocused)
 
 (define (on-window-title-changed proxy-window title)
   (let ((window (window-find-by-proxy proxy-window)))
     (when window
       (%window-title-set! window title))))
-(gliver-hook-add! %window-title-changed-hook on-window-title-changed)
+(gliver-hook-add! %window-title-changed-hook 'on-window-title-changed)
 
 (define (on-window-parent-changed proxy-window parent)
   (let ((window (window-find-by-proxy proxy-window)))
     (when window
       (%window-parent-set! window parent))))
-(gliver-hook-add! %window-parent-changed-hook on-window-parent-changed)
+(gliver-hook-add! %window-parent-changed-hook 'on-window-parent-changed)
 
 (define (on-window-app-id-changed proxy-window app-id)
   (let ((window (window-find-by-proxy proxy-window)))
     (when window
       (%window-app-id-set! window app-id))))
-(gliver-hook-add! %window-app-id-changed-hook on-window-app-id-changed)
+(gliver-hook-add! %window-app-id-changed-hook 'on-window-app-id-changed)
 
 (define (on-window-identifier-changed proxy-window identifier)
   (let ((window (window-find-by-proxy proxy-window)))
     (when window
       (%window-identifier-set! window identifier))))
-(gliver-hook-add! %window-identifier-changed-hook on-window-identifier-changed)
+(gliver-hook-add! %window-identifier-changed-hook 'on-window-identifier-changed)
 
 (define (on-window-presentation-hint data proxy-window hint)
   (let ((window (window-find-by-proxy proxy-window)))
     (when window
       (%window-presentation-hint-set! window hint))))
-(gliver-hook-add! %window-presentation-hint-changed-hook on-window-presentation-hint)
+(gliver-hook-add! %window-presentation-hint-changed-hook 'on-window-presentation-hint)
 
 (define (on-window-pid-changed proxy-window pid)
   (let ((window (window-find-by-proxy proxy-window)))
     (when window
       (%window-pid-set! window pid))))
-(gliver-hook-add! %window-pid-changed-hook on-window-pid-changed)
+(gliver-hook-add! %window-pid-changed-hook 'on-window-pid-changed)
 
 (define (on-window-dimensions proxy-window width height)
   (let ((window (window-find-by-proxy proxy-window)))
     (when window
 	  (%window-width-set! window width)
 	  (%window-height-set! window height))))
-(gliver-hook-add! %window-size-changed-hook on-window-dimensions)
+(gliver-hook-add! %window-size-changed-hook 'on-window-dimensions)
 
 (define (on-window-dimensions-hint proxy-window min-w min-h max-w max-h)
   (let ((window (window-find-by-proxy proxy-window)))
@@ -583,16 +584,16 @@ Must be called in a ~render_sequence~."
 	  (%window-height-min-set! window min-h)
 	  (%window-width-max-set! window max-w)
 	  (%window-height-max-set! window max-h))))
-(gliver-hook-add! %window-size-hint-changed-hook on-window-dimensions-hint)
+(gliver-hook-add! %window-size-hint-changed-hook 'on-window-dimensions-hint)
 
 (define (on-window-decoration-hint proxy-window hint)
   (let ((window (window-find-by-proxy proxy-window)))
     (when window
 	  (%window-decoration-hint-set! window hint))))
-(gliver-hook-add! %window-decoration-hint-changed-hook on-window-decoration-hint)
+(gliver-hook-add! %window-decoration-hint-changed-hook 'on-window-decoration-hint)
 
 (define (on-seat-window-focused seat window)
   (log-debug "window seat has focused ~a" window)
   (when window
 	(window-focus! window #:seat #f)))
-(gliver-hook-add! *seat-window-focused-hook* on-seat-window-focused)
+(gliver-hook-add! *seat-window-focused-hook* 'on-seat-window-focused)

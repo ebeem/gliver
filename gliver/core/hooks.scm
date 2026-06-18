@@ -164,7 +164,6 @@ If multiple functions share the same order, they execute in the order they were 
                           current-funcs))
          ;; append the new pair to the end of the list instead of the front
          (new-list (append cleaned (list (cons order fn)))))
-
     (set-gliver-hook-functions! hook
       (stable-sort new-list 
                    (lambda (a b) (< (car a) (car b)))))))
@@ -180,7 +179,10 @@ If multiple functions share the same order, they execute in the order they were 
 	(log-debug "Running hook ~a ~a" (gliver-hook-name hook) args))
   (for-each
    (lambda (pair)
-     (let ((fn (cdr pair)))
+	 (let* ((fn-or-sym (cdr pair))
+            (fn (if (symbol? fn-or-sym)
+                    (eval fn-or-sym (current-module))
+                    fn-or-sym)))
        (catch #t
          (lambda () (apply fn args))
          (lambda (key . rest)

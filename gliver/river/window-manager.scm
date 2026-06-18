@@ -291,7 +291,7 @@ positioned accurately."
            (set! *wm-render-queue* (append *wm-render-queue* (list task))))))))
 
 ;; handle river initialization steps
-(gliver-hook-add! *gliver-globals-bind-hook* gliver-on-globals-bind)
-(gliver-hook-add! *gliver-globals-unbind-hook* gliver-on-globals-unbind)
-(gliver-hook-add! *gliver-globals-verify-hook* gliver-on-globals-verify)
-(gliver-hook-add! *gliver-listeners-attach-hook* gliver-on-listeners-attach)
+(gliver-hook-add! *gliver-globals-bind-hook* 'gliver-on-globals-bind)
+(gliver-hook-add! *gliver-globals-unbind-hook* 'gliver-on-globals-unbind)
+(gliver-hook-add! *gliver-globals-verify-hook* 'gliver-on-globals-verify)
+(gliver-hook-add! *gliver-listeners-attach-hook* 'gliver-on-listeners-attach)

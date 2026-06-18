@@ -87,7 +87,7 @@ to be properly initialized."
          on-window-unreliable-pid
          on-window-presentation-hint
          on-window-identifier)))
-(gliver-hook-add! *gliver-listeners-attach-hook* gliver-on-listeners-attach 0)
+(gliver-hook-add! *gliver-listeners-attach-hook* 'gliver-on-listeners-attach 0)
 
 (define (on-window data manager window-proxy)
   "Handle a new window event from the compositor."
@@ -95,7 +95,7 @@ to be properly initialized."
   ;; attach the shared event listener
   (when *wm-window-listener*
     (wl-proxy-add-listener window-proxy *wm-window-listener* %null-pointer)))
-(gliver-hook-add! %window-created-hook on-window 0)
+(gliver-hook-add! %window-created-hook 'on-window 0)
 
 ;;; window requests
 (define (wm-window-close proxy-window)

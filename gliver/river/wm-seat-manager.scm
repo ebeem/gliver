@@ -54,7 +54,7 @@ to be properly initialized."
          on-seat-op-delta
          on-seat-op-release
          on-seat-pointer-position))
-  (gliver-hook-add! %seat-created-hook on-seat -1))
+  (gliver-hook-add! %seat-created-hook 'on-seat -1))
 
 (define (on-seat data manager seat-proxy)
   "Handle a new seat event from the compositor."
@@ -180,5 +180,5 @@ start of the operation of the pointer/touch point/etc."
   (log-debug "Pointer position of ~a changed to: ~a,~a" proxy-seat x y)
   (gliver-hook-run! %seat-pointer-position-changed-hook data proxy-seat x y))
 
-(gliver-hook-add! *gliver-listeners-attach-hook* gliver-on-listeners-attach)
+(gliver-hook-add! *gliver-listeners-attach-hook* 'gliver-on-listeners-attach)
 

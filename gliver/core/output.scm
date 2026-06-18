@@ -155,9 +155,9 @@ space changed. The x and y coordinates may be positive or negative."
 		(%output-height-set! output height)
 		(gliver-hook-run! *output-dimensions-changed-hook* output prev-width prev-height)))))
 
-(gliver-hook-add! %output-created-hook on-output 0)
-(gliver-hook-add! %output-object-id-changed-hook on-output-wl-output 0)
-(gliver-hook-add! %output-position-changed-hook on-output-position 0)
-(gliver-hook-add! %output-dimensions-changed-hook on-output-dimensions 0)
-(gliver-hook-add! %output-removed-hook on-output-removed 0)
+(gliver-hook-add! %output-created-hook 'on-output 0)
+(gliver-hook-add! %output-object-id-changed-hook 'on-output-wl-output 0)
+(gliver-hook-add! %output-position-changed-hook 'on-output-position 0)
+(gliver-hook-add! %output-dimensions-changed-hook 'on-output-dimensions 0)
+(gliver-hook-add! %output-removed-hook 'on-output-removed 0)
 
