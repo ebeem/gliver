@@ -16,35 +16,35 @@
   #:use-module (system foreign)
   #:export (
 			*wm-output-listener*
-			gliver-on-listeners-attach
+			wm-output-on-listeners-attach
 			wm-output-destroy
 			wm-output-presentation-mode-set
-			wm-on-output
-			wm-on-output-removed
-			wm-on-output-wl-output
-			wm-on-output-position
-			wm-on-output-dimensions
+			wm-output-on-output
+			wm-output-on-output-removed
+			wm-output-on-output-wl-output
+			wm-output-on-output-position
+			wm-output-on-output-dimensions
 ))
 
 (define *wm-output-listener* #f)
 
-(define (gliver-on-listeners-attach)
+(define (wm-output-on-listeners-attach)
   "Attach wayland listeners, output-manager expects window-manager
 to be properly initialized."
   (set! *wm-output-listener*
         (make-river-output-v1-listener
-         wm-on-output-removed
-         wm-on-output-wl-output
-         wm-on-output-position
-         wm-on-output-dimensions)))
-(gliver-hook-add! *gliver-listeners-attach-hook* 'gliver-on-listeners-attach 0)
+         wm-output-on-output-removed
+         wm-output-on-output-wl-output
+         wm-output-on-output-position
+         wm-output-on-output-dimensions)))
+(gliver-hook-add! *gliver-listeners-attach-hook* 'wm-output-on-listeners-attach 0)
 
-(define (wm-on-output data manager output-proxy)
+(define (wm-output-on-output data manager output-proxy)
   "Handle a new output event from the compositor."
   (log-debug "New output pointer received: ~a" output-proxy)
   (when *wm-output-listener*
     (wl-proxy-add-listener output-proxy *wm-output-listener* %null-pointer)))
-(gliver-hook-add! %output-created-hook 'wm-on-output 0)
+(gliver-hook-add! %output-created-hook 'wm-output-on-output 0)
 
 ;;; output requests
 (define (wm-output-destroy proxy-output)
@@ -65,25 +65,25 @@ mode: enum value `RIVER_OUTPUT_V1_PRESENTATION_MODE_VSYNC`,
     (river-output-v1-set-presentation-mode proxy-output mode)))
 
 ;;; output events
-(define (wm-on-output-removed data proxy-output)
+(define (wm-output-on-output-removed data proxy-output)
   "Output was removed. This will take care of
 Removing the output record and clearing up memory.
 Hook: *output-destroy-hook*"
   (log-debug "Output removed: ~a" proxy-output)
   (gliver-hook-run! %output-removed-hook proxy-output))
 
-(define (wm-on-output-wl-output data proxy-output object-id)
+(define (wm-output-on-output-wl-output data proxy-output object-id)
   "The wl_output object corresponding to the river_output_v1."
   (log-debug "Output wl_output object-id: ~a = ~a" proxy-output object-id)
   (gliver-hook-run! %output-object-id-changed-hook data proxy-output object-id))
 
-(define (wm-on-output-position data proxy-output x y)
+(define (wm-output-on-output-position data proxy-output x y)
   "Position of the output in the compositor's logical coordinate
 space changed. The x and y coordinates may be positive or negative."
   (log-debug "Output position: ~a = ~a,~a" proxy-output x y)
   (gliver-hook-run! %output-position-changed-hook data proxy-output x y))
 
-(define (wm-on-output-dimensions data proxy-output width height)
+(define (wm-output-on-output-dimensions data proxy-output width height)
   (log-debug "Output dimensions: ~a = ~ax~a" proxy-output width height)
   (gliver-hook-run! %output-dimensions-changed-hook data proxy-output width height))
 

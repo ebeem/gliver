@@ -10,17 +10,20 @@
 
 (define-module (gliver contrib layout alternating)
   #:use-module (gliver core)
-  #:use-module (gliver core types)
-  #:use-module (gliver core container)
-  #:use-module (gliver core window)
-  #:use-module (gliver core logs)
-  #:use-module (gliver core hooks)
   #:use-module (srfi srfi-1)
+  #:use-module (srfi srfi-2)
   #:declarative? #f
   #:export (
 			layout-alternating-make-config
-			get-param
+			layout-alternating-get-param
+			layout-alternating-update-container
+			layout-alternating-reload
+			layout-alternating-add-container
 			layout-alternating-update
+			layout-alternating-window-created
+			layout-alternating-window-destroyed
+			layout-alternating-workspace-created
+			layout-alternating-output-dimensions-changed
 ))
 
 (define* (layout-alternating-make-config #:key
@@ -41,7 +44,7 @@
     (outer-gap . ,outer-gap)
     (append-method . ,append-method)))
 
-(define (get-param layout-cfg key default-val)
+(define (layout-alternating-get-param layout-cfg key default-val)
   "Helper to safely extract a parameter from the layout configuration."
   (if (list? layout-cfg)
       (let ((pair (assq key layout-cfg)))
@@ -63,13 +66,13 @@ respects the alternating layout system."
   		 (tail? (= (+ 1 index) containers-count))
 
 		 ;; inner and outer gap configuration and values
-		 (inner-gap (or (get-param layout-cfg 'inner-gap #f) 
+		 (inner-gap (or (layout-alternating-get-param layout-cfg 'inner-gap #f) 
 						(manager-config-ref 'container-inner-gap)))
-		 (outer-gap (or (get-param layout-cfg 'outer-gap #f) 
+		 (outer-gap (or (layout-alternating-get-param layout-cfg 'outer-gap #f) 
 						(manager-config-ref 'container-outer-gap)))
 		 (border-width (manager-config-ref 'border-width))
-		 (outer-gap-include-border (get-param layout-cfg 'outer-gap-include-border #t))
-		 (inner-gap-include-border (get-param layout-cfg 'inner-gap-include-border #t))
+		 (outer-gap-include-border (layout-alternating-get-param layout-cfg 'outer-gap-include-border #t))
+		 (inner-gap-include-border (layout-alternating-get-param layout-cfg 'inner-gap-include-border #t))
 		 (total-outer-gap (if outer-gap-include-border (+ outer-gap border-width) outer-gap))
 		 (total-inner-gap (if inner-gap-include-border (+ inner-gap border-width) inner-gap))
 
@@ -91,8 +94,8 @@ respects the alternating layout system."
 						  oh))
 
 		 ;; get index direction split, vertical or horizontal split
-		 (split-ratio (if tail? 1 (get-param layout-cfg 'split-ratio 0.5)))
-		 (initial-dir (get-param layout-cfg 'initial-split-direction 'vertical))
+		 (split-ratio (if tail? 1 (layout-alternating-get-param layout-cfg 'split-ratio 0.5)))
+		 (initial-dir (layout-alternating-get-param layout-cfg 'initial-split-direction 'vertical))
 		 (other-dir (if (eq? initial-dir 'vertical) 'horizontal 'vertical))
 		 (split (if (even? index) initial-dir other-dir))
 		 (prev-split (if (even? index) other-dir initial-dir)))
@@ -171,7 +174,7 @@ respects the alternating layout system."
 layout rules."
   (log-debug "layout-alternating-reload on workspace ~a" workspace)
   (let* ((layout-cfg (workspace-layout workspace))
-		 (max-depth (get-param layout-cfg 'max-depth 99))
+		 (max-depth (layout-alternating-get-param layout-cfg 'max-depth 99))
 		 (windows (workspace-windows workspace))
 		 (windows-count (length windows))
 		 (max-containers (min max-depth windows-count)))
@@ -202,8 +205,10 @@ layout rules."
 		  ((>= i windows-count))    ;; stop when i is last window
 		(let* ((window (list-ref windows i))
 			   (current-container (window-container window))
+			   (currently-focused? (container-focused? current-container))
 			   (target-container (list-ref containers (min i (- containers-count 1)))))
-		  (window-move-to-container! window target-container)))
+		  (log-info "current container to be removed is focused ~a" current-container)
+		  (window-move-to-container! window target-container #:focus currently-focused?)))
 
 	  ;; remove any extra empty containers
 	  ;; we shouldn't need to apply any focus logic as all deleted containers
@@ -231,19 +236,41 @@ layout rules."
 	(container-add! container)
 	container))
 
-(define layout-alternating-hooks '("window-created"
-                                   "window-destroyed"
-                                   "workspace-created"
-                                   "output-dimensions-changed"))
-
 (define (layout-alternating-update hook workspace container window)
   "Main orchestrator for the alternating layout."
   (when (and hook workspace)
 	(let* ((layout-cfg (workspace-layout workspace))
            (layout-name (if (list? layout-cfg) (assq-ref layout-cfg 'layout) layout-cfg)))
-      (when (and (equal? layout-name 'alternating)
-				 (member (symbol->string hook) layout-alternating-hooks))
+      (when (equal? layout-name 'alternating)
 		(layout-alternating-reload workspace #:complete #t)))))
 
-(gliver-hook-add! *manager-layout-changed-hook* 'layout-alternating-update)
+(define (layout-alternating-window-created window)
+  (let* ((container (window-container window))
+		 (workspace (if container
+						(container-workspace container)
+						#f)))
+	(layout-alternating-update "window-created" workspace container window)))
+
+(define (layout-alternating-window-destroyed window container workspace)
+  (layout-alternating-update "window-destroyed" workspace container window))
+
+(define (layout-alternating-workspace-created workspace)
+  (let* ((container (workspace-container-current workspace))
+		 (window (if container
+						(container-window-current container)
+						#f)))
+	(layout-alternating-update "workspace-created" workspace container window)))
+
+(define (layout-alternating-output-dimensions-changed output prev-width prev-height)
+  (log-info "output=~a" output)
+  (log-info "workspace=~a" (output-workspace-current output))
+  (let* ((workspace (output-workspace-current output))
+		 (container (workspace-container-current workspace))
+		 (window (container-window-current container)))
+	(layout-alternating-update "output-dimensions-changed" workspace container window)))
+
+(gliver-hook-add! *window-created-hook* 'layout-alternating-window-created)
+(gliver-hook-add! *window-destroyed-hook* 'layout-alternating-window-destroyed)
+(gliver-hook-add! *workspace-created-hook* 'layout-alternating-workspace-created)
+(gliver-hook-add! *output-dimensions-changed-hook* 'layout-alternating-output-dimensions-changed)
 

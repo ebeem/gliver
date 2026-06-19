@@ -30,7 +30,7 @@
 			seat-wm-pointer-binding-get
 			seat-wm-pointer-theme
 			seat-wm-pointer-warp
-			on-seat
+			seat-on-seat
 			seat-on-removed
 			seat-on-wl-seat
 			seat-on-pointer-enter
@@ -122,7 +122,7 @@ Must be called in a ~manage_sequence~."
 	   (wm-seat-pointer-warp proxy-seat x y)))))
 
 ;;; events
-(define (on-seat data manager proxy-seat)
+(define (seat-on-seat data manager proxy-seat)
   "Handle a new seat event from the compositor."
   (log-debug "New seat proxy: ~a" proxy-seat)
   (let ((seat (make-seat #:wl-proxy proxy-seat)))
@@ -208,7 +208,7 @@ start of the operation of the pointer/touch point/etc."
 	  (log-debug "Seat ~a pointer position changed to ~ax~a" seat x y)
 	  (gliver-hook-run! *seat-seat-pointer-position-changed-hook* seat x y))))
 
-(gliver-hook-add! %seat-created-hook 'on-seat 0)
+(gliver-hook-add! %seat-created-hook 'seat-on-seat 0)
 (gliver-hook-add! %seat-removed-hook 'seat-on-removed 0)
 (gliver-hook-add! %seat-object-id-changed-hook 'seat-on-wl-seat 0)
 (gliver-hook-add! %seat-window-pointer-entered-hook 'seat-on-pointer-enter 0)

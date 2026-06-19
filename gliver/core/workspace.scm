@@ -127,21 +127,24 @@ and then @var{s-workspace}'s container list is emptied."
   "Returns true if the workspace is currently focused"
   (eq? workspace (workspace-current)))
 
-(define (workspace-focus! workspace)
+(define* (workspace-focus! workspace #:key (focus-child #t) (focus-parent #t))
   "Focus active container in the workspace"
   ;; focus the current container, it's actually an error
   ;; not to have a current container
+  (log-info "focusing workspace ~a, is focused? = ~a" workspace
+			(workspace-focused? workspace))
   (unless (workspace-focused? workspace)
 	(let* ((containers (workspace-containers workspace))
 		   (container (or (workspace-container-current workspace)
 						  (and (pair? containers) (car containers))))
 		   (output (workspace-output workspace))
 		   (prev-workspace (output-workspace-current output)))
+	  (when (and focus-child container)
+		(container-focus! container #:focus-parent #f))
 	  (%output-workspace-previous-set! output prev-workspace)
 	  (%output-workspace-current-set! output workspace)
-	  (output-focus! output)
-	  (when container
-		(container-focus! container)))))
+	  (when (and focus-parent output)
+		(output-focus! output #:focus-child #f)))))
 
 (define (workspace-next workspace)
   (let* ((output (workspace-output workspace))

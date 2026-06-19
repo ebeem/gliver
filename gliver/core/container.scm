@@ -27,7 +27,9 @@
 			container-center-y
 			container-in-direction
 			container-add!
+			container-move-windows-to-container!
 			container-remove!
+			container-focused?
 			container-focus!
 			container-size-set!
 			container-position-set!
@@ -155,20 +157,23 @@
   "Returns true if the container is currently focused"
   (eq? container (container-current)))
 
-(define (container-focus! container)
+(define* (container-focus! container  #:key (focus-child #t) (focus-parent #t))
   "Focus a container by focusing its last focused window."
   ;; target window is current focused or first window
+  (log-info "focusing container ~a, is focused? = ~a" container
+			(container-focused? container))
   (unless (container-focused? container)
 	(let* ((windows (container-windows container))
 		   (window (or (container-window-current container)
 					   (and (pair? windows) (car windows))))
 		   (workspace (container-workspace container))
 		   (prev-container (workspace-container-current workspace)))
+	  (when (and focus-child window)
+		(window-focus! window #:focus-parent #f))
 	  (%workspace-container-previous-set! workspace prev-container)
 	  (%workspace-container-current-set! workspace container)
-	  (workspace-focus! workspace)
-	  (when window
-		(window-focus! window)))))
+	  (when (and focus-parent workspace)
+		(workspace-focus! workspace #:focus-child #f)))))
 
 (define* (container-size-set! container width height #:key (animate #t))
   "Resize the container to the provided width and height."

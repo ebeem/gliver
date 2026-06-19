@@ -1,3 +1,7 @@
+* all symbols should be prefixed with the module name
+
+Reason: avoid invalid resolution of symbol name
+
 * define keys using defined functions rather than lambda
 
 DON'T

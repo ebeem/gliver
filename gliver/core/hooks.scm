@@ -155,18 +155,38 @@
   "Create a new hook named NAME that expects ARITY arguments."
   (%make-gliver-hook name arity '()))
 
-(define* (gliver-hook-add! hook fn #:optional (order 999))
+(define* (%gliver-hook-add! hook fn caller-module #:optional (order 999))
   "Add function FN to HOOK with the given ORDER (default 999).
 Functions with lower or negative order values are executed first.
 If multiple functions share the same order, they execute in the order they were added."
   (let* ((current-funcs (gliver-hook-functions hook))
-         (cleaned (filter (lambda (pair) (not (eq? (cdr pair) fn))) 
+         (fn-name (if (symbol? fn) fn (and (procedure? fn) (procedure-name fn))))
+         (cleaned (filter (lambda (pair)
+                            (let ((existing (cdr pair)))
+                              (not (or
+                                    (eq? existing fn)
+                                    (and (symbol? fn) (pair? existing) (eq? (car existing) fn))
+                                    (and fn-name
+                                         (procedure? existing)
+                                         (eq? (procedure-name existing) fn-name))))))
                           current-funcs))
-         ;; append the new pair to the end of the list instead of the front
-         (new-list (append cleaned (list (cons order fn)))))
+         ;; for symbols, store it as a pair: (symbol . module)
+         ;; for lambdas, just store the procedure.
+         (item-to-store (if (symbol? fn)
+                            (cons fn caller-module)
+                            fn))
+         (new-list (append cleaned (list (cons order item-to-store)))))
     (set-gliver-hook-functions! hook
-      (stable-sort new-list 
-                   (lambda (a b) (< (car a) (car b)))))))
+								(stable-sort new-list (lambda (a b) (< (car a) (car b)))))))
+
+(define-syntax gliver-hook-add!
+  (syntax-rules ()
+    ;; match when the user provides an explicit order
+    ((_ hook fn order)
+     (%gliver-hook-add! hook fn (current-module) order))
+    ;; match when the user omits the order (default is 999)
+    ((_ hook fn)
+     (%gliver-hook-add! hook fn (current-module)))))
 
 (define (gliver-hook-remove! hook fn)
   "Remove function FN from HOOK."
@@ -176,13 +196,18 @@ If multiple functions share the same order, they execute in the order they were 
 
 (define (%gliver-hook-run hook strict? args)
   (when *log-hooks*
-	(log-debug "Running hook ~a ~a" (gliver-hook-name hook) args))
+    (log-debug "Running hook ~a ~a" (gliver-hook-name hook) args))
   (for-each
    (lambda (pair)
-	 (let* ((fn-or-sym (cdr pair))
-            (fn (if (symbol? fn-or-sym)
-                    (eval fn-or-sym (current-module))
-                    fn-or-sym)))
+     (let* ((item (cdr pair))
+            (fn (cond
+                  ;; if it's a (symbol . module) pair, grab the latest definition
+                  ((pair? item)
+                   (module-ref (cdr item) (car item)))
+                  ;; if it is a lambda, execute it directly
+                  ((procedure? item)
+                   item)
+                  (else (log-error "Invalid hook function format ~a" item)))))
        (catch #t
          (lambda () (apply fn args))
          (lambda (key . rest)

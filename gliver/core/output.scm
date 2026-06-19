@@ -16,8 +16,6 @@
   #:use-module (gliver core config)
   #:use-module (gliver river wm-output-manager)
   #:autoload (gliver core workspace) (workspace-add! workspace-focus!)
-  ;; TODO: contrib modules shouldn't be used in core
-  #:autoload (gliver contrib layout alternating) (layout-alternating-make-config)
   #:export (
 			output-add!
 			output-remove!
@@ -25,11 +23,11 @@
 			output-prev
 			output-focus!
 			output-presentation-mode-set
-			on-output
-			on-output-removed
-			on-output-wl-output
-			on-output-position
-			on-output-dimensions
+			output-on-output
+			output-on-output-removed
+			output-on-output-wl-output
+			output-on-output-position
+			output-on-output-dimensions
 ))
 
 ;;; output management
@@ -40,7 +38,14 @@
   (when (null? (output-workspaces output))
 	(let ((workspace
 		   (make-workspace #:name (format #f "workspace-~d-~d" (output-id output) 1)
-						   #:layout (layout-alternating-make-config)
+						   #:layout `((layout . alternating)
+									  (initial-split-direction . horizontal)
+									  (split-ratio . 0.5)
+									  (max-depth . 5)
+									  (alternate-direction? . #t)
+									  (inner-gap . #f)
+									  (outer-gap . #f)
+									  (append-method . 'tail))
 						   #:output output)))
 	  (workspace-add! workspace)))
 
@@ -68,7 +73,7 @@
   "Returns true if the output is currently focused"
   (eq? output (manager-output-current *manager*)))
 
-(define (output-focus! output)
+(define* (output-focus! output  #:key (focus-child #t))
   "Focus active workspace in the output"
   ;; focus the current manager, it's actually an error
   ;; not to have a current workspace
@@ -79,8 +84,8 @@
 		   (prev-output (manager-output-current *manager*)))
 	  (%manager-output-previous-set! *manager* prev-output)
 	  (%manager-output-current-set! *manager* output)
-	  (when workspace
-		(workspace-focus! workspace)))))
+	  (when (and workspace focus-child)
+		(workspace-focus! workspace #:focus-parent #f)))))
 
 (define (output-next)
   (let* ((outputs (manager-outputs *manager*))
@@ -105,7 +110,7 @@ mode: enum value `RIVER_OUTPUT_V1_PRESENTATION_MODE_VSYNC`,
       (wm-output-presentation-mode-set proxy-output mode))))
 
 ;;; output events
-(define (on-output data manager output-proxy)
+(define (output-on-output data manager output-proxy)
   "Handle a new output event from the compositor."
   (let* ((outputs (manager-outputs *manager*))
          (name (format #f "output-~a" (length outputs)))
@@ -113,7 +118,7 @@ mode: enum value `RIVER_OUTPUT_V1_PRESENTATION_MODE_VSYNC`,
 	(log-debug "Output created: ~a" output)
 	(output-add! output)))
 
-(define (on-output-removed data proxy-output)
+(define (output-on-output-removed data proxy-output)
   "Output was removed. This will take care of
 Removing the output record and clearing up memory.
 Hook: *output-destroy-hook*"
@@ -123,7 +128,7 @@ Hook: *output-destroy-hook*"
 	(wm-output-destroy proxy-output)
 	(gliver-hook-run! *output-destroy-hook* output)))
 
-(define (on-output-wl-output data proxy-output object-id)
+(define (output-on-output-wl-output data proxy-output object-id)
   "The wl_output object corresponding to the river_output_v1."
   (log-debug "Output wl_output global object-id: ~a = ~a" proxy-output object-id)
   (let ((output (output-find-by-proxy proxy-output)))
@@ -133,7 +138,7 @@ Hook: *output-destroy-hook*"
 		(%output-wl-output-set! output object-id)
 		(gliver-hook-run! *output-object-id-changed-hook* output prev-object-id)))))
 
-(define (on-output-position data proxy-output x y)
+(define (output-on-output-position data proxy-output x y)
   "Position of the output in the compositor's logical coordinate
 space changed. The x and y coordinates may be positive or negative."
   (log-debug "Output position: ~a = ~a,~a" proxy-output x y)
@@ -145,7 +150,7 @@ space changed. The x and y coordinates may be positive or negative."
 		(%output-y-set! output y)
 		(gliver-hook-run! *output-position-changed-hook* output prev-x prev-y)))))
 
-(define (on-output-dimensions data proxy-output width height)
+(define (output-on-output-dimensions data proxy-output width height)
   (log-debug "Output dimensions: ~a = ~ax~a" proxy-output width height)
   (let ((output (output-find-by-proxy proxy-output)))
     (when output
@@ -155,9 +160,9 @@ space changed. The x and y coordinates may be positive or negative."
 		(%output-height-set! output height)
 		(gliver-hook-run! *output-dimensions-changed-hook* output prev-width prev-height)))))
 
-(gliver-hook-add! %output-created-hook 'on-output 0)
-(gliver-hook-add! %output-object-id-changed-hook 'on-output-wl-output 0)
-(gliver-hook-add! %output-position-changed-hook 'on-output-position 0)
-(gliver-hook-add! %output-dimensions-changed-hook 'on-output-dimensions 0)
-(gliver-hook-add! %output-removed-hook 'on-output-removed 0)
+(gliver-hook-add! %output-created-hook 'output-on-output 0)
+(gliver-hook-add! %output-object-id-changed-hook 'output-on-output-wl-output 0)
+(gliver-hook-add! %output-position-changed-hook 'output-on-output-position 0)
+(gliver-hook-add! %output-dimensions-changed-hook 'output-on-output-dimensions 0)
+(gliver-hook-add! %output-removed-hook 'output-on-output-removed 0)
 

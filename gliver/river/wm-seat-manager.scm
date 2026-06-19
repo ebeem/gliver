@@ -16,8 +16,8 @@
   #:use-module (system foreign)
   #:export (
 			*wm-seat-listener*
-			gliver-on-listeners-attach
-			on-seat
+			wm-seat-on-listeners-attach
+			wm-seat-on-seat
 			wm-seat-destroy
 			wm-seat-window-focus
 			wm-seat-shell-focus
@@ -27,36 +27,36 @@
 			wm-seat-pointer-binding-get
 			wm-seat-pointer-theme
 			wm-seat-pointer-warp
-			on-seat-removed
-			on-seat-wl-seat
-			on-seat-pointer-enter
-			on-seat-pointer-leave
-			on-seat-window-interaction
-			on-seat-shell-interaction
-			on-seat-op-delta
-			on-seat-op-release
-			on-seat-pointer-position
+			wm-seat-on-seat-removed
+			wm-seat-on-seat-wl-seat
+			wm-seat-on-seat-pointer-enter
+			wm-seat-on-seat-pointer-leave
+			wm-seat-on-seat-window-interaction
+			wm-seat-on-seat-shell-interaction
+			wm-seat-on-seat-op-delta
+			wm-seat-on-seat-op-release
+			wm-seat-on-seat-pointer-position
 ))
 
 (define *wm-seat-listener* #f)
 
-(define (gliver-on-listeners-attach)
+(define (wm-seat-on-listeners-attach)
   "Attach wayland listeners, seat-manager expects window-manager
 to be properly initialized."
   (set! *wm-seat-listener*
         (make-river-seat-v1-listener
-         on-seat-removed
-         on-seat-wl-seat
-         on-seat-pointer-enter
-         on-seat-pointer-leave
-         on-seat-window-interaction
-         on-seat-shell-interaction
-         on-seat-op-delta
-         on-seat-op-release
-         on-seat-pointer-position))
-  (gliver-hook-add! %seat-created-hook 'on-seat -1))
+         wm-seat-on-seat-removed
+         wm-seat-on-seat-wl-seat
+         wm-seat-on-seat-pointer-enter
+         wm-seat-on-seat-pointer-leave
+         wm-seat-on-seat-window-interaction
+         wm-seat-on-seat-shell-interaction
+         wm-seat-on-seat-op-delta
+         wm-seat-on-seat-op-release
+         wm-seat-on-seat-pointer-position))
+  (gliver-hook-add! %seat-created-hook 'wm-seat-on-seat -1))
 
-(define (on-seat data manager seat-proxy)
+(define (wm-seat-on-seat data manager seat-proxy)
   "Handle a new seat event from the compositor."
   (log-debug "New seat proxy: ~a" seat-proxy)
   ;; attach the shared event listener
@@ -132,53 +132,53 @@ Must be called in a ~manage_sequence~."
     (river-seat-v1-pointer-warp proxy-seat x y)))
 
 ;;; seat events
-(define (on-seat-removed data proxy-seat)
+(define (wm-seat-on-seat-removed data proxy-seat)
   "Seat was removed. This will take care of
 The seat record should be cleared.
 Hook: %seat-removed-hook"
   (log-debug "Seat removed: ~a" proxy-seat)
   (gliver-hook-run! %seat-removed-hook data proxy-seat))
 
-(define (on-seat-wl-seat data proxy-seat object-id)
+(define (wm-seat-on-seat-wl-seat data proxy-seat object-id)
   "The wl_seat object corresponding to the river_seat_v1."
   (log-debug "Seat wl_seat global object-id: ~a = ~a" proxy-seat object-id)
   (gliver-hook-run! %seat-object-id-changed-hook data proxy-seat object-id))
 
-(define (on-seat-pointer-enter data proxy-seat proxy-window)
+(define (wm-seat-on-seat-pointer-enter data proxy-seat proxy-window)
   "The seat's pointer entered the given window's area."
   (log-debug "Pointer entered window ~a" proxy-window)
   (gliver-hook-run! %seat-window-pointer-entered-hook data proxy-seat proxy-window))
 
-(define (on-seat-pointer-leave data proxy-seat)
+(define (wm-seat-on-seat-pointer-leave data proxy-seat)
   "The seat's pointer left the recent window entered."
   (log-debug "Pointer left window")
   (gliver-hook-run! %seat-window-pointer-left-hook data proxy-seat))
 
-(define (on-seat-window-interaction data proxy-seat proxy-win)
+(define (wm-seat-on-seat-window-interaction data proxy-seat proxy-win)
   "Window is clicked or input is sent to it, focus it"
   (log-debug "seat ~a interacting with window ~a" proxy-seat proxy-win)
   (gliver-hook-run! %seat-window-interacted-hook data proxy-seat proxy-win))
 
-(define (on-seat-shell-interaction data proxy-seat shell-proxy)
+(define (wm-seat-on-seat-shell-interaction data proxy-seat shell-proxy)
   "Surface is clicked or input is sent to it"
   (log-debug "Shell surface interaction: ~a" shell-proxy)
   (gliver-hook-run! %seat-shell-interacted-hook data proxy-seat shell-proxy))
 
-(define (on-seat-op-delta data proxy-seat dx dy)
+(define (wm-seat-on-seat-op-delta data proxy-seat dx dy)
   "This event indicates the total change in position since the
 start of the operation of the pointer/touch point/etc."
   (log-debug "Op delta: ~a,~a" dx dy)
   (gliver-hook-run! %seat-op-delta-changed-hook data proxy-seat dx dy))
 
-(define (on-seat-op-release data proxy-seat)
+(define (wm-seat-on-seat-op-release data proxy-seat)
   "The input driving the current interactive operation has been released."
   (log-debug "Op release")
   (gliver-hook-run! %seat-op-released-hook data proxy-seat))
 
-(define (on-seat-pointer-position data proxy-seat x y)
+(define (wm-seat-on-seat-pointer-position data proxy-seat x y)
   "The current position of the pointer in the compositor's logical."
   (log-debug "Pointer position of ~a changed to: ~a,~a" proxy-seat x y)
   (gliver-hook-run! %seat-pointer-position-changed-hook data proxy-seat x y))
 
-(gliver-hook-add! *gliver-listeners-attach-hook* 'gliver-on-listeners-attach)
+(gliver-hook-add! *gliver-listeners-attach-hook* 'wm-seat-on-listeners-attach)
 

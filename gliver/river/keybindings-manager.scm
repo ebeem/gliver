@@ -27,11 +27,11 @@
 			*current-mode*
 			*pending-key-action*
 			*needs-keybinding-sync*
-			gliver-on-globals-bind
-			gliver-on-globals-unbind
-			gliver-on-globals-verify
-			gliver-on-listeners-attach
-			gliver-on-manage-start
+			keybindings-manager-on-globals-bind
+			keybindings-manager-on-globals-unbind
+			keybindings-manager-on-globals-verify
+			keybindings-manager-on-listeners-attach
+			keybindings-manager-on-manage-start
 			find-spec-for-proxy
 			on-binding-pressed
 			on-binding-released
@@ -40,7 +40,7 @@
 			execute-binding-action
 			switch-to-mode!
 			sync-all-keybindings!
-			request-keybinding-sync!
+			keybindings-manager-request-keybinding-sync!
 ))
 
 ;; river_xkb_bindings_v1 state
@@ -60,7 +60,7 @@
         (seat-wl-proxy (car seats))
         #f)))
 
-(define (gliver-on-globals-bind registry protocol-name object-id version)
+(define (keybindings-manager-on-globals-bind registry protocol-name object-id version)
   "Bind and register the xkb bindings manager"
   (when (string=? protocol-name RIVER_XKB_BINDINGS_V1_NAME)
 	(log-info "Binding ~a..." protocol-name)
@@ -69,7 +69,7 @@
                                    *river-xkb-bindings-v1-interface*
                                    (min version 2)))))
 
-(define (gliver-on-globals-unbind)
+(define (keybindings-manager-on-globals-unbind)
   "Unbind/destroy the bindings manager"
   ;; destroy active keybindings
   (for-each (lambda (pair)
@@ -87,13 +87,13 @@
     (river-xkb-bindings-v1-destroy *xkb-bindings*)
     (set! *xkb-bindings* %null-pointer)))
 
-(define (gliver-on-globals-verify)
+(define (keybindings-manager-on-globals-verify)
   "Verify critical globals were bound "
   (when (null-pointer? *xkb-bindings*)
     (log-error "river_xkb_bindings_v1 not available")
     (error "river_xkb_bindings_v1 not available")))
 
-(define (gliver-on-listeners-attach)
+(define (keybindings-manager-on-listeners-attach)
   "Attach wayland listeners"
   (set! *xkb-binding-listener*
         (make-river-xkb-binding-v1-listener
@@ -104,7 +104,7 @@
         (make-river-xkb-bindings-seat-v1-listener
          on-bindings-seat-ate)))
 
-(define (gliver-on-manage-start)
+(define (keybindings-manager-on-manage-start)
   "Handle manage sequence synchronization for keybindings"
   (when *needs-keybinding-sync*
     (log-info "Performing keybinding sync...")
@@ -269,7 +269,7 @@ those matching the current mode."
           (log-info "Keybindings synced (~a bindings created)."
                     (length *active-bindings*))))))
 
-(define (request-keybinding-sync!)
+(define (keybindings-manager-request-keybinding-sync!)
   "Request a keybinding sync in the next manage sequence.
 Use this instead of calling sync-all-keybindings! directly when
 outside a manage sequence."
@@ -279,9 +279,9 @@ outside a manage sequence."
       (river-window-manager-v1-manage-dirty manager-proxy))))
 
 ;; handle river initialization steps
-(gliver-hook-add! *gliver-globals-bind-hook* 'gliver-on-globals-bind)
-(gliver-hook-add! *gliver-globals-unbind-hook* 'gliver-on-globals-unbind)
-(gliver-hook-add! *gliver-globals-verify-hook* 'gliver-on-globals-verify)
-(gliver-hook-add! *gliver-listeners-attach-hook* 'gliver-on-listeners-attach)
-(gliver-hook-add! *manager-manage-start-hook* 'gliver-on-manage-start)
-(gliver-hook-add! *keybinding-sync-request-hook* 'request-keybinding-sync!)
+(gliver-hook-add! *gliver-globals-bind-hook* 'keybindings-manager-on-globals-bind)
+(gliver-hook-add! *gliver-globals-unbind-hook* 'keybindings-manager-on-globals-unbind)
+(gliver-hook-add! *gliver-globals-verify-hook* 'keybindings-manager-on-globals-verify)
+(gliver-hook-add! *gliver-listeners-attach-hook* 'keybindings-manager-on-listeners-attach)
+(gliver-hook-add! *manager-manage-start-hook* 'keybindings-manager-on-manage-start)
+(gliver-hook-add! *keybinding-sync-request-hook* 'keybindings-manager-request-keybinding-sync!)

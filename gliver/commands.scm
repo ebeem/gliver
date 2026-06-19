@@ -439,12 +439,7 @@ The actual input is handled via handle-input-key callbacks."
 			 (container (container-current))
 			 (target (container-in-direction dir container workspace)))
     (if target
-        (begin
-          ;(workspace-container-current-set! workspace target)
-          (let ((win (container-window-current target))
-                (seat (seat-current)))
-            (when (and win seat)
-              (seat-wm-window-focus seat win))))
+		(container-focus! target)
         (log-debug "Couldn't find focus target"))))
 
 (define (cmd-container-focus-left)

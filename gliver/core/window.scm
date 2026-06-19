@@ -56,19 +56,20 @@
 			window-content-clip-box-set!
 			window-dimension-bounds-set!
 			window-position-set!
-			on-window
-			on-window-closed
-			on-window-focused
-			on-window-unfocused
-			on-window-title-changed
-			on-window-parent-changed
-			on-window-app-id-changed
-			on-window-identifier-changed
-			on-window-presentation-hint
-			on-window-pid-changed
-			on-window-dimensions
-			on-window-dimensions-hint
-			on-window-decoration-hint
+			window-on-window
+			window-on-window-closed
+			window-on-window-focused
+			window-on-window-unfocused
+			window-on-window-title-changed
+			window-on-window-parent-changed
+			window-on-window-app-id-changed
+			window-on-window-identifier-changed
+			window-on-window-presentation-hint
+			window-on-window-pid-changed
+			window-on-window-dimensions
+			window-on-window-dimensions-hint
+			window-on-window-decoration-hint
+			window-on-seat-window-focused
 ))
 
 (define* (window-next current #:key (recursive #t))
@@ -109,7 +110,7 @@
 	;; windows are stored in the manager for quick lookups
 	(%manager-windows-set! *manager* all-windows)
 	(%window-container-set! window #f)
-	(window-move-to-container! window container #:focus #f)
+	(window-move-to-container! window container #:focus *wm-behavior-focus-new-window*)
 	(gliver-hook-run! *window-created-hook* window)))
 
 (define (window-apply-defaults! window)
@@ -150,7 +151,7 @@ invalid as the window should always have a container."
 	  ;; otherwise the container will just have it as current window without seat focusing it
 	  (let ((window-target (or (window-next window #:recursive #f)
 							   (window-prev window #:recursive #f))))
-		(log-debug "current window deleted, focusing window ~a" window-target)
+		(log-debug "current window deleted, focusing window (~a) ~a" (and focus window-target) window-target)
 		(if (and focus window-target)
 			(window-focus! window-target)
 			(%container-window-current-set! container window-target))))))
@@ -168,30 +169,32 @@ does have a container ~%window-container-remove!~ will be called."
 	;; container will just have it as current window without seat focusing it
 	(if focus
 		(window-focus! window)
-		(%container-window-current-set! container window))))
+		(unless (container-window-current container)
+			(%container-window-current-set! container window)))))
 
-(define* (window-focus! window #:key (seat (seat-current)))
+(define* (window-focus! window #:key (seat (seat-current)) (focus-parent #t))
   "Focus a window from the display."
   (let ((container (window-container window))
-		(window-current (window-current)))
-	(when seat
-	  (seat-wm-window-focus seat window))
-	;; unfocus previous window
-	(when window-current
-	  (log-debug "window current is ~a" window-current)
-	  (gliver-hook-run! *window-unfocused-hook* window-current))
-	(%container-window-current-set! container window)
-	(container-focus! container)
-	(gliver-hook-run! *window-focused-hook* window)))
+		(current (window-current)))
+	(unless (and (eq? current window) (not force))
+	  (log-info "focusing window ~a from current ~a" window current)
+	  (%container-window-current-set! container window)
+	  (when (and focus-parent container)
+		(container-focus! container #:focus-child #f))
+	  ;; unfocus previous window
+	  (when current
+		(gliver-hook-run! *window-unfocused-hook* current))
+	  (when seat
+		(seat-wm-window-focus seat window))	  
+	  (gliver-hook-run! *window-focused-hook* window))))
 
 (define* (window-move-to-container! window container #:key (focus #t))
   "Move a window to a container."
   (let ((container-current (window-container window)))
 	;; window should be removed from current container first
-	(log-debug "moving window ~a to container ~a" window container)
+	(log-debug "moving window ~a to container ~a with focus=~a" window container focus)
 	(when container-current
-	  (%window-container-remove! window #:focus #f))
-	(log-debug "done moving window")
+	  (%window-container-remove! window #:focus focus))
 	;; moves the window to the new container
 	(%window-container-add! window container #:focus focus)
 	(log-debug "set window=~a geometry to ~ax~a+~a+~a"
@@ -504,96 +507,96 @@ Must be called in a ~render_sequence~."
       (with-render-sequence
        ((@ (gliver river wm-node-manager) wm-node-position-set!) node int-x int-y)))))
 
-(define (on-window data manager proxy-window)
+(define (window-on-window data manager proxy-window)
   "Handle a new window event from the compositor."
   (let ((window (make-window
 				 #:wl-proxy proxy-window)))
     (window-add! window)))
-(gliver-hook-add! %window-created-hook 'on-window)
+(gliver-hook-add! %window-created-hook 'window-on-window)
 
-(define (on-window-closed data proxy-window)
+(define (window-on-window-closed data proxy-window)
   "Handle a new window event from the compositor."
   (let ((window (window-find-by-proxy proxy-window)))
     (window-remove! window)))
-(gliver-hook-add! %window-destroyed-hook 'on-window-closed)
+(gliver-hook-add! %window-destroyed-hook 'window-on-window-closed)
 
-(define (on-window-focused window)
+(define (window-on-window-focused window)
   "Handle window focused event."
   ;; colorize the window border with active window border color
   (window-borders-set! window *wm-behavior-default-border-edges*
 					   (manager-config-ref 'border-width)
 					   (manager-config-ref 'border-color-focused)))
-(gliver-hook-add! *window-focused-hook* 'on-window-focused)
+(gliver-hook-add! *window-focused-hook* 'window-on-window-focused)
 
-(define (on-window-unfocused window)
+(define (window-on-window-unfocused window)
   "Handle window unfocused event."
   ;; colorize the window border with inactive window border color
   (log-debug "unfocusing window ~a" window)
   (window-borders-set! window *wm-behavior-default-border-edges*
 					   (manager-config-ref 'border-width)
 					   (manager-config-ref 'border-color-unfocused)))
-(gliver-hook-add! *window-unfocused-hook* 'on-window-unfocused)
+(gliver-hook-add! *window-unfocused-hook* 'window-on-window-unfocused)
 
-(define (on-window-title-changed proxy-window title)
+(define (window-on-window-title-changed proxy-window title)
   (let ((window (window-find-by-proxy proxy-window)))
     (when window
       (%window-title-set! window title))))
-(gliver-hook-add! %window-title-changed-hook 'on-window-title-changed)
+(gliver-hook-add! %window-title-changed-hook 'window-on-window-title-changed)
 
-(define (on-window-parent-changed proxy-window parent)
+(define (window-on-window-parent-changed proxy-window parent)
   (let ((window (window-find-by-proxy proxy-window)))
     (when window
       (%window-parent-set! window parent))))
-(gliver-hook-add! %window-parent-changed-hook 'on-window-parent-changed)
+(gliver-hook-add! %window-parent-changed-hook 'window-on-window-parent-changed)
 
-(define (on-window-app-id-changed proxy-window app-id)
+(define (window-on-window-app-id-changed proxy-window app-id)
   (let ((window (window-find-by-proxy proxy-window)))
     (when window
       (%window-app-id-set! window app-id))))
-(gliver-hook-add! %window-app-id-changed-hook 'on-window-app-id-changed)
+(gliver-hook-add! %window-app-id-changed-hook 'window-on-window-app-id-changed)
 
-(define (on-window-identifier-changed proxy-window identifier)
+(define (window-on-window-identifier-changed proxy-window identifier)
   (let ((window (window-find-by-proxy proxy-window)))
     (when window
       (%window-identifier-set! window identifier))))
-(gliver-hook-add! %window-identifier-changed-hook 'on-window-identifier-changed)
+(gliver-hook-add! %window-identifier-changed-hook 'window-on-window-identifier-changed)
 
-(define (on-window-presentation-hint data proxy-window hint)
+(define (window-on-window-presentation-hint data proxy-window hint)
   (let ((window (window-find-by-proxy proxy-window)))
     (when window
       (%window-presentation-hint-set! window hint))))
-(gliver-hook-add! %window-presentation-hint-changed-hook 'on-window-presentation-hint)
+(gliver-hook-add! %window-presentation-hint-changed-hook 'window-on-window-presentation-hint)
 
-(define (on-window-pid-changed proxy-window pid)
+(define (window-on-window-pid-changed proxy-window pid)
   (let ((window (window-find-by-proxy proxy-window)))
     (when window
       (%window-pid-set! window pid))))
-(gliver-hook-add! %window-pid-changed-hook 'on-window-pid-changed)
+(gliver-hook-add! %window-pid-changed-hook 'window-on-window-pid-changed)
 
-(define (on-window-dimensions proxy-window width height)
+(define (window-on-window-dimensions proxy-window width height)
   (let ((window (window-find-by-proxy proxy-window)))
     (when window
 	  (%window-width-set! window width)
 	  (%window-height-set! window height))))
-(gliver-hook-add! %window-size-changed-hook 'on-window-dimensions)
+(gliver-hook-add! %window-size-changed-hook 'window-on-window-dimensions)
 
-(define (on-window-dimensions-hint proxy-window min-w min-h max-w max-h)
+(define (window-on-window-dimensions-hint proxy-window min-w min-h max-w max-h)
   (let ((window (window-find-by-proxy proxy-window)))
     (when window
 	  (%window-width-min-set! window min-w)
 	  (%window-height-min-set! window min-h)
 	  (%window-width-max-set! window max-w)
 	  (%window-height-max-set! window max-h))))
-(gliver-hook-add! %window-size-hint-changed-hook 'on-window-dimensions-hint)
+(gliver-hook-add! %window-size-hint-changed-hook 'window-on-window-dimensions-hint)
 
-(define (on-window-decoration-hint proxy-window hint)
+(define (window-on-window-decoration-hint proxy-window hint)
   (let ((window (window-find-by-proxy proxy-window)))
     (when window
 	  (%window-decoration-hint-set! window hint))))
-(gliver-hook-add! %window-decoration-hint-changed-hook 'on-window-decoration-hint)
+(gliver-hook-add! %window-decoration-hint-changed-hook 'window-on-window-decoration-hint)
 
-(define (on-seat-window-focused seat window)
+(define (window-on-seat-window-focused seat window)
   (log-debug "window seat has focused ~a" window)
   (when window
 	(window-focus! window #:seat #f)))
-(gliver-hook-add! *seat-window-focused-hook* 'on-seat-window-focused)
+(gliver-hook-add! *seat-window-focused-hook* 'window-on-seat-window-focused)

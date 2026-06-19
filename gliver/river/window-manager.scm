@@ -30,10 +30,10 @@
 			*wm-render-queue*
 			*in-manage-sequence*
 			RIVER_WINDOW_V1_EDGES_ALL
-			gliver-on-globals-bind
-			gliver-on-globals-unbind
-			gliver-on-globals-verify
-			gliver-on-listeners-attach
+			window-manager-on-globals-bind
+			window-manager-on-globals-unbind
+			window-manager-on-globals-verify
+			window-manager-on-listeners-attach
 			wm-manager-stop
 			wm-manager-destroy
 			wm-manager-manage-finish
@@ -67,7 +67,7 @@
 ;; extra helper variables and functions
 (define RIVER_WINDOW_V1_EDGES_ALL 15)
 
-(define (gliver-on-globals-bind registry protocol-name object-id version)
+(define (window-manager-on-globals-bind registry protocol-name object-id version)
   "Bind and register the window manager"
   (when (string=? protocol-name RIVER_WINDOW_MANAGER_V1_NAME)
 	(log-info "Binding ~a..." protocol-name)
@@ -77,7 +77,7 @@
 								   (min version 4)))
 	(log-info "Manager ~a proxy is set to ~a" *manager* (manager-wl-proxy *manager*))))
 
-(define (gliver-on-globals-unbind)
+(define (window-manager-on-globals-unbind)
   "Unbind/destroy the window manager"
   (unless (null-pointer? (manager-wl-proxy *manager*))
     (river-window-manager-v1-destroy (manager-wl-proxy *manager*))
@@ -91,13 +91,13 @@
 
   (set! *manager* #f)))
 
-(define (gliver-on-globals-verify)
+(define (window-manager-on-globals-verify)
   "Verify critical globals were bound "
   (when (null-pointer? (manager-wl-proxy *manager*))
     (log-error "river_window_manager_v1 not available, is River running?")
     (error "river_window_manager_v1 not available")))
 
-(define (gliver-on-listeners-attach)
+(define (window-manager-on-listeners-attach)
   "Attach wayland listeners"
   ;; set up the window manager event listener.
   ;; the window manager must be attached before
@@ -291,7 +291,7 @@ positioned accurately."
            (set! *wm-render-queue* (append *wm-render-queue* (list task))))))))
 
 ;; handle river initialization steps
-(gliver-hook-add! *gliver-globals-bind-hook* 'gliver-on-globals-bind)
-(gliver-hook-add! *gliver-globals-unbind-hook* 'gliver-on-globals-unbind)
-(gliver-hook-add! *gliver-globals-verify-hook* 'gliver-on-globals-verify)
-(gliver-hook-add! *gliver-listeners-attach-hook* 'gliver-on-listeners-attach)
+(gliver-hook-add! *gliver-globals-bind-hook* 'window-manager-on-globals-bind)
+(gliver-hook-add! *gliver-globals-unbind-hook* 'window-manager-on-globals-unbind)
+(gliver-hook-add! *gliver-globals-verify-hook* 'window-manager-on-globals-verify)
+(gliver-hook-add! *gliver-listeners-attach-hook* 'window-manager-on-listeners-attach)
