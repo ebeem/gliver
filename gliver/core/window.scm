@@ -20,7 +20,9 @@
   ;; lazy loaded, core type functions shouldn't be imported here
   ;; maybe using hooks is a better idea
   #:autoload (gliver core seat) (seat-wm-window-focus)
-  #:autoload (gliver core container) (container-focus!)
+  #:autoload (gliver core container) (container-focus!
+									  container-prev
+									  container-next)
   #:export (
 			window-next
 			window-prev
@@ -149,8 +151,12 @@ invalid as the window should always have a container."
     (when (eq? (container-window-current container) window)
 	  ;; if focus parameter is true, another window in the container will be focused
 	  ;; otherwise the container will just have it as current window without seat focusing it
-	  (let ((window-target (or (window-next window #:recursive #f)
-							   (window-prev window #:recursive #f))))
+	  (let* ((container-target (if container
+								   (or (container-next container #:recursive #f)
+									   (container-prev container #:recursive #f)) #f))
+			 (window-target (or (window-next window #:recursive #f)
+								(window-prev window #:recursive #f)
+								(if container-target (container-window-current container-target) #f))))
 		(log-debug "current window deleted, focusing window (~a) ~a" (and focus window-target) window-target)
 		(if (and focus window-target)
 			(window-focus! window-target)
@@ -185,7 +191,7 @@ does have a container ~%window-container-remove!~ will be called."
 	  (when current
 		(gliver-hook-run! *window-unfocused-hook* current))
 	  (when seat
-		(seat-wm-window-focus seat window))	  
+		(seat-wm-window-focus seat window))
 	  (gliver-hook-run! *window-focused-hook* window))))
 
 (define* (window-move-to-container! window container #:key (focus #t))

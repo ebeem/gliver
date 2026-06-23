@@ -205,9 +205,10 @@ layout rules."
 		  ((>= i windows-count))    ;; stop when i is last window
 		(let* ((window (list-ref windows i))
 			   (current-container (window-container window))
-			   (currently-focused? (container-focused? current-container))
+			   (currently-focused? (or (container-focused? current-container)
+									   (eq? window (window-current))))
 			   (target-container (list-ref containers (min i (- containers-count 1)))))
-		  (log-info "current container to be removed is focused ~a" current-container)
+		  (log-info "current container to be removed is focused ~a" currently-focused?)
 		  (window-move-to-container! window target-container #:focus currently-focused?)))
 
 	  ;; remove any extra empty containers
@@ -240,7 +241,13 @@ layout rules."
   "Main orchestrator for the alternating layout."
   (when (and hook workspace)
 	(let* ((layout-cfg (workspace-layout workspace))
-           (layout-name (if (list? layout-cfg) (assq-ref layout-cfg 'layout) layout-cfg)))
+           (layout-name (if (list? layout-cfg) (assq-ref layout-cfg 'layout) layout-cfg))
+		   (append-method (layout-alternating-get-param layout-cfg 'append-method 'tail))
+		   (append-tail? (eq? append-method 'tail))
+		   (containers (workspace-containers workspace)))
+	  ;; if the append method is tail, move the window to the last container
+	  (when append-tail?
+		(window-move-to-container! window (last containers)))
       (when (equal? layout-name 'alternating)
 		(layout-alternating-reload workspace #:complete #t)))))
 
@@ -249,25 +256,23 @@ layout rules."
 		 (workspace (if container
 						(container-workspace container)
 						#f)))
-	(layout-alternating-update "window-created" workspace container window)))
+	(layout-alternating-update 'window-created workspace container window)))
 
 (define (layout-alternating-window-destroyed window container workspace)
-  (layout-alternating-update "window-destroyed" workspace container window))
+  (layout-alternating-update 'window-destroyed workspace container window))
 
 (define (layout-alternating-workspace-created workspace)
   (let* ((container (workspace-container-current workspace))
 		 (window (if container
 						(container-window-current container)
 						#f)))
-	(layout-alternating-update "workspace-created" workspace container window)))
+	(layout-alternating-update 'workspace-created workspace container window)))
 
 (define (layout-alternating-output-dimensions-changed output prev-width prev-height)
-  (log-info "output=~a" output)
-  (log-info "workspace=~a" (output-workspace-current output))
   (let* ((workspace (output-workspace-current output))
 		 (container (workspace-container-current workspace))
 		 (window (container-window-current container)))
-	(layout-alternating-update "output-dimensions-changed" workspace container window)))
+	(layout-alternating-update 'output-dimensions-changed workspace container window)))
 
 (gliver-hook-add! *window-created-hook* 'layout-alternating-window-created)
 (gliver-hook-add! *window-destroyed-hook* 'layout-alternating-window-destroyed)

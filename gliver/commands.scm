@@ -435,9 +435,7 @@ The actual input is handled via handle-input-key callbacks."
 
 (define (cmd-container-focus-direction dir)
   "Focus the container in direction DIR."
-  (and-let* ((workspace (workspace-current))
-			 (container (container-current))
-			 (target (container-in-direction dir container workspace)))
+  (and-let* ((target (container-in-direction dir)))
     (if target
 		(container-focus! target)
         (log-debug "Couldn't find focus target"))))

@@ -45,7 +45,7 @@
 									  (alternate-direction? . #t)
 									  (inner-gap . #f)
 									  (outer-gap . #f)
-									  (append-method . 'tail))
+									  (append-method . tail))
 						   #:output output)))
 	  (workspace-add! workspace)))
 
