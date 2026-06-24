@@ -136,6 +136,9 @@
 	;; make sure the window is removed properly from container so
 	;; another window is focused
 	(%window-container-remove! window)
+	(when (and container
+			   (eq? window (container-window-current container)))
+	  (%container-window-current-set! container #f))
     (gliver-hook-run! *window-destroyed-hook* window container workspace)))
 
 (define* (%window-container-remove! window #:key (focus #t))
@@ -155,12 +158,13 @@ invalid as the window should always have a container."
 								   (or (container-next container #:recursive #f)
 									   (container-prev container #:recursive #f)) #f))
 			 (window-target (or (window-next window #:recursive #f)
-								(window-prev window #:recursive #f)
-								(if container-target (container-window-current container-target) #f))))
+								(window-prev window #:recursive #f)))
+			 (window-target-inclusive (or window-target
+										  (if container-target (container-window-current container-target) #f))))
 		(log-debug "current window deleted, focusing window (~a) ~a" (and focus window-target) window-target)
-		(if (and focus window-target)
-			(window-focus! window-target)
-			(%container-window-current-set! container window-target))))))
+		(%container-window-current-set! container window-target)
+		(when (and focus window-target-inclusive)
+			(window-focus! window-target-inclusive))))))
 
 (define* (%window-container-add! window container #:key (focus #t))
   "Add a window to a container. The window should have no container. if it
@@ -176,7 +180,7 @@ does have a container ~%window-container-remove!~ will be called."
 	(if focus
 		(window-focus! window)
 		(unless (container-window-current container)
-			(%container-window-current-set! container window)))))
+		  (%container-window-current-set! container window)))))
 
 (define* (window-focus! window #:key (seat (seat-current)) (focus-parent #t))
   "Focus a window from the display."
@@ -197,12 +201,10 @@ does have a container ~%window-container-remove!~ will be called."
 (define* (window-move-to-container! window container #:key (focus #t))
   "Move a window to a container."
   (let ((container-current (window-container window)))
-	;; window should be removed from current container first
 	(log-debug "moving window ~a to container ~a with focus=~a" window container focus)
-	(when container-current
-	  (%window-container-remove! window #:focus focus))
 	;; moves the window to the new container
-	(%window-container-add! window container #:focus focus)
+	(unless (eq? container-current container)
+	  (%window-container-add! window container #:focus focus))
 	(log-debug "set window=~a geometry to ~ax~a+~a+~a"
 			   window
 			   (container-width container)
