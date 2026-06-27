@@ -16,9 +16,8 @@
   #:export (
 			%manager-wl-proxy-set!
 			manager-wl-proxy
+			%manager-config-set!
 			manager-config
-			manager-config-ref
-			manager-config-set!
 			%manager-windows-set!
 			manager-windows
 			%manager-seats-set!
@@ -31,6 +30,8 @@
 			manager-outputs
 			manager-state?
 			%make-manager-state
+			manager-config-ref
+			manager-config-set!
 			manager-window-number-next!
 			manager-workspace-number-next!
 			manager-output-number-next!
@@ -87,10 +88,12 @@
 			workspace-output
 			%workspace-containers-set!
 			workspace-containers
+			%workspace-tag-mask-set!
 			workspace-tag-mask
-			workspace-id
 			workspace-name-set!
 			workspace-name
+			%workspace-id-set!
+			workspace-id
 			workspace?
 			%make-workspace
 			make-workspace
@@ -102,8 +105,6 @@
 			container-y
 			%container-x-set!
 			container-x
-			%container-id-set!
-			container-id
 			%container-window-previous-set!
 			container-window-previous
 			%container-window-current-set!
@@ -112,6 +113,8 @@
 			container-windows
 			%container-workspace-set!
 			container-workspace
+			%container-id-set!
+			container-id
 			container?
 			%make-container
 			make-container
@@ -137,12 +140,18 @@
 			window-maximized?
 			%window-fullscreen-set!
 			window-fullscreen?
+			%window-destroyed-set!
+			window-destroyed?
 			%window-capabilities-set!
 			window-capabilities
 			%window-is-resizing-set!
 			window-is-resizing
 			%window-decoration-hint-set!
 			window-decoration-hint
+			%window-y-set!
+			window-y
+			%window-x-set!
+			window-x
 			%window-width-set!
 			window-width
 			%window-width-max-set!
@@ -155,10 +164,6 @@
 			window-height-max
 			%window-height-min-set!
 			window-height-min
-			%window-x-set!
-			window-x
-			%window-y-set!
-			window-y
 			%window-user-props-set!
 			window-user-props
 			%window-urgent-set!
@@ -200,6 +205,7 @@
 			window-workspace
 			window-output
 			manager-print-tree
+			print-branch
 ))
 
 ;;; display (global state)
@@ -216,12 +222,6 @@
   (windows                manager-windows                %manager-windows-set!)
   (config                 manager-config                 %manager-config-set!)
   (wl-proxy               manager-wl-proxy               %manager-wl-proxy-set!))
-
-(set-record-type-printer! <manager-state>
-  (lambda (out port)
-    (format port "#<manager ~s (~a outputs)>"
-            (manager-wl-proxy out)
-            (length (manager-outputs out)))))
 
 (define (manager-config-ref key)
   "Look up KEY in the manager config hash table."
@@ -303,14 +303,6 @@
   (wl-output          output-wl-output          %output-wl-output-set!)
   (wl-proxy           output-wl-proxy           %output-wl-proxy-set!))
 
-(set-record-type-printer! <output>
-  (lambda (out port)
-    (format port "#<output ~s ~ax~a+~a+~a (~a workspaces)>"
-            (output-name out)
-            (output-width out) (output-height out)
-            (output-x out) (output-y out)
-            (length (output-workspaces out)))))
-
 (define* (make-output name
                       #:key (id (manager-output-number-next!)) (wl-proxy #f) (x 0) (y 0) (width 1920) (height 1080)
 					  (workspaces '()) (workspace-current #f) (workspace-previous #f) (wl-output #f))
@@ -334,12 +326,6 @@ Other parameters (x, y, width, height, wl-proxy) can be provided as keyword argu
   (wl-seat            seat-wl-seat            %seat-wl-seat-set!)
   (wl-proxy           seat-wl-proxy           %seat-wl-proxy-set!))
 
-(set-record-type-printer! <seat>
-  (lambda (s port)
-    (format port "#<seat ~a (~a window)>"
-            (seat-name s)
-            (seat-window-focused s))))
-
 (define* (make-seat #:key (name #f) (wl-proxy #f) (wl-seat #f)
 					(window-entered #f) (window-focused #f))
   (%make-seat name window-entered window-focused wl-proxy wl-seat))
@@ -358,13 +344,6 @@ Other parameters (x, y, width, height, wl-proxy) can be provided as keyword argu
   (layout               workspace-layout               workspace-layout-set!)
   (container-current    workspace-container-current    %workspace-container-current-set!)
   (container-previous   workspace-container-previous   %workspace-container-previous-set!))
-
-(set-record-type-printer! <workspace>
-  (lambda (g port)
-    (format port "#<workspace ~a ~s container-current=~a, prev=~a tag=~a layout=~a>"
-            (workspace-id g) (workspace-name g)
-			(workspace-container-current g) (workspace-container-previous g)
-            (workspace-tag-mask g) (assq-ref (workspace-layout g) 'layout))))
 
 (define* (make-workspace #:key
 						 (id (manager-workspace-number-next!))
@@ -392,16 +371,6 @@ Other parameters (x, y, width, height, wl-proxy) can be provided as keyword argu
   (width           container-width           %container-width-set!)
   (height          container-height          %container-height-set!))
 
-(set-record-type-printer! <container>
-  (lambda (f port)
-    (format port "#<container ~a ~ax~a+~a+~a (~a wins) - current is ~a, prev is ~a>"
-            (container-id f)
-            (container-width f) (container-height f)
-            (container-x f) (container-y f)
-            (length (container-windows f))
-			(container-window-current f)
-			(container-window-previous f))))
-
 (define* (make-container #:key (workspace #f) (x 0) (y 0) (width 0) (height 0))
   "Create a new flat container."
   (%make-container (container-id-next!) workspace '() #f #f
@@ -416,7 +385,7 @@ Other parameters (x, y, width, height, wl-proxy) can be provided as keyword argu
   (%make-window id title app-id class instance container
 				floating? transient? marked? urgent? user-props
                 height-min height-max height width-min width-max width x y
-				decoration-hint is-resizing capabilities fullscreen?
+				decoration-hint is-resizing capabilities destroyed? fullscreen?
 				maximized? visible? pid parent presentation-hint identifier
                 wl-proxy wl-node-proxy wl-decoration-above wl-decoration-below)
   window?
@@ -442,6 +411,7 @@ Other parameters (x, y, width, height, wl-proxy) can be provided as keyword argu
   (decoration-hint  window-decoration-hint  %window-decoration-hint-set!)
   (is-resizing      window-is-resizing      %window-is-resizing-set!)
   (capabilities     window-capabilities     %window-capabilities-set!)
+  (destroyed?       window-destroyed?       %window-destroyed-set!)
   (fullscreen?      window-fullscreen?      %window-fullscreen-set!)
   (maximized?       window-maximized?       %window-maximized-set!)
   (visible?         window-visible?         %window-visbile-set!)
@@ -454,19 +424,6 @@ Other parameters (x, y, width, height, wl-proxy) can be provided as keyword argu
   (wl-decoration-above    window-wl-decoration-above-proxy    %window-wl-decoration-above-proxy-set!)
   (wl-decoration-below    window-wl-decoration-below-proxy    %window-wl-decoration-below-proxy-set!))
 
-(set-record-type-printer! <window>
-  (lambda (window port)
-    (format port "#<window proxy=~a id=~a ~s app-id=~s visible=~a> pos=~ax~a@~ax~a"
-            (window-wl-proxy window)
-            (window-id window)
-            (window-title window)
-            (window-app-id window)
-			(window-visible? window)
-			(window-width window)
-			(window-height window)
-			(window-x window)
-			(window-y window))))
-
 (define* (make-window #:key
                       (id (manager-window-number-next!))
                       (title "") (app-id "") (class "")
@@ -476,7 +433,7 @@ Other parameters (x, y, width, height, wl-proxy) can be provided as keyword argu
                       (height-min #f) (height-max #f) (height #f)
                       (width-min #f) (width-max #f) (width #f) (x 0) (y 0)
                       (decoration-hint #f) (is-resizing #f)
-                      (capabilities '()) (fullscreen? #f) (maximized? #f)
+                      (capabilities '()) (destroyed? #f) (fullscreen? #f) (maximized? #f)
                       (visible? #t) (pid #f) (parent #f) (presentation-hint #f)
                       (identifier #f) (wl-proxy #f) (wl-node-proxy #f)
                       (wl-decoration-above #f) (wl-decoration-below #f))
@@ -484,9 +441,66 @@ Other parameters (x, y, width, height, wl-proxy) can be provided as keyword argu
   (%make-window id title app-id class instance container
                 floating? transient? marked? urgent? user-props
                 height-min height-max height width-min width-max width x y
-                decoration-hint is-resizing capabilities fullscreen?
+                decoration-hint is-resizing capabilities destroyed? fullscreen?
 				maximized? visible? pid parent presentation-hint identifier
                 wl-proxy wl-node-proxy wl-decoration-above wl-decoration-below))
+
+;;; helper printers
+
+(set-record-type-printer! <manager-state>
+  (lambda (out port)
+    (format port "#<manager proxy=~s outputs=~a>"
+            (manager-wl-proxy out)
+            (length (manager-outputs out)))))
+
+(set-record-type-printer! <output>
+  (lambda (out port)
+    (format port "#<output name=~s pos=~ax~a+~a+~a workspaces=~a current-workspace=~a prev-workspace=~a>"
+            (output-name out)
+            (output-width out) (output-height out)
+            (output-x out) (output-y out)
+            (length (output-workspaces out))
+			(if (output-workspace-current out) (workspace-id (output-workspace-current out)) #f)
+			(if (output-workspace-previous out) (workspace-id (output-workspace-previous out)) #f))))
+
+(set-record-type-printer! <seat>
+  (lambda (s port)
+    (format port "#<seat ~a (~a window)>"
+            (seat-name s)
+            (seat-window-focused s))))
+
+(set-record-type-printer! <workspace>
+  (lambda (g port)
+    (format port "#<workspace id=~a name=~s container-current-id=~a, container-current-id=~a tag=~a layout=~a>"
+            (workspace-id g)
+			(workspace-name g)
+			(if (workspace-container-current g) (container-id (workspace-container-current g)) #f)
+			(if (workspace-container-previous g) (container-id (workspace-container-previous g)) #f)
+            (workspace-tag-mask g)
+			(assq-ref (workspace-layout g) 'layout))))
+
+(set-record-type-printer! <container>
+  (lambda (f port)
+    (format port "#<container id=~a pos=~ax~a+~a+~a wins=~a current-win=~a prev-win=~a>"
+            (container-id f)
+            (container-width f) (container-height f)
+            (container-x f) (container-y f)
+            (length (container-windows f))
+			(if (container-window-current f) (window-id (container-window-current f)) #f)
+			(if (container-window-previous f) (window-id (container-window-previous f)) #f))))
+
+(set-record-type-printer! <window>
+  (lambda (window port)
+    (format port "#<window id=~a proxy=~a app-id=~s visible=~a pos=~ax~a@~ax~a container=~a>"
+            (window-id window)
+            (window-wl-proxy window)
+            (window-app-id window)
+			(window-visible? window)
+			(window-width window)
+			(window-height window)
+			(window-x window)
+			(window-y window)
+			(if (window-container window) (container-id (window-container window)) #f))))
 
 ;;; Common utils
 

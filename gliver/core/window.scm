@@ -111,7 +111,6 @@
 	(window-apply-defaults! window)
 	;; windows are stored in the manager for quick lookups
 	(%manager-windows-set! *manager* all-windows)
-	(%window-container-set! window #f)
 	(window-move-to-container! window container #:focus *wm-behavior-focus-new-window*)
 	(gliver-hook-run! *window-created-hook* window)))
 
@@ -133,20 +132,16 @@
 		 (container (window-container window))
 		 (workspace (container-workspace container)))
     (%manager-windows-set! *manager* remaining-windows)
-	;; make sure the window is removed properly from container so
-	;; another window is focused
 	(%window-container-remove! window)
-	(when (and container
-			   (eq? window (container-window-current container)))
-	  (%container-window-current-set! container #f))
+	(%window-destroyed-set! window #t)
     (gliver-hook-run! *window-destroyed-hook* window container workspace)))
 
 (define* (%window-container-remove! window #:key (focus #t))
   "Remove a window from the container. This function makes the window state
 invalid as the window should always have a container."
-  (and-let* ((container (window-container window))
-			 (windows (container-windows container))
-			 (windows-remaining (delete window windows)))
+  (let* ((container (window-container window))
+		 (windows (container-windows container))
+		 (windows-remaining (delete window windows)))
     (%window-container-set! window #f)
     (%container-windows-set! container windows-remaining)
 	(gliver-hook-run! %window-container-removed-hook* window container)
@@ -161,33 +156,38 @@ invalid as the window should always have a container."
 								(window-prev window #:recursive #f)))
 			 (window-target-inclusive (or window-target
 										  (if container-target (container-window-current container-target) #f))))
+
 		(log-debug "current window deleted, focusing window (~a) ~a" (and focus window-target) window-target)
 		(%container-window-current-set! container window-target)
 		(when (and focus window-target-inclusive)
-			(window-focus! window-target-inclusive))))))
+		  (window-focus! window-target-inclusive))))))
 
 (define* (%window-container-add! window container #:key (focus #t))
   "Add a window to a container. The window should have no container. if it
 does have a container ~%window-container-remove!~ will be called."
-  (when (window-container window)
-	(%window-container-remove! window))
-  (let ((container-windows (append (container-windows container) (list window))))
-	(%window-container-set! window container)
-	(%container-windows-set! container container-windows)
-	(gliver-hook-run! %window-container-added-hook* window container)
-	;; if focus parameter is true, window will be focused, otherwise the
-	;; container will just have it as current window without seat focusing it
-	(if focus
-		(window-focus! window)
-		(unless (container-window-current container)
-		  (%container-window-current-set! container window)))))
+  ;; it's an error to add a destroyed window to container
+  ;; it will be hard to force all callers to ensure that the window
+  ;; they pass isn't destroyed, so the validation is done here as well
+  (unless (window-destroyed? window)
+	(when (window-container window)
+	  (%window-container-remove! window))
+	(let ((container-windows (append (container-windows container) (list window))))
+	  (%window-container-set! window container)
+	  (%container-windows-set! container container-windows)
+	  (gliver-hook-run! %window-container-added-hook* window container)
+	  ;; if focus parameter is true, window will be focused, otherwise the
+	  ;; container will just have it as current window without seat focusing it
+	  (if focus
+		  (window-focus! window)
+		  (unless (container-window-current container)
+			(%container-window-current-set! container window))))))
 
 (define* (window-focus! window #:key (seat (seat-current)) (focus-parent #t))
   "Focus a window from the display."
   (let ((container (window-container window))
 		(current (window-current)))
 	(unless (and (eq? current window) (not force))
-	  (log-info "focusing window ~a from current ~a" window current)
+	  (log-debug "focusing window ~a from current ~a" window current)
 	  (%container-window-current-set! container window)
 	  (when (and focus-parent container)
 		(container-focus! container #:focus-child #f))

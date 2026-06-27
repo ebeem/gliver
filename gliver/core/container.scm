@@ -163,7 +163,7 @@
 (define* (container-focus! container  #:key (focus-child #t) (focus-parent #t))
   "Focus a container by focusing its last focused window."
   ;; target window is current focused or first window
-  (log-info "focusing container ~a, is focused? = ~a" container
+  (log-debug "focusing container ~a, is focused? = ~a" container
 			(container-focused? container))
   (unless (container-focused? container)
 	(let* ((windows (container-windows container))

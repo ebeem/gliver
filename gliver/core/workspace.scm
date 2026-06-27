@@ -131,7 +131,7 @@ and then @var{s-workspace}'s container list is emptied."
   "Focus active container in the workspace"
   ;; focus the current container, it's actually an error
   ;; not to have a current container
-  (log-info "focusing workspace ~a, is focused? = ~a" workspace
+  (log-debug "focusing workspace ~a, is focused? = ~a" workspace
 			(workspace-focused? workspace))
   (unless (workspace-focused? workspace)
 	(let* ((containers (workspace-containers workspace))

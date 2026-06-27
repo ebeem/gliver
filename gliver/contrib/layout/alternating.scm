@@ -208,7 +208,7 @@ layout rules."
 			   (currently-focused? (or (container-focused? current-container)
 									   (eq? window (window-current))))
 			   (target-container (list-ref containers (min i (- containers-count 1)))))
-		  (log-info "current container to be removed is focused ~a" currently-focused?)
+		  (log-debug "current container to be removed is focused ~a" currently-focused?)
 		  (window-move-to-container! window target-container #:focus currently-focused?)))
 
 	  ;; remove any extra empty containers
