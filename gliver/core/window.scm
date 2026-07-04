@@ -472,7 +472,7 @@ Must be called in a ~manage_sequence~."
 	  (with-manage-sequence
 	   (wm-window-fullscreen-exit proxy-window)
 	   (%window-fullscreen-set! window #f)
-	   (gliver-hook-run! *window-fullscreen-entered-hook* window prev-status)))))
+	   (gliver-hook-run! *window-fullscreen-exited-hook* window prev-status)))))
 
 (define (window-clip-box-set! window x y width height)
   "Clip the window, including borders and decoration surfaces.

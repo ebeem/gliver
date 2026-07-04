@@ -194,7 +194,7 @@ object. The client should destroy the object."
   "Handle a new window event from the compositor.
 Creates a core <window> record, attaches the event listener, and queues
 the window for initial setup in the upcoming manage sequence."
-  (log-info "New window proxy: ~a" proxy-win)
+  (log-debug "New window proxy: ~a" proxy-win)
   (gliver-hook-run! %window-created-hook data proxy-manager proxy-win))
 
 (define (wm-on-output data proxy-manager output-proxy)

@@ -58,7 +58,7 @@
 (define *wm-behavior-workspace-remove-to* 'focus)    ;; 'focus | 'index
 (define *wm-behavior-default-decoration* 'server)    ;; 'server | 'client
 (define *wm-behavior-default-capabilties* 0)
-(define *wm-behavior-default-edges* 0)
+(define *wm-behavior-default-edges* 15)
 (define *wm-behavior-default-border-edges* 15)
 
 ;;; config file loading

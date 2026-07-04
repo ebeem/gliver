@@ -92,13 +92,17 @@ respects the alternating layout system."
 		 (prev-height (if prev-container
 						  (container-height prev-container)
 						  oh))
+		 (avail-width (- ow (* 2 total-outer-gap)))
+		 (avail-height (- oh (* 2 total-outer-gap)))
 
 		 ;; get index direction split, vertical or horizontal split
-		 (split-ratio (if tail? 1 (layout-alternating-get-param layout-cfg 'split-ratio 0.5)))
 		 (initial-dir (layout-alternating-get-param layout-cfg 'initial-split-direction 'vertical))
 		 (other-dir (if (eq? initial-dir 'vertical) 'horizontal 'vertical))
 		 (split (if (even? index) initial-dir other-dir))
-		 (prev-split (if (even? index) other-dir initial-dir)))
+		 (prev-split (if (even? index) other-dir initial-dir))
+		 (split-ratio (if tail? 1 (layout-alternating-get-param layout-cfg 'split-ratio 0.5)))
+		 (split-ratio-w (if (and (not tail?) (eq? split 'vertical)) 1 split-ratio))
+		 (split-ratio-h (if (and (not tail?) (eq? split 'horizontal)) 1 split-ratio)))
 
 	(cond
 
@@ -106,14 +110,14 @@ respects the alternating layout system."
       (log-debug "case-0: no container is available at the index ~a" index))
 
 	 ((= 0 index)
-	  (let* ((avail-width (- ow (* 2 total-outer-gap)))
-			 (avail-height (- oh (* 2 total-outer-gap)))
-			 (curr-width (if (eq? split 'horizontal)
-							 (* avail-width split-ratio)
-							 avail-width))
-			 (curr-height (if (eq? split 'vertical)
-							  (* avail-height split-ratio)
-							  avail-height))
+	  (let* ((gap-dt 0)
+			 (gap-db (if (and (not tail?) (eq? split 'vertical)) 1 0))
+			 (gap-dr (if (and (not tail?) (eq? split 'horizontal)) 1 0))
+			 (gap-dl 0)
+			 (curr-width  (- (* avail-width split-ratio-w)
+							 (* (+ gap-dr gap-dl) total-inner-gap)))
+			 (curr-height (- (* avail-height split-ratio-h)
+							 (* (+ gap-dt gap-db) total-inner-gap)))
 			 (curr-x total-outer-gap)
 			 (curr-y total-outer-gap))
 		(container-size-set! container curr-width curr-height)
@@ -131,12 +135,8 @@ respects the alternating layout system."
 							(container-height prev-container)
 							(* 2 total-inner-gap))
 						 (container-y prev-container)))
-			 (curr-width (if (eq? prev-split 'vertical)
-							 (container-width prev-container)
-							 (- ow curr-x total-outer-gap)))
-			 (curr-height (if (eq? prev-split 'vertical)
-							  (- oh curr-y total-outer-gap)
-							  (container-height prev-container))))
+			 (curr-width (container-width prev-container))
+			 (curr-height (container-height prev-container)))
 		(container-size-set! container curr-width curr-height)
 		(container-position-set! container curr-x curr-y)))
 
@@ -152,20 +152,14 @@ respects the alternating layout system."
 							(container-height prev-container)
 							(* 2 total-inner-gap))
 						 (container-y prev-container)))
-
-			 (remaining-width (if (eq? prev-split 'vertical)
-								  (container-width prev-container)
-								  (- ow curr-x total-outer-gap)))
-			 (remaining-height (if (eq? prev-split 'vertical)
-								   (- oh curr-y total-outer-gap)
-								   (container-height prev-container)))
-
+			 (remaining-width (container-width prev-container))
+			 (remaining-height (container-height prev-container))
 			 (curr-width (if (eq? split 'horizontal)
 							 (- (* remaining-width split-ratio) total-inner-gap)
-							 remaining-width))
+							 (container-width prev-container)))
 			 (curr-height (if (eq? split 'vertical)
 							  (- (* remaining-height split-ratio) total-inner-gap)
-							  remaining-height)))
+							  (container-height prev-container))))
 		(container-size-set! container curr-width curr-height)
 		(container-position-set! container curr-x curr-y))))))
 
@@ -258,6 +252,13 @@ layout rules."
 						#f)))
 	(layout-alternating-update 'window-created workspace container window)))
 
+(define (layout-alternating-window-fullscreen-exited window)
+  (let* ((container (window-container window))
+		 (workspace (if container
+						(container-workspace container)
+						#f)))
+	(layout-alternating-reload workspace #:complete #t)))
+
 (define (layout-alternating-window-destroyed window container workspace)
   (layout-alternating-update 'window-destroyed workspace container window))
 
@@ -275,6 +276,7 @@ layout rules."
 	(layout-alternating-update 'output-dimensions-changed workspace container window)))
 
 (gliver-hook-add! *window-created-hook* 'layout-alternating-window-created)
+(gliver-hook-add! *window-fullscreen-exited-hook* 'layout-alternating-window-fullscreen-exited)
 (gliver-hook-add! *window-destroyed-hook* 'layout-alternating-window-destroyed)
 (gliver-hook-add! *workspace-created-hook* 'layout-alternating-workspace-created)
 (gliver-hook-add! *output-dimensions-changed-hook* 'layout-alternating-output-dimensions-changed)
