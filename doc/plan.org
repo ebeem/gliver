@@ -26,3 +26,12 @@ the implementation used to check for specific events like window creation and ap
 ** TODO make default layout manual
 
 ** DONE check out dirty manager sequences and imperfect frames
+
+** TODO test multi monitor configuration
+use ~WLR_WL_OUTPUTS=2~ in a nested setup
+
+** TODO make a custom =define-command= macro
+this should help in creating a well defined hash-table structure that can be looked up quickly while following ~gliver~'s standards in defining commands
+
+** TODO make a custom =define-var= macro
+this should help in creating a well defined hash-table structure that can be looked up quickly while following ~gliver~'s standards in defining variables. Remove all variables from manager ~manager-config~ and make them in a global variables =hash-table= instead.

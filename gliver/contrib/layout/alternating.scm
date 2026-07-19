@@ -36,6 +36,7 @@
                                   (append-method 'tail))
   "Create an associated list for the alternating layout configuration."
   `((layout . alternating)
+	(layout-type . auto)
     (initial-split-direction . ,initial-split-direction)
     (split-ratio . ,split-ratio)
     (max-depth . ,max-depth)

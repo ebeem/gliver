@@ -17,13 +17,6 @@
   #:use-module (gliver core)
   #:declarative? #f
   #:export (
-			command-record-docstring
-			command-record-procedure
-			command-record-name
-			command-record?
-			make-command-record
-			*command-table*
-			command-register!
 			command-find
 			command-all
 			command-run
@@ -96,40 +89,26 @@
 ))
 
 ;;; command registry
-(define-record-type <command>
-  (make-command-record name procedure docstring)
-  command-record?
-  (name      command-record-name)
-  (procedure command-record-procedure)
-  (docstring command-record-docstring))
-
-(define *command-table* (make-hash-table))
-
-(define (command-register! name proc docstring)
-  "Register a command with NAME, PROC, and DOCSTRING."
-  (hash-table-set! *command-table* (if (symbol? name) name (string->symbol name))
-                   (make-command-record name proc docstring)))
-
 (define (command-find name)
   "Find a command by name (symbol or string)."
   (let ((sym (if (symbol? name) name (string->symbol name))))
-    (hash-table-ref/default *command-table* sym #f)))
+    (hash-table-ref/default *command-registry* sym #f)))
 
 (define (command-all)
   "Return a list of all registered command names."
-  (map car (hash-table->alist *command-table*)))
+  (map car (hash-table->alist *command-registry*)))
 
 (define (command-run cmd . args)
   "Run a command record with ARGS."
-  (when (command-record? cmd)
-    (gliver-hook-run! *command-pre-hook* (command-record-name cmd) args)
+  (when (command? cmd)
+    (gliver-hook-run! *command-pre-hook* (command-name cmd) args)
     (let ((result (catch #t
-                    (lambda () (apply (command-record-procedure cmd) args))
+                    (lambda () (apply (command-procedure cmd) args))
                     (lambda (key . rest)
                       (log-error "Command ~a error: ~a ~a"
-                                 (command-record-name cmd) key rest)
+                                 (command-name cmd) key rest)
                       #f))))
-      (gliver-hook-run! *command-post-hook* (command-record-name cmd) args result)
+      (gliver-hook-run! *command-post-hook* (command-name cmd) args result)
       result)))
 
 (define (command-run-by-name name . args)
@@ -152,25 +131,27 @@
               #f)))))
 
 ;;; shell
-(define (shell-command-output cmd)
+(define-command (shell-command-output cmd)
+  #:interactive (string)
   "Run CMD via /bin/sh and return its stdout as a string."
   (let* ((port (open-input-pipe cmd))
          (output (get-string-all port)))
     (close-pipe port)
     (string-trim-right output #\newline)))
 
-(define (shell-process-spawn . args)
+(define-command (shell-process-spawn . args)
+  #:interactive (string)
   "Spawn a subprocess. ARGS is the command and arguments.
 Returns the PID."
   (let ((pid (primitive-fork)))
     (cond
      ((zero? pid)
-      ;; Child
       (apply execlp (car args) args)
       (primitive-exit 127))
      (else pid))))
 
-(define (shell-process-spawn-detached cmd)
+(define-command (shell-process-spawn-detached cmd)
+  #:interactive (string)
   "Spawn CMD via /bin/sh in a detached subprocess (double-fork)."
   (system (string-append cmd " &")))
 
@@ -254,38 +235,56 @@ The actual input is handled via handle-input-key callbacks."
     #f)
    (else #f)))
 
-;;; default commands
-
 ;;; window commands
-(define (cmd-window-focus-next)
+(define-command (window-focus-next)
   "Focus the next window in the current container."
-  ;; TODO: fix logic, use window-focus!
-  )
+  (and-let* ((win (window-current))
+			 (next (window-next win)))
+    (when next
+      (window-focus next))))
 
-(define (cmd-window-focus-prev)
+(define-command (window-focus-prev)
   "Focus the previous window in the current container."
-  ;; TODO: fix logic, use window-focus!
-  )
+  (and-let* ((win (window-current))
+			 (prev (window-prev win)))
+    (when prev
+      (window-focus prev))))
 
-(define (cmd-window-focus-other)
-  "Switch to the previously focused window."
-  (cmd-window-focus-prev))
+(define-command (window-focus-last)
+  "Switch to the previously focused window within the current container."
+  (and-let* ((win (window-current))
+			 (container (window-container win))
+			 (prev (container-window-previous container)))
+    (when prev
+      (window-focus prev)))
 
-(define (cmd-window-list)
-  "Show a list of windows in the current workspace."
-  (let* ((workspace (workspace-current))
-         (wins (if workspace (workspace-windows workspace) '())))
-    (if (null? wins)
+(define-command (window-all-list)
+  "Show a list of all available windows."
+  (let* ((windows (windows (manager-windows *manager*))))
+    (if (null? windows)
         (log-debug "No windows.")
-        (log-debug "~a"
-                 (string-join
-                  (map (lambda (w)
-                         (format #f "~a:~a"
-                                 (window-id w) (window-title w)))
-                       wins)
-                  " | ")))))
+		;; NOTE: there should be a call for dmenu prompt
+        (log-debug "Show windows."))))
 
-(define (cmd-window-kill)
+(define-command (window-workspace-list)
+  "Show a list of current workspace windows."
+  (and-let* ((workspace (workspace-current))
+			 (windows (workspace-windows workspace)))
+    (if (null? windows)
+        (log-debug "No windows.")
+		;; NOTE: there should be a call for dmenu prompt
+        (log-debug "Show windows."))))
+
+(define-command (window-container-list)
+  "Show a list of current container windows."
+  (and-let* ((container (container-current))
+			 (windows (container-windows container)))
+    (if (null? windows)
+        (log-debug "No windows.")
+		;; NOTE: there should be a call for dmenu prompt
+        (log-debug "Show windows."))))
+
+(define-command (window-kill)
   "Close the current window."
   (let ((win (window-current)))
     (if win
@@ -295,16 +294,11 @@ The actual input is handled via handle-input-key callbacks."
           (log-debug "Closed: ~a" (window-title win)))
         (log-debug "No current window."))))
 
-;; (define (cmd-window-float-toggle)
-;;   "Toggle the current window between tiled and floating."
-;;   (let ((win (window-current)))
-;;     (when win
-;;       (window-toggle-float! win)
-;;       (log-debug "~a: ~a"
-;;                (if (window-floating? win) "Floating" "Tiled")
-;;                (window-title win)))))
+(define-command (window-float-toggle)
+  "Toggle the current window between tiled and floating."
+  ;; TODO: not implemented yet)
 
-(define (cmd-window-fullscreen)
+(define-command (window-fullscreen-toggle)
   "Toggle fullscreen for the current window."
   (let ((win (window-current)))
     (when win
@@ -312,7 +306,7 @@ The actual input is handled via handle-input-key callbacks."
           (window-fullscreen-exit! win)
           (window-fullscreen! win (window-output win))))))
 
-(define (cmd-window-swap)
+(define-command (window-swap)
   "Swap windows between current container and another."
   (log-debug "Select target container..."))
 
@@ -575,7 +569,7 @@ The actual input is handled via handle-input-key callbacks."
       (log-error "Error: ~a ~a" key args)
       #f)))
 
-(define (cmd-terminal-spawn)
+(define-command (terminal-spawn)
   "Spawn default terminal."
   (cmd-exec (format #f "exec ~a" *terminal*)))
 
@@ -617,9 +611,9 @@ The actual input is handled via handle-input-key callbacks."
          (action (and binding (gliver-binding-action binding))))
     (if action
         (cond
-         ((command-record? (command-find action))
+         ((command? (command-find action))
           (log-debug "~a → ~a: ~a" key-str action
-                   (command-record-docstring (command-find action))))
+                   (command-docstring (command-find action))))
          ((gliver-keymap? action)
           (log-debug "~a → keymap: ~a" key-str (gliver-keymap-name action)))
          (else
@@ -630,7 +624,7 @@ The actual input is handled via handle-input-key callbacks."
   "Describe a command."
   (let ((cmd (command-find name)))
     (if cmd
-        (log-debug "~a: ~a" name (command-record-docstring cmd))
+        (log-debug "~a: ~a" name (command-docstring cmd))
         (log-warn "Unknown command: ~a" name))))
 
 (define (cmd-where-is name)
@@ -747,7 +741,7 @@ The actual input is handled via handle-input-key callbacks."
   (command-register! 'prefix-abort cmd-prefix-abort "Abort prefix mode."))
 
 ;; register on module load
-(command-register-defaults!)
+;(command-register-defaults!)
 
 (define (keybindings-clear!)
   "Clear all keybindings from all standard keymaps."

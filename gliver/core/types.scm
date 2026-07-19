@@ -9,11 +9,20 @@
   #:use-module (srfi srfi-1)
   #:use-module (srfi srfi-2)
   #:use-module (srfi srfi-9)
+  #:use-module (srfi srfi-69)
   #:use-module (srfi srfi-9 gnu)
   #:use-module (gliver core keybindings)
   #:use-module (gliver core logs)
   #:use-module (system foreign)
   #:export (
+			command-docstring
+			command-procedure
+			command-name
+			command?
+			make-command
+			*command-registry*
+			command-register!
+			define-command
 			%manager-wl-proxy-set!
 			manager-wl-proxy
 			%manager-config-set!
@@ -208,6 +217,63 @@
 			print-branch
 ))
 
+(define-record-type <command>
+  (make-command name procedure interactive-spec docstring)
+  command?
+  (name      command-name)
+  (procedure command-procedure)
+  (interactive-spec command-interactive-spec)
+  (docstring command-docstring))
+
+(define *command-registry* (make-hash-table))
+
+(define (command-register! name proc interactive-spec docstring)
+  "Register a command with NAME, PROC, INTERACTIVE-SPEC, and DOCSTRING."
+  (hash-table-set! *command-registry* (if (symbol? name) name (string->symbol name))
+                   (make-command name proc interactive-spec docstring)))
+
+(define-syntax define-command
+  (syntax-rules ()
+    ;; pattern 1: with the #:interactive keyword
+    ((_ (name . args) #:interactive interactive-spec docstring body ...)
+     (begin
+       (define (name . args)
+         body ...)
+       (command-register! 'name name 'interactive-spec docstring)))
+
+    ;; pattern 2: without the #:interactive keyword
+    ((_ (name . args) docstring body ...)
+     (begin
+       (define (name . args)
+         body ...)
+       (command-register! 'name name '() docstring)))))
+
+(define *variable-registry* (make-hash-table))
+
+(define (variable-register! name docstring)
+  "Register a variable's docstring for introspection."
+  (hash-table-set! *variable-registry* name docstring))
+
+(define-syntax define-var
+  (syntax-rules ()
+    ;; pattern 1: (define-var name value "docstring")
+    ((_ name init-value docstring)
+     (begin
+       (define name init-value)
+       (variable-register! 'name docstring)))
+
+    ;; pattern 2: (define-var name value) - no docstring provided
+    ((_ name init-value)
+     (begin
+       (define name init-value)
+       (variable-register! 'name "No documentation.")))
+
+    ;; match 3: (define-var name) - initialized to #f by default
+    ((_ name)
+     (begin
+       (define name #f)
+       (variable-register! 'name "No documentation.")))))
+
 ;;; display (global state)
 ;;; all setters are private and should only be generally used by the core
 ;;; modules to keep the state synced with river
@@ -225,11 +291,11 @@
 
 (define (manager-config-ref key)
   "Look up KEY in the manager config hash table."
-  (hash-ref (manager-config *manager*) key))
+  (hash-table-ref/default (manager-config *manager*) key #f))
 
 (define (manager-config-set! key value)
   "Set KEY to VALUE in the manager config hash table."
-  (hash-set! (manager-config *manager*) key value))
+  (hash-table-set! (manager-config *manager*) key value))
 
 (define (manager-window-number-next!)
   (let ((id (manager-config-ref 'window-number-next)))
@@ -258,22 +324,22 @@
 
 (define *manager*
   (let ((cfg (make-hash-table)))
-    (hash-set! cfg 'prefix-key             (make-gliver-key '(Control) 't))
-    (hash-set! cfg 'prefix-timeout         1000)  ; ms
-    (hash-set! cfg 'message-timeout        5)     ; seconds
-    (hash-set! cfg 'mode                   'normal)
-    (hash-set! cfg 'border-width           3)
-    (hash-set! cfg 'border-color-focused   "#c6a0f6")
-    (hash-set! cfg 'border-color-unfocused "#1e2030")
-    (hash-set! cfg 'border-color-urgent    "#ed8796")
-    (hash-set! cfg 'container-inner-gap    4)
-    (hash-set! cfg 'container-outer-gap    8)
-    (hash-set! cfg 'running?               #f)
-    (hash-set! cfg 'window-number-next     0)
-    (hash-set! cfg 'container-id-next  0)
-    (hash-set! cfg 'output-number-next     0)
-    (hash-set! cfg 'workspace-number-next  0)
-    (hash-set! cfg 'next-tag-bit           1)
+    (hash-table-set! cfg 'prefix-key             (make-gliver-key '(Control) 't))
+    (hash-table-set! cfg 'prefix-timeout         1000)  ; ms
+    (hash-table-set! cfg 'message-timeout        5)     ; seconds
+    (hash-table-set! cfg 'mode                   'normal)
+    (hash-table-set! cfg 'border-width           3)
+    (hash-table-set! cfg 'border-color-focused   "#c6a0f6")
+    (hash-table-set! cfg 'border-color-unfocused "#1e2030")
+    (hash-table-set! cfg 'border-color-urgent    "#ed8796")
+    (hash-table-set! cfg 'container-inner-gap    4)
+    (hash-table-set! cfg 'container-outer-gap    8)
+    (hash-table-set! cfg 'running?               #f)
+    (hash-table-set! cfg 'window-number-next     0)
+    (hash-table-set! cfg 'container-id-next  0)
+    (hash-table-set! cfg 'output-number-next     0)
+    (hash-table-set! cfg 'workspace-number-next  0)
+    (hash-table-set! cfg 'next-tag-bit           1)
     (%make-manager-state
      '()   ; outputs
      #f    ; output-current
