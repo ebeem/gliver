@@ -35,3 +35,91 @@ this should help in creating a well defined hash-table structure that can be loo
 
 ** TODO make a custom =define-var= macro
 this should help in creating a well defined hash-table structure that can be looked up quickly while following ~gliver~'s standards in defining variables. Remove all variables from manager ~manager-config~ and make them in a global variables =hash-table= instead.
+
+** TODO make common functions for display
+alternative to emacs minibuffer, messages, and logs. Components provided should be:
+- command palette: allows users to select candidate from options
+- prompt message: allows user to enter a free value
+- toast: allows user to display messages with custom click behaviors and timeout
+
+#+begin_src scheme
+;;; message display
+(define *message-last* "")
+(define *message-callback* #f)
+
+(define (message fmt . args)
+  "Display a message in the message bar."
+  (let ((msg (apply format #f fmt args)))
+    (set! *message-last* msg)
+    (log-info "Message: ~a" msg)
+    (when *message-callback*
+      (*message-callback* msg))
+    msg))
+
+(define (message-no-timeout fmt . args)
+  "Display a persistent message."
+  (apply message fmt args))
+
+;;; interactive input
+(define *input-callback* #f)
+(define *input-prompt* "")
+(define *input-buffer* "")
+(define *input-completions* '())
+(define *input-result-callback* #f)
+
+(define* (read-one-line prompt #:key (completions '()))
+  "Request one line of input from the user.
+In the async architecture, this sets up state and returns #f immediately.
+The actual input is handled via handle-input-key callbacks."
+  (set! *input-prompt* prompt)
+  (set! *input-buffer* "")
+  (set! *input-completions* completions)
+  ;; display prompt
+  (log-debug "~a" prompt)
+  ;; return #f, the actual result comes via callback
+  #f)
+
+(define (read-yes-or-no prompt)
+  "Ask a yes/no question."
+  (read-one-line (string-append prompt " (y/n) ")))
+
+(define (handle-input-key key-str)
+  "Handle a keypress during input mode. Returns #f or the completed string."
+  (cond
+   ((string=? key-str "Return")
+    (let ((result *input-buffer*))
+      (set! *input-buffer* "")
+      (set! *input-prompt* "")
+      result))
+   ((string=? key-str "Escape")
+    (set! *input-buffer* "")
+    (set! *input-prompt* "")
+    (log-debug "Aborted.")
+    #f)
+   ((string=? key-str "BackSpace")
+    (when (> (string-length *input-buffer*) 0)
+      (set! *input-buffer*
+        (substring *input-buffer* 0 (1- (string-length *input-buffer*)))))
+    (log-debug "~a~a" *input-prompt* *input-buffer*)
+    #f)
+   ((string=? key-str "Tab")
+    ;; Tab completion
+    (let ((matches (filter (lambda (c)
+                             (string-prefix? *input-buffer* c))
+                           *input-completions*)))
+      (cond
+       ((null? matches) #f)
+       ((= 1 (length matches))
+        (set! *input-buffer* (car matches))
+        (log-debug "~a~a" *input-prompt* *input-buffer*)
+        #f)
+       (else
+        (log-debug "~a" (string-join matches " | "))
+        #f))))
+   ((= (string-length key-str) 1)
+    ;; Regular character
+    (set! *input-buffer* (string-append *input-buffer* key-str))
+    (log-debug "~a~a" *input-prompt* *input-buffer*)
+    #f)
+   (else #f)))
+#+end_src

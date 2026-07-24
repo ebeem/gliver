@@ -155,86 +155,6 @@ Returns the PID."
   "Spawn CMD via /bin/sh in a detached subprocess (double-fork)."
   (system (string-append cmd " &")))
 
-;;; message display
-(define *message-last* "")
-(define *message-callback* #f)
-
-(define (message fmt . args)
-  "Display a message in the message bar."
-  (let ((msg (apply format #f fmt args)))
-    (set! *message-last* msg)
-    (log-info "Message: ~a" msg)
-    (when *message-callback*
-      (*message-callback* msg))
-    msg))
-
-(define (message-no-timeout fmt . args)
-  "Display a persistent message."
-  (apply message fmt args))
-
-;;; interactive input
-(define *input-callback* #f)
-(define *input-prompt* "")
-(define *input-buffer* "")
-(define *input-completions* '())
-(define *input-result-callback* #f)
-
-(define* (read-one-line prompt #:key (completions '()))
-  "Request one line of input from the user.
-In the async architecture, this sets up state and returns #f immediately.
-The actual input is handled via handle-input-key callbacks."
-  (set! *input-prompt* prompt)
-  (set! *input-buffer* "")
-  (set! *input-completions* completions)
-  ;; display prompt
-  (log-debug "~a" prompt)
-  ;; return #f, the actual result comes via callback
-  #f)
-
-(define (read-yes-or-no prompt)
-  "Ask a yes/no question."
-  (read-one-line (string-append prompt " (y/n) ")))
-
-(define (handle-input-key key-str)
-  "Handle a keypress during input mode. Returns #f or the completed string."
-  (cond
-   ((string=? key-str "Return")
-    (let ((result *input-buffer*))
-      (set! *input-buffer* "")
-      (set! *input-prompt* "")
-      result))
-   ((string=? key-str "Escape")
-    (set! *input-buffer* "")
-    (set! *input-prompt* "")
-    (log-debug "Aborted.")
-    #f)
-   ((string=? key-str "BackSpace")
-    (when (> (string-length *input-buffer*) 0)
-      (set! *input-buffer*
-        (substring *input-buffer* 0 (1- (string-length *input-buffer*)))))
-    (log-debug "~a~a" *input-prompt* *input-buffer*)
-    #f)
-   ((string=? key-str "Tab")
-    ;; Tab completion
-    (let ((matches (filter (lambda (c)
-                             (string-prefix? *input-buffer* c))
-                           *input-completions*)))
-      (cond
-       ((null? matches) #f)
-       ((= 1 (length matches))
-        (set! *input-buffer* (car matches))
-        (log-debug "~a~a" *input-prompt* *input-buffer*)
-        #f)
-       (else
-        (log-debug "~a" (string-join matches " | "))
-        #f))))
-   ((= (string-length key-str) 1)
-    ;; Regular character
-    (set! *input-buffer* (string-append *input-buffer* key-str))
-    (log-debug "~a~a" *input-prompt* *input-buffer*)
-    #f)
-   (else #f)))
-
 ;;; window commands
 (define-command (window-focus-next)
   "Focus the next window in the current container."
@@ -254,7 +174,7 @@ The actual input is handled via handle-input-key callbacks."
   "Switch to the previously focused window within the current container."
   (and-let* ((win (window-current))
 			 (container (window-container win))
-			 (prev (container-window-previous container)))
+			 (prev (container-window-previous container))))
     (when prev
       (window-focus prev)))
 
@@ -294,9 +214,10 @@ The actual input is handled via handle-input-key callbacks."
           (log-debug "Closed: ~a" (window-title win)))
         (log-debug "No current window."))))
 
+;; TODO
 (define-command (window-float-toggle)
   "Toggle the current window between tiled and floating."
-  ;; TODO: not implemented yet)
+  (log-warn "Not implemented yet!"))
 
 (define-command (window-fullscreen-toggle)
   "Toggle fullscreen for the current window."
@@ -306,11 +227,12 @@ The actual input is handled via handle-input-key callbacks."
           (window-fullscreen-exit! win)
           (window-fullscreen! win (window-output win))))))
 
+;; TODO
 (define-command (window-swap)
   "Swap windows between current container and another."
-  (log-debug "Select target container..."))
+  (log-warn "Not implemented yet!"))
 
-(define (cmd-window-mark)
+(define-command (window-mark)
   "Toggle mark on the current window."
   (let ((win (window-current)))
     (when win
@@ -319,7 +241,8 @@ The actual input is handled via handle-input-key callbacks."
                (if (window-marked? win) "Marked" "Unmarked")
                (window-title win)))))
 
-(define (cmd-window-workspace-move name)
+(define-command (window-workspace-move name)
+  #:interactive (string)
   "Move the current window to workspace NAME."
   (let ((win (window-current))
         (target (and name (workspace-find-by-name name))))
@@ -330,7 +253,8 @@ The actual input is handled via handle-input-key callbacks."
       (window-move-to-workspace! win target)
       (log-debug "Moved to ~a." name)))))
 
-(define (cmd-window-container-move-direction dir)
+(define-command (window-container-move-direction dir)
+  #:interactive (string)
   "Move the current window to the container in direction DIR."
   (let* ((workspace (workspace-current))
          (container (container-current))
@@ -343,30 +267,31 @@ The actual input is handled via handle-input-key callbacks."
           (log-debug "Moved to container ~a" (container-id target)))
         (log-debug "Cannot move."))))
 
-(define (cmd-window-container-move-left)
+(define-command (window-container-move-left)
   "Focus the container in the left direction."
-  (cmd-window-container-move-direction 'left))
+  (window-container-move-direction 'left))
 
-(define (cmd-window-container-move-right)
+(define-command (window-container-move-right)
   "Focus the container in the left direction."
-  (cmd-window-container-move-direction 'right))
+  (window-container-move-direction 'right))
 
-(define (cmd-window-container-move-up)
+(define-command (window-container-move-up)
   "Focus the container in the left direction."
-  (cmd-window-container-move-direction 'up))
+  (window-container-move-direction 'up))
 
-(define (cmd-window-container-move-down)
+(define-command (window-container-move-down)
   "Focus the container in the left direction."
-  (cmd-window-container-move-direction 'down))
+  (window-container-move-direction 'down))
 
-(define (cmd-window-pull-by-number n)
+(define-command (window-pull-by-number n)
+  #:interactive (integer)
   "Pull window N into the current container."
   (let ((win (window-find-by-id n))
         (container (container-current)))
     (when (and win container)
       (window-move-to-container! win container))))
 
-(define (cmd-window-properties-show)
+(define-command (window-properties-show)
   "Show properties of the current window."
   (let ((win (window-current)))
     (if win
@@ -379,35 +304,35 @@ The actual input is handled via handle-input-key callbacks."
         (log-debug "No current window."))))
 
 ;;; container commands
-;; (define (cmd-container-split-horizontal)
+;; (define-command (container-split-horizontal)
 ;;   "Split the current container horizontally."
 ;;   (let ((container (container-current)))
 ;;     (when container
 ;;       (container-split-horizontal! container 0.5)
 ;;       (log-debug "Split horizontal."))))
 
-;; (define (cmd-container-split-vertical)
+;; (define-command (container-split-vertical)
 ;;   "Split the current container vertically."
 ;;   (let ((container (container-current)))
 ;;     (when container
 ;;       (container-split-vertical! container 0.5)
 ;;       (log-debug "Split vertical."))))
 
-;; (define (cmd-container-destroy)
+;; (define-command (container-destroy)
 ;;   "Remove the current split."
 ;;   (let ((container (container-current)))
 ;;     (when container
 ;;       (container-split-remove! container)
 ;;       (log-debug "Split removed."))))
 
-;; (define (cmd-container-destory-others)
+;; (define-command (container-destory-others)
 ;;   "Remove all splits in the current workspace."
 ;;   (let ((workspace (workspace-current)))
 ;;     (when workspace
 ;;       (container-split-only (workspace-containers workspace))
 ;;       (log-debug "Only one container."))))
 
-;; (define (cmd-container-focus-next)
+;; (define-command (container-focus-next)
 ;;   "Focus the next container."
 ;;   (let* ((workspace (workspace-current))
 ;;          (container (container-current)))
@@ -417,7 +342,7 @@ The actual input is handled via handle-input-key callbacks."
 ;;           (workspace-container-current-set! workspace nf)
 ;;           (log-debug "Container ~a" (container-id nf)))))))
 
-;; (define (cmd-container-focus-prev)
+;; (define-command (container-focus-prev)
 ;;   "Focus the previous container."
 ;;   (let* ((workspace (workspace-current))
 ;;          (container (container-current)))
@@ -427,33 +352,34 @@ The actual input is handled via handle-input-key callbacks."
 ;;           (workspace-container-current-set! workspace pf)
 ;;           (log-debug "Container ~a" (container-id pf)))))))
 
-(define (cmd-container-focus-direction dir)
+(define-command (container-focus-direction dir)
+  #:interactive (string)
   "Focus the container in direction DIR."
   (and-let* ((target (container-in-direction dir)))
     (if target
 		(container-focus! target)
         (log-debug "Couldn't find focus target"))))
 
-(define (cmd-container-focus-left)
+(define-command (container-focus-left)
   "Focus the container in the left direction."
-  (cmd-container-focus-direction 'left))
+  (container-focus-direction 'left))
 
-(define (cmd-container-focus-right)
+(define-command (container-focus-right)
   "Focus the container in the left direction."
-  (cmd-container-focus-direction 'right))
+  (container-focus-direction 'right))
 
-(define (cmd-container-focus-up)
+(define-command (container-focus-up)
   "Focus the container in the left direction."
-  (cmd-container-focus-direction 'up))
+  (container-focus-direction 'up))
 
-(define (cmd-container-focus-down)
+(define-command (container-focus-down)
   "Focus the container in the left direction."
-  (cmd-container-focus-direction 'down))
+  (container-focus-direction 'down))
 
-;; (define (clamp val lo hi)
+;; (define-command (clamp val lo hi)
 ;;   (max lo (min hi val)))
 
-;; (define (cmd-container-resize dir amount)
+;; (define (container-resize dir amount)
 ;;   "Resize the current container's parent split."
 ;;   (let ((container (container-current)))
 ;;     (when container
@@ -469,7 +395,7 @@ The actual input is handled via handle-input-key callbacks."
 ;;             (container-split-ratio-set! parent new-ratio)
 ;;             (gliver-hook-run! *container-resize-hook* container)))))))
 
-;; (define (cmd-container-balance)
+;; (define-command (container-balance)
 ;;   "Equalize all container split ratios."
 ;;   (let ((workspace (workspace-current)))
 ;;     (when workspace
@@ -477,7 +403,8 @@ The actual input is handled via handle-input-key callbacks."
 ;;       (log-debug "Containers balanced."))))
 
 ;;; workspace commands
-(define (cmd-workspace-create name)
+(define-command (workspace-create name)
+  #:interactive (string)
   "Create a new workspace."
   (let ((output (output-current)))
     (when output
@@ -485,7 +412,7 @@ The actual input is handled via handle-input-key callbacks."
         (workspace-focus! workspace)
         (log-debug "Workspace ~a created." (workspace-name workspace))))))
 
-(define (cmd-workspace-destroy)
+(define-command (workspace-destroy)
   "Kill the current workspace."
   (let ((workspace (workspace-current)))
     (when workspace
@@ -495,29 +422,30 @@ The actual input is handled via handle-input-key callbacks."
             (workspace-remove! workspace)
             (log-debug "Workspace killed."))))))
 
-(define (cmd-workspace-focus-next)
+(define-command (workspace-focus-next)
   "Switch to the next workspace."
   (let ((g (workspace-next (output-current))))
     (when g (workspace-focus! g))))
 
-(define (cmd-workspace-focus-prev)
+(define-command (workspace-focus-prev)
   "Switch to the previous workspace."
   (let ((g (workspace-prev (output-current))))
     (when g (workspace-focus! g))))
 
-(define (cmd-workspace-focus-last)
+(define-command (workspace-focus-last)
   "Switch to the previously active workspace."
   (let ((prev (output-workspace-previous (output-current))))
     (when prev (workspace-focus! prev))))
 
-(define (cmd-workspace-rename name)
+(define-command (workspace-rename name)
+  #:interactive (string)
   "Rename the current workspace."
   (let ((workspace (workspace-current)))
     (when (and workspace name)
       (workspace-name-set! workspace name)
       (log-debug "Renamed to ~a." name))))
 
-(define (cmd-workspace-list)
+(define-command (workspace-list)
   "List all workspaces."
   (let ((workspaces (output-workspaces (output-current))))
     (log-debug "~a"
@@ -531,7 +459,7 @@ The actual input is handled via handle-input-key callbacks."
               " "))))
 
 ;;; output commands
-(define (cmd-output-focus-next)
+(define-command (output-focus-next)
   "Focus the next output."
   (let ((ns (output-next)))
     (when ns
@@ -539,7 +467,7 @@ The actual input is handled via handle-input-key callbacks."
       ;(manager-output-current-set! *manager* ns)
       (gliver-hook-run! *output-focus-hook* ns (manager-output-previous *manager*)))))
 
-(define (cmd-output-focus-prev)
+(define-command (output-focus-prev)
   "Focus the previous output."
   (let ((ps (output-prev)))
     (when ps
@@ -548,17 +476,19 @@ The actual input is handled via handle-input-key callbacks."
       (gliver-hook-run! *output-focus-hook* ps (manager-output-previous *manager*)))))
 
 ;;; session commands
-(define (cmd-exec cmd)
+(define-command (exec cmd)
+  #:interactive (string)
   "Execute a shell command."
   (when cmd
     (log-info "Exec: ~a" cmd)
     (shell-process-spawn-detached cmd)))
 
-(define (cmd-shell-command)
+(define-command (shell-command)
   "Prompt for and execute a shell command."
   (read-one-line "Shell: "))
 
-(define (cmd-eval-cmd expr-str)
+(define-command (eval-cmd expr-str)
+  #:interactive (string)
   "Evaluate a Guile expression."
   (catch #t
     (lambda ()
@@ -571,40 +501,41 @@ The actual input is handled via handle-input-key callbacks."
 
 (define-command (terminal-spawn)
   "Spawn default terminal."
-  (cmd-exec (format #f "exec ~a" *terminal*)))
+  (exec (format #f "exec ~a" *terminal*)))
 
-(define (cmd-dmenu-run)
+(define-command (dmenu-run)
   "Spawn dmenu run process."
-  (cmd-exec (format #f "exec ~a" *dmenu*)))
+  (exec (format #f "exec ~a" *dmenu*)))
 
-(define (cmd-colon)
+(define-command (colon)
   "Open the colon command prompt."
   (read-one-line ":"
                  #:completions (map symbol->string (command-all))))
 
-(define (cmd-config-reload)
+(define-command (config-reload)
   "Reload the configuration file."
   (config-reload!)
   (gliver-hook-run! *config-loaded-hook*)
   (log-debug "Config reloaded."))
 
-(define (cmd-quit)
+(define-command (quit)
   "Quit Gliver."
   (gliver-hook-run! *shutdown-hook*)
   (manager-config-set! 'running? #f)
   (log-debug "Goodbye."))
 
-(define (cmd-restart)
+(define-command (restart)
   "Restart Gliver."
   (gliver-hook-run! *restart-hook*)
   (log-debug "Restarting...")
   (config-reload!))
 
-(define (cmd-time)
+(define-command (time)
   "Show the current time."
   (log-debug "~a" (shell-command-output "date")))
 
-(define (cmd-describe-key key-str)
+(define-command (describe-key key-str)
+  #:interactive (string)
   "Describe what a key binding does."
   (let* ((key (kbd key-str))
          (binding (lookup-key *root-map* key))
@@ -620,14 +551,16 @@ The actual input is handled via handle-input-key callbacks."
           (log-debug "~a → ~a" key-str action)))
         (log-debug "~a is not bound." key-str))))
 
-(define (cmd-describe-command name)
+(define-command (describe-command name)
+  #:interactive (string)
   "Describe a command."
   (let ((cmd (command-find name)))
     (if cmd
         (log-debug "~a: ~a" name (command-docstring cmd))
         (log-warn "Unknown command: ~a" name))))
 
-(define (cmd-where-is name)
+(define-command (where-is name)
+  #:interactive (string)
   "Find the keybinding for a command."
   (let ((bindings (filter (lambda (pair)
                             (let ((action (gliver-binding-action (cdr pair))))
@@ -643,107 +576,36 @@ The actual input is handled via handle-input-key callbacks."
                  (string-join (map (lambda (b) (gliver-key->string (car b))) bindings)
                               ", ")))))
 
-(define (cmd-list-commands)
+(define-command (list-commands)
   "List all available commands."
   (log-debug "~a" (string-join (sort (map symbol->string (command-all))
                                    string<?)
                              " ")))
 
 ;;; prefix mode commands
-(define (cmd-prefix-activated)
+(define-command (prefix-activated)
   "Handle prefix key activation."
   (manager-config-set! 'mode 'prefix)
   (log-debug "Prefix mode activated."))
 
-(define (cmd-prefix-abort)
+(define-command (prefix-abort)
   "Abort prefix mode."
   (manager-config-set! 'mode 'normal)
   (log-debug "Aborted."))
 
-(define (cmd-enter-submap name)
+(define-command (enter-submap name)
+  #:interactive (string)
   "Enter a sub-keymap by name."
   (log-debug "Entering submap: ~a" name))
 
-(define (cmd-send-prefix-key)
+(define-command (send-prefix-key)
   "Send the prefix key to the focused application."
   (manager-config-set! 'mode 'normal)
   (let ((prefix (manager-config-ref 'prefix-key)))
     (shell-process-spawn-detached
      (format #f "wtype -M ctrl -k t -m ctrl" ))))
 
-;;; register all default commands
-(define (command-register-defaults!)
-  ;; window
-  (command-register! 'window-focus-next cmd-window-focus-next "Focus the next window in the current container.")
-  (command-register! 'window-focus-prev cmd-window-focus-prev "Focus the previous window in the current container.")
-  (command-register! 'window-focus-other-window cmd-window-focus-other "Switch to the other window.")
-  (command-register! 'window-list cmd-window-list "Show a list of windows.")
-  (command-register! 'window-kill-window cmd-window-kill "Close the current window.")
-  ;; (command-register! 'window-float-toggle-float cmd-window-float-toggle "Toggle floating state.")
-  (command-register! 'window-fullscreen cmd-window-fullscreen "Toggle fullscreen.")
-  (command-register! 'window-mark cmd-window-mark "Toggle mark on current window.")
-  (command-register! 'window-properties-show cmd-window-properties-show
-    "Show window properties.")
-  (command-register! 'window-workspace-move cmd-window-workspace-move "Move window to a workspace.")
-
-  ;; container
-  ;; (command-register! 'container-split-horizontal cmd-container-split-horizontal "Split horizontally.")
-  ;; (command-register! 'container-split-vertical cmd-container-split-vertical "Split vertically.")
-  ;; (command-register! 'container-split-destroy cmd-container-destroy "Remove current split.")
-  ;; (command-register! 'container-destory-others cmd-container-destory-others "Remove all splits.")
-  ;; (command-register! 'container-focus-next cmd-container-focus-next "Focus next container.")
-  ;; (command-register! 'container-focus-prev cmd-container-focus-prev "Focus previous container.")
-  ;; (command-register! 'container-balance cmd-container-balance "Balance all containers.")
-  (command-register! 'container-focus-direction cmd-container-focus-direction "Focus container in direction.")
-  (command-register! 'container-focus-left cmd-container-focus-left "Focus container in left.")
-  (command-register! 'container-focus-up cmd-container-focus-up "Focus container in up.")
-  (command-register! 'container-focus-right cmd-container-focus-right "Focus container in right.")
-  (command-register! 'container-focus-down cmd-container-focus-down "Focus container in down.")
-
-  (command-register! 'window-container-move-direction cmd-window-container-move-direction "Window container move in direction.")
-  (command-register! 'window-container-move-left cmd-window-container-move-left "Window container move left.")
-  (command-register! 'window-container-move-up cmd-window-container-move-up "Window container move up.")
-  (command-register! 'window-container-move-right cmd-window-container-move-right "Window container move right.")
-  (command-register! 'window-container-move-down cmd-window-container-move-down "Window container move down.")
-
-  ;; workspace
-  (command-register! 'workspace-create cmd-workspace-create "Create a new workspace.")
-  (command-register! 'workspace-destroy cmd-workspace-destroy "Kill the current workspace.")
-  ;(command-register! 'workspace-focus cmd-workspace-focus "Select a workspace by name.")
-  (command-register! 'workspace-focus-next cmd-workspace-focus-next "Switch to the next workspace.")
-  (command-register! 'workspace-focus-prev cmd-workspace-focus-prev "Switch to the previous workspace.")
-  (command-register! 'workspace-focus-last cmd-workspace-focus-last "Switch to the last workspace.")
-  (command-register! 'workspace-rename cmd-workspace-rename "Rename the current workspace.")
-  (command-register! 'workspace-list cmd-workspace-list "List all workspaces.")
-
-  ;; output
-  (command-register! 'output-focus-next-next cmd-output-focus-next "Focus the next output.")
-  (command-register! 'output-focus-prev-prev cmd-output-focus-prev "Focus the previous output.")
-
-  ;; session
-  (command-register! 'exec cmd-exec "Execute a shell command.")
-  (command-register! 'shell-command cmd-shell-command "Prompt for a shell command.")
-  (command-register! 'eval cmd-eval-cmd "Evaluate a Guile expression.")
-  (command-register! 'terminal-spawn cmd-terminal-spawn "Spawn a terminal.")
-  (command-register! 'colon cmd-colon "Open command prompt.")
-  (command-register! 'config-reload cmd-config-reload "Reload configuration.")
-  (command-register! 'quit cmd-quit "Quit Gliver.")
-  (command-register! 'restart cmd-restart "Restart Gliver.")
-  (command-register! 'time cmd-time "Show the current time.")
-  (command-register! 'describe-key cmd-describe-key "Describe a key binding.")
-  (command-register! 'describe-command cmd-describe-command "Describe a command.")
-  (command-register! 'where-is cmd-where-is "Find keybinding for a command.")
-  (command-register! 'commands cmd-list-commands "List all commands.")
-  (command-register! 'send-prefix-key cmd-send-prefix-key "Send prefix to app.")
-
-  ;; prefix mode (internal)
-  (command-register! 'prefix-activated cmd-prefix-activated "Prefix activated.")
-  (command-register! 'prefix-abort cmd-prefix-abort "Abort prefix mode."))
-
-;; register on module load
-;(command-register-defaults!)
-
-(define (keybindings-clear!)
+(define-command (keybindings-clear!)
   "Clear all keybindings from all standard keymaps."
   (gliver-keymap-clear! *top-map*)
   (gliver-keymap-clear! *root-map*)
