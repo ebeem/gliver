@@ -1,0 +1,90 @@
+#+TITLE: The Gliver Window Manager
+
+* The Gliver Window Manager
+
+~Gliver~ brings the keyboard-driven, manual-tiling workflow of ~StumpWM~ to ~Wayland~, using ~River~ as the compositor backend and ~GNU Guile Scheme~ as the extension language. It attempts to be highly customizable while relying entirely on the keyboard for input.
+
+** Philosophy
+
+~Gliver~ is heavily inspired by ~Emacs~ and ~StumpWM~, tailored specifically for the modern Wayland stack. This project aims to be "The Emacs of Wayland WMs."
+
+*** Gliver is:
+
+- Hackable and can be customized and enhanced in ~Guile Scheme~ utilizing a ~REPL~ in real-time
+
+- Configured using the exact same language it is written in (configuration is code, rather than a static configuration file). You can start by simply configuring it and later implement new features.
+
+- Free of a single enforced layout; you can use manual, alternating, scrolling, or any other layout you write yourself.
+
+- Minimalist, relying on integrating with other tools for UI (like ~fuzzel~ / ~rofi~ for input).
+
+*** Gliver is not:
+
+- A standalone Wayland compositor; it runs alongside River as a client and delegates all rendering and hardware duties.
+
+- A full-blown desktop environment. ~Gliver~ won't implement features like ~top-bar~ / ~mode-line~.
+
+- A drop-in replacement for any other window manager, even though you may find built-in configurations that can replicate most of the features found in other window managers.
+    
+** Architecture
+
+~Gliver~ runs alongside ~River~ as the window manager client.
+
+Because ~River~ relies on a non-monolithic architecture, it separates the compositor from the layout manager. ~River~ handles all compositor duties (rendering, input devices, GPU, Wayland protocol). ~Gliver~ communicates with ~River~ via Wayland protocols (such as =river-window-management-v1=) to determine window placement, focus, borders, keybindings, and all window management policy.
+
+** Build & Start Gliver
+
+*** Prerequisites
+
+- River (v0.4+)
+- GNU Guile (3.0+)
+- Guile-Wayland bindings
+- Make
+
+*** Building
+
+Building Gliver from source is straightforward:
+
+#+BEGIN_SRC sh
+make
+sudo make install
+#+END_SRC
+
+*** Starting
+
+Because Gliver relies on River, you launch it from within River's initialization script. Add the following to your River init file to set Gliver as the active layout manager:
+
+#+BEGIN_SRC sh
+river -c gliver
+#+END_SRC
+
+** Contributing
+
+Pull requests are always welcome! Here are some guidelines to ensure your contribution gets merged:
+
+- Document your work: Preserve comments and docstrings explaining what the code does, and update them if your patch changes.
+- Target the right directory: Most new features, modules, and packages should go into the ~contrib~ directory.
+- Avoid change in ~core~: Contributions to the ~core~ directory will go through a lengthy review process, I prefer not to break existing APIs.
+- Use AI responsibly: While you are welcome to use LLMs to assist you, raw or unverified AI-generated code is not acceptable. You must have a complete understanding of the code you submit, ensure it strictly adheres to ~Gliver~'s  guidelines, and back it up with thorough testing.
+
+Note: I don't encourage usage of LLM especially for a language like ~guile scheme~. LLMs in my opinion produce very poor ~lisp~ code.
+
+** Wishlist
+
+Here's a wishlist of features for the ~Gliver~ project:
+- Implementing animations driven by Guile timers over the =set_dimensions= Wayland request.
+- Tab-list showing the contents of the current container.
+
+** Help
+
+As in ~Emacs~ and ~StumpWM~, you can always get documentation natively through ~Gliver~:
+
+| Key       | Help                             |
+|-----------+----------------------------------|
+| =C-SPC h v= | Variables                        |
+| =C-SPC h f= | Functions                        |
+| =C-SPC h k= | Key sequences                    |
+| =C-SPC h c= | Commands                         |
+| =C-SPC h w= | Find key sequences for a command |
+
+You can also drop into the Live REPL at any time to inspect state.
