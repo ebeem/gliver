@@ -112,13 +112,14 @@
     ;; create xkb bindings seat for ensure_next_key_eaten
 	(let ((seat (%km-seat)))
       (when (and seat (not (null-pointer? *xkb-bindings*)))
-		(set! *xkb-bindings-seat*
+		(when (null-pointer? *xkb-bindings-seat*)
+		  (set! *xkb-bindings-seat*
               (river-xkb-bindings-v1-get-seat *xkb-bindings* seat))
 		(unless (null-pointer? *xkb-bindings-seat*)
           (wl-proxy-add-listener
            *xkb-bindings-seat*
            *xkb-bindings-seat-listener*
-           %null-pointer))))
+           %null-pointer)))))
     (set! *needs-keybinding-sync* #f))
 
   (when *pending-key-action*
