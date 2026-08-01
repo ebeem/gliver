@@ -26,7 +26,7 @@
 
 (define (ipc-socket-path)
   "Return the path to the IPC socket."
-  (string-append (*gliver-runtime-dir*) "/ipc.sock"))
+  (string-append *gliver-runtime-dir* "/ipc.sock"))
 
 ;;; server
 (define (ipc-start!)

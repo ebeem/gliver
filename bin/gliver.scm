@@ -24,6 +24,7 @@
              (gliver river connector)
              (gliver river window-manager)
              (gliver river keybindings-manager)
+             (gliver river layer-shell-manager)
 			 (gliver contrib keybindings stumpwm)
 			 (gliver contrib debug ipc-server)
              (gliver contrib debug repl-server)
@@ -62,7 +63,7 @@
 
     ;; step 2: initialize logging
     (log-level-set! (string->symbol log-level))
-    (log-file-set! (string-append (*gliver-state-dir*) "/gliver.log"))
+    (log-file-set! (string-append *gliver-state-dir* "/gliver.log"))
     (log-info "Gliver ~a starting..." *version*)
     (log-info "PID: ~a" (getpid))
 
@@ -110,9 +111,7 @@
     ;; step 12: load configuration
     (log-info "Loading configuration...")
     (when config-path
-      ;; override config path
-      (set! (@@ (gliver config) config-file-path)
-            (lambda () config-path)))
+      (set! *config-file-path* config-path))
     (config-load!)
 
     ;; step 13: border configuration

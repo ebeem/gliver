@@ -24,7 +24,7 @@
 
 (define (repl-socket-path)
   "Return the path to the REPL socket."
-  (string-append (*gliver-runtime-dir*) "/repl.sock"))
+  (string-append *gliver-runtime-dir* "/repl.sock"))
 
 ;;; server
 (define (gliver-serve-client client addr)

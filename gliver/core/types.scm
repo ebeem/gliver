@@ -16,6 +16,7 @@
   #:use-module (system foreign)
   #:export (
 			command-docstring
+			command-interactive-spec
 			command-procedure
 			command-name
 			command?
@@ -23,6 +24,13 @@
 			*command-registry*
 			command-register!
 			define-command
+			name
+			*variable-registry*
+			variable-register!
+			define-var
+			var-get
+			%var-set!
+			var-set!
 			%manager-wl-proxy-set!
 			manager-wl-proxy
 			%manager-config-set!
@@ -250,9 +258,9 @@
 
 (define *variable-registry* (make-hash-table))
 
-(define (variable-register! name docstring)
+(define (variable-register! name module docstring)
   "Register a variable's docstring for introspection."
-  (hash-table-set! *variable-registry* name docstring))
+  (hash-table-set! *variable-registry* name (cons module docstring)))
 
 (define-syntax define-var
   (syntax-rules ()
@@ -260,19 +268,40 @@
     ((_ name init-value docstring)
      (begin
        (define name init-value)
-       (variable-register! 'name docstring)))
+       (variable-register! 'name (current-module) docstring)))
 
     ;; pattern 2: (define-var name value) - no docstring provided
     ((_ name init-value)
      (begin
        (define name init-value)
-       (variable-register! 'name "No documentation.")))
+       (variable-register! 'name (current-module) ""))) ;; no docs
 
-    ;; match 3: (define-var name) - initialized to #f by default
+    ;; pattern 3: (define-var name) - initialized to #f by default
     ((_ name)
      (begin
        (define name #f)
-       (variable-register! 'name "No documentation.")))))
+       (variable-register! 'name (current-module) ""))))) ;; no docs
+
+(define (var-get name)
+  "Dynamically retrieve a variable's value by its symbol, using the registry."
+  (let ((record (hash-table-ref/default *variable-registry* name #f)))
+    (if record
+        (let ((module (car record)))
+          (module-ref module name))
+        (log-error "var-get: variable not found in registry" name))))
+
+(define (%var-set! name new-value)
+  (let ((record (hash-table-ref/default *variable-registry* name #f)))
+    (if record
+        (let ((module (car record)))
+          (module-set! module name new-value))
+        (error "var-set!: Variable not found in registry" name))))
+
+;; Expose var-set! as a macro that auto-quotes the name
+(define-syntax var-set!
+  (syntax-rules ()
+    ((_ name new-value)
+     (%var-set! 'name new-value))))
 
 ;;; display (global state)
 ;;; all setters are private and should only be generally used by the core
