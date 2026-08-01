@@ -46,8 +46,8 @@
   (define-key *root-map* "p" 'window-focus-prev)
   (define-key *root-map* "C-p" 'window-focus-prev)
   (define-key *root-map* "w" 'window-list)
-  (define-key *root-map* "k" 'window-kill-window)
-  (define-key *root-map* "C-k" 'window-kill-window)
+  (define-key *root-map* "k" 'window-kill)
+  (define-key *root-map* "C-k" 'window-kill)
   (define-key *root-map* "i" 'window-properties-show)
 
     ;; container

@@ -32,7 +32,7 @@
   "Install the default Sway-compatible keybindings."
   ;; basics
   (define-key *top-map* "s-Return" 'terminal-spawn)
-  (define-key *top-map* "s-S-q" 'window-kill-window)
+  (define-key *top-map* "s-S-q" 'window-kill)
   (define-key *top-map* "s-d" 'dmenu-run)
   (define-key *top-map* "s-S-c" 'config-reload)
   (define-key *top-map* "s-S-e" 'quit)
