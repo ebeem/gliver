@@ -123,3 +123,7 @@ The actual input is handled via handle-input-key callbacks."
     #f)
    (else #f)))
 #+end_src
+
+** TODO default terminal/palette should be auto detected at initialization
+also default font
+

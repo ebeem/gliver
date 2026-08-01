@@ -39,14 +39,19 @@ MODULES =   gliver/core/logs.scm \
 			gliver/river/window-manager.scm \
 			gliver/river/wm-seat-manager.scm \
 			gliver/river/keybindings-manager.scm \
+			gliver/river/layer-shell-manager.scm \
 			gliver/contrib/debug/ipc-server.scm \
 			gliver/contrib/debug/repl-server.scm \
 			gliver/contrib/utils/systemd.scm \
 			gliver/contrib/ui/render.scm \
 			gliver/contrib/ui/message-bar.scm \
 			gliver/contrib/ui/which-key.scm \
+			gliver/contrib/ui/palette.scm \
+			gliver/contrib/ui/palette/base.scm \
+			gliver/contrib/ui/palette/rofi.scm \
 			gliver/contrib/keybindings/stumpwm.scm \
 			gliver/contrib/keybindings/sway.scm \
+			gliver/contrib/keybindings/gliver.scm \
 			gliver/contrib/layout/alternating.scm
 
 COMPILED = $(patsubst %.scm, build/%.go, $(MODULES))
