@@ -9,12 +9,14 @@
   #:use-module (ice-9 optargs)
   #:use-module (ice-9 popen)
   #:use-module (ice-9 textual-ports)
+  #:use-module (ice-9 string-fun)
   #:use-module (srfi srfi-1)
   #:use-module (srfi srfi-2)
   #:use-module (srfi srfi-9)
   #:use-module (srfi srfi-69)
   #:use-module (gliver river connector)
   #:use-module (gliver core)
+  #:use-module (gliver contrib ui palette)
   #:declarative? #f
   #:export (
 			command-find
@@ -24,67 +26,58 @@
 			shell-command-output
 			shell-process-spawn
 			shell-process-spawn-detached
-			*message-last*
-			*message-callback*
-			message
-			message-no-timeout
-			*input-callback*
-			*input-prompt*
-			*input-buffer*
-			*input-completions*
-			*input-result-callback*
-			read-one-line
-			read-yes-or-no
-			handle-input-key
-			cmd-window-focus-next
-			cmd-window-focus-prev
-			cmd-window-focus-other
-			cmd-window-list
-			cmd-window-kill
-			cmd-window-fullscreen
-			cmd-window-swap
-			cmd-window-mark
-			cmd-window-workspace-move
-			cmd-window-container-move-direction
-			cmd-window-container-move-left
-			cmd-window-container-move-right
-			cmd-window-container-move-up
-			cmd-window-container-move-down
-			cmd-window-pull-by-number
-			cmd-window-properties-show
-			cmd-container-focus-direction
-			cmd-container-focus-left
-			cmd-container-focus-right
-			cmd-container-focus-up
-			cmd-container-focus-down
-			cmd-workspace-create
-			cmd-workspace-destroy
-			cmd-workspace-focus-next
-			cmd-workspace-focus-prev
-			cmd-workspace-focus-last
-			cmd-workspace-rename
-			cmd-workspace-list
-			cmd-output-focus-next
-			cmd-output-focus-prev
-			cmd-exec
-			cmd-shell-command
-			cmd-eval-cmd
-			cmd-terminal-spawn
-			cmd-dmenu-run
-			cmd-colon
-			cmd-config-reload
-			cmd-quit
-			cmd-restart
-			cmd-time
-			cmd-describe-key
-			cmd-describe-command
-			cmd-where-is
-			cmd-list-commands
-			cmd-prefix-activated
-			cmd-prefix-abort
-			cmd-enter-submap
-			cmd-send-prefix-key
-			command-register-defaults!
+			window-focus-next
+			window-focus-prev
+			window-focus-last
+			window-all-list
+			window-workspace-list
+			window-container-list
+			window-kill
+			window-float-toggle
+			window-fullscreen-toggle
+			window-swap
+			window-mark
+			window-workspace-move
+			window-container-move-direction
+			window-container-move-left
+			window-container-move-right
+			window-container-move-up
+			window-container-move-down
+			window-pull-by-number
+			window-properties-show
+			container-focus-direction
+			container-focus-left
+			container-focus-right
+			container-focus-up
+			container-focus-down
+			workspace-create
+			workspace-destroy
+			workspace-focus-next
+			workspace-focus-prev
+			workspace-focus-last
+			workspace-rename
+			workspace-list
+			output-focus-next
+			output-focus-prev
+			exec
+			shell-command
+			eval-cmd
+			terminal-spawn
+			dmenu-run
+			command-palette-open
+			config-reload
+			gliver-quit
+			restart
+			time
+			describe-variable
+			describe-key
+			describe-command
+			where-is
+			list-commands
+			prefix-activated
+			prefix-abort
+			enter-submap
+			send-prefix-key
 			keybindings-clear!
 ))
 
@@ -476,11 +469,16 @@ Returns the PID."
       (gliver-hook-run! *output-focus-hook* ps (manager-output-previous *manager*)))))
 
 ;;; session commands
+(define (truncate-string str limit)
+  (if (> (string-length str) limit)
+      (string-append (substring str 0 (- limit 3)) "...")
+      str))
+
 (define-command (exec cmd)
   #:interactive (string)
   "Execute a shell command."
   (when cmd
-    (log-info "Exec: ~a" cmd)
+    (log-info "Exec: ~a" (truncate-string cmd 60))
     (shell-process-spawn-detached cmd)))
 
 (define-command (shell-command)
@@ -505,9 +503,9 @@ Returns the PID."
 
 (define-command (dmenu-run)
   "Spawn dmenu run process."
-  (exec (format #f "exec ~a" *dmenu*)))
+  (exec (format #f "exec ~a" *dmenu-command*)))
 
-(define-command (colon)
+(define-command (command-palette-open)
   "Open the colon command prompt."
   (read-one-line ":"
                  #:completions (map symbol->string (command-all))))
@@ -518,7 +516,7 @@ Returns the PID."
   (gliver-hook-run! *config-loaded-hook*)
   (log-debug "Config reloaded."))
 
-(define-command (quit)
+(define-command (gliver-quit)
   "Quit Gliver."
   (gliver-hook-run! *shutdown-hook*)
   (manager-config-set! 'running? #f)
@@ -533,6 +531,26 @@ Returns the PID."
 (define-command (time)
   "Show the current time."
   (log-debug "~a" (shell-command-output "date")))
+
+(define-command (describe-variable)
+  "Display the documentation of variables."
+  (let ((selected (completion-show
+				   (hash-table-fold *variable-registry*
+									(lambda (name val-pair acc)
+									  (let ((module (car val-pair))
+											(docstring (string-replace-substring (cdr val-pair) "\n" " ")))
+										(cons (make-dmenu-options
+											   (list (list " " name (var-get name) (module-name module) docstring))
+											   (list *palette-icon-color* *palette-name-color* *palette-value-color* *palette-help-color* *palette-doc-color*)
+											   #:widths *palette-variables-widths*
+											   #:searchable *palette-variables-searchable*
+											   #:visible *palette-variables-visible*)
+											  acc)))
+									'())
+				   #:keys (hash-table-keys *variable-registry*))))
+	;; TODO: show a message with information about the variable
+	;; and allow editing its value
+	(log-info selected)))
 
 (define-command (describe-key key-str)
   #:interactive (string)
