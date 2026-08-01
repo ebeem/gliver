@@ -65,9 +65,7 @@ Pull requests are always welcome! Here are some guidelines to ensure your contri
 - Document your work: Preserve comments and docstrings explaining what the code does, and update them if your patch changes.
 - Target the right directory: Most new features, modules, and packages should go into the ~contrib~ directory.
 - Avoid change in ~core~: Contributions to the ~core~ directory will go through a lengthy review process, I prefer not to break existing APIs.
-- Use AI responsibly: While you are welcome to use LLMs to assist you, raw or unverified AI-generated code is not acceptable. You must have a complete understanding of the code you submit, ensure it strictly adheres to ~Gliver~'s  guidelines, and back it up with thorough testing.
-
-Note: I don't encourage usage of LLM especially for a language like ~guile scheme~. LLMs in my opinion produce very poor ~lisp~ code.
+- Avoid AI-generated code: To ensure strict compliance with Codeberg's Terms of Use, please refrain from submitting code written by Large Language Models (LLMs).
 
 ** Wishlist
 
