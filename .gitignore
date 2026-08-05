@@ -6,7 +6,6 @@ build
 
 # temp
 wayland-scm
-tools
 gliver/wayland/ffi
 gliver/wayland/egl.scm
 gliver/wayland/client_.scm

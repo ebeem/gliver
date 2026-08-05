@@ -534,7 +534,7 @@ Returns the PID."
 
 (define-command (describe-variable)
   "Display the documentation of variables."
-  (let ((selected (completion-show
+  (let ((selected (palette-show
 				   (hash-table-fold *variable-registry*
 									(lambda (name val-pair acc)
 									  (let ((module (car val-pair))
@@ -629,6 +629,5 @@ Returns the PID."
   (gliver-keymap-clear! *root-map*)
   (gliver-keymap-clear! *workspace-map*)
   (gliver-keymap-clear! *resize-map*)
-  (gliver-keymap-clear! *exchange-map*)
   (gliver-hook-run! *keybinding-sync-request-hook*))
 

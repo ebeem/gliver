@@ -278,7 +278,7 @@ following the same order in a keyboard numpad
 ;;; palette column configuration
 ;;; palette variables help
 ;;; (icon variable-name variable-value module-name documentation)
-(define-var *palette-variables-widths* '(2 35 40)
+(define-var *palette-variables-widths* '(2 35 40 40 40)
             "List of character widths for columns in the variables inspector table.")
 (define-var *palette-variables-searchable* '(#f #t #t #f #f)
             "Boolean mask determining which columns in the variables inspector are searchable.")

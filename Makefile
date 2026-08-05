@@ -43,12 +43,10 @@ MODULES =   gliver/core/logs.scm \
 			gliver/contrib/debug/ipc-server.scm \
 			gliver/contrib/debug/repl-server.scm \
 			gliver/contrib/utils/systemd.scm \
-			gliver/contrib/ui/render.scm \
-			gliver/contrib/ui/message-bar.scm \
 			gliver/contrib/ui/which-key.scm \
 			gliver/contrib/ui/palette.scm \
-			gliver/contrib/ui/palette/base.scm \
-			gliver/contrib/ui/palette/rofi.scm \
+			gliver/contrib/ui/toast.scm \
+			gliver/contrib/ui/integrations/rofi.scm \
 			gliver/contrib/keybindings/stumpwm.scm \
 			gliver/contrib/keybindings/sway.scm \
 			gliver/contrib/keybindings/gliver.scm \
