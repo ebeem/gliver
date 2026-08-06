@@ -14,6 +14,7 @@
 			%rofi-format-rasi
 			*numpad->rofi-mapping*
 			numpad->rofi-location
+			%rofi-pango-escape
 			%rofi-item-formatter
 			%rofi-make-dmenu-options
 			make-rofi-backend
@@ -21,7 +22,8 @@
 			rofi-palette-show
 			rofi-install-dmenu-launcher!
 			rofi-install-app-launcher!
-			rofi-install-message!
+			rofi-install-toast!
+			rofi-install-all!
 ))
 
 (define (%rofi-shell-quote val)
@@ -346,13 +348,13 @@
   "Install rofi as the app launcher"
   (set! *dmenu-command* (make-rofi-backend #:action 'launcher)))
 
-(define-command (rofi-install-message!)
+(define-command (rofi-install-toast!)
   "Install rofi as the message backend"
   (set! *toast-backend* (make-rofi-backend #:action 'message)))
 
 (define-command (rofi-install-all!)
   "Install rofi as the dmenu launcher, app launcher, and message backend"
   (rofi-install-dmenu-launcher!)
-  (rofi-install-message!)
+  (rofi-install-toast!)
   (rofi-install-dmenu-launcher!))
 

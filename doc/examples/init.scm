@@ -4,6 +4,7 @@
              (gliver commands)
 			 (gliver contrib ui which-key)
 			 (gliver contrib utils systemd)
+			 (gliver contrib ui integrations rofi)
 			 (gliver contrib keybindings gliver))
 
 (set! *terminal* "foot")
@@ -15,3 +16,5 @@
 (keybindings-clear!)
 (keybindings-gliver-install-default!)
 
+;; install rofi as dmenu and app launcher (you can replace it with fuzzel, fzf, etc)
+(rofi-install-all!)
