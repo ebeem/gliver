@@ -154,10 +154,12 @@ Records the action for execution in the upcoming manage_start handler."
                   (gliver-binding-spec-persist spec))))))
 
 (define (on-binding-released data binding-proxy)
-  (log-debug "Key released"))
+  ;; nothing to do here so far
+  '())
 
 (define (on-binding-stop-repeat data binding-proxy)
-  (log-debug "Key stop-repeat"))
+  ;; nothing to do here so far
+  '())
 
 (define (on-bindings-seat-ate data seat-proxy)
   "Handle an unbound key press in prefix/submap mode."
@@ -181,7 +183,7 @@ When PERSIST is #f, the mode returns to normal after execution."
          (eq? (car action) 'enter-submap))
     (let ((submap-name (cadr action)))
       (log-info "Entering submap: ~a" submap-name)
-      (switch-to-mode! (string->symbol submap-name))))
+      (switch-to-mode! submap-name)))
 
    ;; procedure (thunk)
    ((procedure? action)

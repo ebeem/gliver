@@ -11,9 +11,9 @@
   #:use-module (srfi srfi-9)
   #:use-module (srfi srfi-69)
   #:use-module (srfi srfi-9 gnu)
-  #:use-module (gliver core keybindings)
   #:use-module (gliver core logs)
   #:use-module (system foreign)
+  #:autoload (gliver core keybindings) (make-gliver-key)
   #:export (
 			command-docstring
 			command-interactive-spec

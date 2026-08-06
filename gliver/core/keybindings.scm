@@ -13,6 +13,7 @@
   #:use-module (system foreign)
   #:use-module (gliver core logs)
   #:use-module (rnrs bytevectors)
+  #:autoload (gliver core types) (define-var)
   #:export (
 			*modifier-map*
 			*modifier-bitmask-map*
@@ -50,7 +51,6 @@
 			*root-map*
 			*workspace-map*
 			*resize-map*
-			*exchange-map*
 			gliver-binding-spec-persist
 			gliver-binding-spec-mode
 			gliver-binding-spec-action
@@ -264,11 +264,21 @@ instead of returning to *top-map*."
                      (hash-table-delete! (gliver-keymap-bindings keymap) key))))
 
 ;;; standard keymaps
-(define *top-map*      (make-gliver-keymap "top"))
-(define *root-map*     (make-gliver-keymap "root"))
-(define *workspace-map* (make-gliver-keymap "workspace"))
-(define *resize-map*   (make-gliver-keymap "resize"))
-(define *exchange-map* (make-gliver-keymap "exchange"))
+(define-var *top-map*
+  (make-gliver-keymap "*top*")
+  "Top map layer (default)")
+
+(define-var *root-map*
+  (make-gliver-keymap "*root*")
+  "Root map layer (prefix)")
+
+(define-var *workspace-map*
+  (make-gliver-keymap "*workspace*")
+  "workspace map layer")
+
+(define-var *resize-map*
+  (make-gliver-keymap "*resize*")
+  "Resize map layer")
 
 ;;; XKB binding spec generation
 ;;; a gliver-binding-spec describes a key binding to be created via the
