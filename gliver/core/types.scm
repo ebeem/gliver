@@ -12,6 +12,7 @@
   #:use-module (srfi srfi-69)
   #:use-module (srfi srfi-9 gnu)
   #:use-module (gliver core logs)
+  #:use-module (gliver core hooks)
   #:use-module (system foreign)
   #:autoload (gliver core keybindings) (make-gliver-key)
   #:export (
@@ -25,6 +26,10 @@
 			command-register!
 			define-command
 			name
+			command-find
+			command-all
+			command-run
+			command-run-by-name
 			*variable-registry*
 			variable-register!
 			define-var
@@ -256,6 +261,48 @@
          body ...)
        (command-register! 'name name '() docstring)))))
 
+;;; command registry utilities
+(define (command-find name)
+  "Find a command by name (symbol or string)."
+  (let ((sym (if (symbol? name) name (string->symbol name))))
+    (hash-table-ref/default *command-registry* sym #f)))
+
+(define (command-all)
+  "Return a list of all registered command names."
+  (map car (hash-table->alist *command-registry*)))
+
+(define (command-run cmd . args)
+  "Run a command record with ARGS."
+  (when (command? cmd)
+    (gliver-hook-run! *command-pre-hook* (command-name cmd) args)
+    (let ((result (catch #t
+                    (lambda () (apply (command-procedure cmd) args))
+                    (lambda (key . rest)
+                      (log-error "Command ~a error: ~a ~a"
+                                 (command-name cmd) key rest)
+                      #f))))
+      (gliver-hook-run! *command-post-hook* (command-name cmd) args result)
+      result)))
+
+(define (command-run-by-name name . args)
+  "Look up and run command NAME with ARGS."
+  (let ((cmd (command-find name)))
+    (if cmd
+        (apply command-run cmd args)
+        (if (string? name)
+            (let ((parts (filter (lambda (s) (> (string-length s) 0))
+                                 (string-split name #\space))))
+              (if (and (pair? parts) (> (length parts) 1))
+                  (let ((cmd-name (car parts))
+                        (cmd-args (cdr parts)))
+                    (apply command-run-by-name cmd-name (append cmd-args args)))
+                  (begin
+                    (log-warn "Unknown command: ~a" name)
+                    #f)))
+            (begin
+              (log-warn "Unknown command: ~a" name)
+              #f)))))
+
 (define *variable-registry* (make-hash-table))
 
 (define (variable-register! name module docstring)
@@ -403,7 +450,7 @@
 					  (workspaces '()) (workspace-current #f) (workspace-previous #f) (wl-output #f))
   "Create a new <output> record with the given NAME.
 Other parameters (x, y, width, height, wl-proxy) can be provided as keyword arguments."
-  (%make-output id name 
+  (%make-output id name
                 x y
                 width height
 				workspaces workspace-current workspace-previous
@@ -717,4 +764,3 @@ Other parameters (x, y, width, height, wl-proxy) can be provided as keyword argu
              (workspace-containers workspace)))
           (output-workspaces output)))
        (manager-outputs manager)))))
-

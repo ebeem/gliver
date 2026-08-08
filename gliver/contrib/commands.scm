@@ -20,10 +20,6 @@
   #:use-module (gliver contrib ui launcher)
   #:declarative? #f
   #:export (
-			command-find
-			command-all
-			command-run
-			command-run-by-name
 			shell-command-output
 			shell-process-spawn
 			shell-process-spawn-detached
@@ -82,48 +78,6 @@
 			send-prefix-key
 			keybindings-clear!
 ))
-
-;;; command registry
-(define (command-find name)
-  "Find a command by name (symbol or string)."
-  (let ((sym (if (symbol? name) name (string->symbol name))))
-    (hash-table-ref/default *command-registry* sym #f)))
-
-(define (command-all)
-  "Return a list of all registered command names."
-  (map car (hash-table->alist *command-registry*)))
-
-(define (command-run cmd . args)
-  "Run a command record with ARGS."
-  (when (command? cmd)
-    (gliver-hook-run! *command-pre-hook* (command-name cmd) args)
-    (let ((result (catch #t
-                    (lambda () (apply (command-procedure cmd) args))
-                    (lambda (key . rest)
-                      (log-error "Command ~a error: ~a ~a"
-                                 (command-name cmd) key rest)
-                      #f))))
-      (gliver-hook-run! *command-post-hook* (command-name cmd) args result)
-      result)))
-
-(define (command-run-by-name name . args)
-  "Look up and run command NAME with ARGS."
-  (let ((cmd (command-find name)))
-    (if cmd
-        (apply command-run cmd args)
-        (if (string? name)
-            (let ((parts (filter (lambda (s) (> (string-length s) 0))
-                                 (string-split name #\space))))
-              (if (and (pair? parts) (> (length parts) 1))
-                  (let ((cmd-name (car parts))
-                        (cmd-args (cdr parts)))
-                    (apply command-run-by-name cmd-name (append cmd-args args)))
-                  (begin
-                    (log-warn "Unknown command: ~a" name)
-                    #f)))
-            (begin
-              (log-warn "Unknown command: ~a" name)
-              #f)))))
 
 ;;; shell
 (define-command (shell-command-output cmd)
@@ -632,4 +586,3 @@ Returns the PID."
   (gliver-keymap-clear! *workspace-map*)
   (gliver-keymap-clear! *resize-map*)
   (gliver-hook-run! *keybinding-sync-request-hook*))
-
