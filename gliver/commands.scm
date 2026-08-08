@@ -17,6 +17,7 @@
   #:use-module (gliver river connector)
   #:use-module (gliver core)
   #:use-module (gliver contrib ui palette)
+  #:use-module (gliver contrib ui launcher)
   #:declarative? #f
   #:export (
 			command-find
@@ -59,11 +60,12 @@
 			workspace-list
 			output-focus-next
 			output-focus-prev
+			truncate-string
 			exec
 			shell-command
 			eval-cmd
 			terminal-spawn
-			dmenu-run
+			launcher-run
 			command-palette-open
 			config-reload
 			gliver-quit
@@ -501,9 +503,9 @@ Returns the PID."
   "Spawn default terminal."
   (exec (format #f "exec ~a" *terminal*)))
 
-(define-command (dmenu-run)
+(define-command (launcher-run)
   "Spawn dmenu run process."
-  (exec (format #f "exec ~a" *dmenu-command*)))
+  (launcher-show))
 
 (define-command (command-palette-open)
   "Open the colon command prompt."

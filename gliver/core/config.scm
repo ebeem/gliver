@@ -11,11 +11,7 @@
   #:export (
 			*default-workspace-name*
 			*terminal*
-			*dmenu-command*
-			*shell-program*
-			*suppress-container-indicator*
 			*startup-message*
-			*window-name-source*
 			*wm-behavior-focus-mouse-enter*
 			*wm-behavior-focus-clear-mouse-leave*
 			*wm-behavior-focus-mouse-click*
@@ -77,6 +73,7 @@
 			*palette-prompt*
 			*palette-case-sensitive?*
 			*palette-show-icons?*
+			*palette-show-sidebar?*
 			*palette-icon-size*
 			*palette-icon-right-spacing*
 			*palette-width*
@@ -112,8 +109,6 @@
 			"Default workspace name used for initial workspace.")
 (define-var *terminal* "foot"
 			"Terminal emulator to be used when spawning terminals.")
-(define-var *dmenu-command* "rofi -show drun"
-			"DMenu implementation to be used to launch applications.")
 (define-var *startup-message* #t
 			"Whether to show message at startup.")
 
@@ -236,6 +231,8 @@
             "Whether string filtering in the palette is case sensitive.")
 (define-var *palette-show-icons?* #t
             "Whether to display candidate icons in the palette list.")
+(define-var *palette-show-sidebar?* #f
+            "Whether to display sidebar mode indicator in the palette list.")
 (define-var *palette-icon-size* 32
             "Size of icons displayed in the launcher (app icons).")
 (define-var *palette-icon-right-spacing* 10
