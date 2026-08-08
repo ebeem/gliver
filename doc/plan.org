@@ -130,3 +130,7 @@ also default font
 
 ** TODO move configuration to the right module
 instead of having one config file to define all variables, define them using the macro ~define-var~ in the module that needs them. only store global configuration in the config file, like desktop environment variables and theme colors (maybe, or have a theming api?).
+
+** TODO create additional ui integration with both quickshell and noctalia
+also create noctalia integration with gliver
+
