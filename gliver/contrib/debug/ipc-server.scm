@@ -13,7 +13,7 @@
   #:use-module (ice-9 textual-ports)
   #:use-module (srfi srfi-1)
   #:use-module (gliver core)
-  #:use-module (gliver commands)
+  #:use-module (gliver contrib commands)
   #:export (ipc-start!
             ipc-stop!
             ipc-poll!

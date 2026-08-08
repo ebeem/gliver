@@ -1,16 +1,26 @@
 (define-module (gliver contrib keybindings gliver)
   #:use-module (gliver core)
-  #:use-module (gliver commands)
+  #:use-module (gliver contrib commands)
   #:export (
 			keybindings-gliver-install-default!
+			*window-map*
+			*help-map*
 ))
+
+(define-var *window-map*
+  (make-gliver-keymap "*window*")
+  "window map layer")
+
+(define-var *help-map*
+  (make-gliver-keymap "*help*")
+  "help map layer")
 
 (define (keybindings-gliver-install-default!)
   "Install the default Gliver keybindings."
   ;; basics
   (define-key *top-map* "s-Return" 'terminal-spawn)
   (define-key *top-map* "s-q" 'window-kill)
-  (define-key *top-map* "s-o" 'dmenu-run)
+  (define-key *top-map* "s-o" 'launcher-run)
   (define-key *top-map* "s-S-r" 'config-reload)
   (define-key *top-map* "s-S-q" 'gliver-quit)
 
@@ -45,10 +55,12 @@
   (define-key *top-map* "XF86MonBrightnessUp" "exec brightnessctl set 5%+")
   (define-key *top-map* "Print" "exec grim")
 
-  (define-key *top-map* "s-space" *root-map*)
-  (define-key *root-map* "o" 'dmenu-run)
+  (define-key *top-map* "s-space" '(enter-submap *root-map*))
+
+  (define-key *root-map* "o" 'launcher-run)
+  (define-key *root-map* "h" '(enter-submap *help-map*))
+  (define-key *root-map* "w" '(enter-submap *window-map*))
+  (define-key *root-map* "W" '(enter-submap *workspace-map*))
 
   (gliver-hook-run! *keybinding-sync-request-hook*))
 
-(keybindings-clear!)
-(keybindings-gliver-install-default!)

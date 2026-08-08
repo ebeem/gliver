@@ -20,7 +20,7 @@
              (ice-9 match)
              (gliver core)
              (gliver river)
-             (gliver commands)
+             (gliver contrib commands)
              (gliver river connector)
              (gliver river window-manager)
              (gliver river keybindings-manager)

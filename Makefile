@@ -24,8 +24,6 @@ MODULES =   gliver/core/logs.scm \
 			gliver/core/container.scm \
 			gliver/core/window.scm \
 			gliver/core.scm \
-			gliver/commands.scm \
-			gliver/window-rules.scm \
 			gliver/wayland/client.scm \
 			gliver/wayland/gen/wayland.scm \
 			gliver/wayland/gen/river-input-management-v1.scm \
@@ -40,6 +38,7 @@ MODULES =   gliver/core/logs.scm \
 			gliver/river/wm-seat-manager.scm \
 			gliver/river/keybindings-manager.scm \
 			gliver/river/layer-shell-manager.scm \
+			gliver/contrib/commands.scm \
 			gliver/contrib/debug/ipc-server.scm \
 			gliver/contrib/debug/repl-server.scm \
 			gliver/contrib/utils/systemd.scm \
@@ -47,6 +46,7 @@ MODULES =   gliver/core/logs.scm \
 			gliver/contrib/ui/palette.scm \
 			gliver/contrib/ui/toast.scm \
 			gliver/contrib/ui/integrations/rofi.scm \
+			gliver/contrib/windows/window-rules.scm \
 			gliver/contrib/keybindings/stumpwm.scm \
 			gliver/contrib/keybindings/sway.scm \
 			gliver/contrib/keybindings/gliver.scm \

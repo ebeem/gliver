@@ -17,7 +17,7 @@
   #:use-module (gliver wayland gen river-window-management-v1)
   #:use-module (gliver wayland gen river-xkb-bindings-v1)
   #:use-module (gliver core)
-  #:use-module (gliver commands)
+  #:use-module (gliver contrib commands)
   #:export (
 			*xkb-bindings*
 			*xkb-bindings-seat*

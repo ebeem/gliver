@@ -1,9 +1,9 @@
-;;; gliver/commands.scm --- Command system for Gliver
+;;; gliver/contrib/commands.scm --- Command system for Gliver
 ;;;
 ;;; Copyright (C) 2026 Gliver Contributors
 ;;; SPDX-License-Identifier: GPL-3.0-or-later
 
-(define-module (gliver commands)
+(define-module (gliver contrib commands)
   #:use-module (ice-9 format)
   #:use-module (ice-9 match)
   #:use-module (ice-9 optargs)

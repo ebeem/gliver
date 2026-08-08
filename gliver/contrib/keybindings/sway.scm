@@ -1,6 +1,6 @@
 (define-module (gliver contrib keybindings sway)
   #:use-module (gliver core)
-  #:use-module (gliver commands)
+  #:use-module (gliver contrib commands)
   #:export (
 			keybindings-sway-install-default!
 ))

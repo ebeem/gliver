@@ -1,9 +1,9 @@
-;;; gliver/window-rules.scm --- Window rules for Gliver
+;;; gliver/contrib/windows/window-rules.scm --- Window rules for Gliver
 ;;;
 ;;; Copyright (C) 2026 Gliver Contributors
 ;;; SPDX-License-Identifier: GPL-3.0-or-later
 
-(define-module (gliver window-rules)
+(define-module (gliver contrib windows window-rules)
   #:use-module (ice-9 format)
   #:use-module (ice-9 regex)
   #:use-module (srfi srfi-1)

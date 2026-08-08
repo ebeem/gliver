@@ -1,7 +1,7 @@
 ;;; doc/examples/init.scm --- Example init file for Gliver
 
 (use-modules (gliver core)
-             (gliver commands)
+             (gliver contrib commands)
 			 (gliver contrib ui which-key)
 			 (gliver contrib utils systemd)
 			 (gliver contrib ui integrations rofi)

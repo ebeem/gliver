@@ -17,7 +17,7 @@
   #:use-module (srfi srfi-1)
   #:use-module (gliver core)
   #:use-module (gliver contrib ui toast)
-  #:use-module (gliver commands)
+  #:use-module (gliver contrib commands)
   #:declarative? #f
   #:export (
 			*which-key-separator*
