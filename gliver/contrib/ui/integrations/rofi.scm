@@ -1,6 +1,7 @@
 (define-module (gliver contrib ui integrations rofi)
   #:use-module (gliver contrib ui palette)
   #:use-module (gliver contrib ui toast)
+  #:use-module (gliver contrib ui launcher)
   #:use-module (gliver core)
   #:use-module (srfi srfi-1)
   #:use-module (ice-9 string-fun)
@@ -18,10 +19,17 @@
 			%rofi-item-formatter
 			%rofi-make-dmenu-options
 			make-rofi-backend
+			rofi-kill
 			*rofi-palette-command*
 			rofi-palette-show
+			*rofi-launcher-command*
+			rofi-launcher-show
+			render-span-pango
+			render-rofi-line
+			*rofi-toast-command*
+			rofi-toast-show
 			rofi-install-dmenu-launcher!
-			rofi-install-app-launcher!
+			rofi-install-launcher!
 			rofi-install-toast!
 			rofi-install-all!
 ))
@@ -101,7 +109,7 @@
   (map (lambda (columns)
          (let* ((search-parts
                  (filter-map (lambda (col idx)
-                               (let ((is-searchable? 
+                               (let ((is-searchable?
                                       (if (and (not (null? searchable))
                                                (< idx (length searchable)))
                                           (list-ref searchable idx)
@@ -116,7 +124,7 @@
                 ;; build the formatted display columns (with truncation and pango)
 				(formatted-columns
                  (filter-map (lambda (col idx)
-                               (let ((is-visible? 
+                               (let ((is-visible?
                                       (if (and (not (null? visible))
                                                (< idx (length visible)))
                                           (list-ref visible idx)
@@ -151,7 +159,7 @@
 
                 ;; concatenate the formatted columns for this row with tabs
                 (display-string (string-join formatted-columns "  ")))
-		   
+
            ;; return the rofi-compatible string separating search text from display text
 		   ;; NOTE: the below commented is supposed to be able to send metadata
 		   ;; as well as define the searchable strings even if they aren't visible
@@ -165,11 +173,13 @@
 (define* (make-rofi-backend
           #:key
 		  (action 'dmenu)
+		  (name "rofi")
           (prompt *palette-prompt*)
           (font (format #f "~a ~a" *palette-font* *palette-font-size*))
           (case-sensitive? *palette-case-sensitive?*)
           (show-icons? *palette-show-icons?*)
           (markup-rows? #t)
+		  (sidebar? *palette-show-sidebar?*)
 
           (background *palette-bg-color*)
           (background-alt *palette-bg-color*)
@@ -216,12 +226,14 @@
           `(,@(cond
 			   ((eq? action 'dmenu) (list "-dmenu"))
 			   ((eq? action 'launcher) '("-show" "drun"))
-			   ((eq? action 'message) '("-e" "test")))
+			   (else '("")))
             "-format" "i"
+			"-name" name
 			"-p" prompt
             ,@(if case-sensitive? '() '("-i"))
             ,@(if show-icons? '("-show-icons") '())
-            ,@(if markup-rows? '("-markup-rows") '())))
+            ,@(if markup-rows? '("-markup-rows" "-markup") '())
+			))
 
          (theme-str
           (%rofi-format-rasi
@@ -319,12 +331,31 @@
 					   (map %rofi-shell-quote cli-flags)
 					   (list "-theme-str" (%rofi-shell-quote theme-str)))
 			   " ")))
-
 	cmd))
+
+(define* (rofi-kill #:key (name #f)
+					(max-attempts 20) (wait-time-ms 50))
+  "Kills current active rofi instance with optional NAME.
+This function waits until rofi process is killed. It will
+attempt to check if it exists MAX-ATTEMPTS times with a pause
+of WAIT-TIME-MS in between attempts."
+  (if name
+      (system* "pkill" "-f" (string-append "rofi.*" name))
+      (system* "pkill" "-x" "rofi"))
+  ;; loop and wait until the process is killed
+  (let loop ((attempts 0))
+    (let ((still-alive?
+		   (if name
+			   (zero? (system (string-append "pgrep -f '[r]ofi.*" name "' >/dev/null")))
+			   (zero? (system "pgrep -x rofi >/dev/null")))))
+      (when (and still-alive? (< attempts max-attempts))
+        (usleep (* 1000 wait-time-ms))
+        (loop (1+ attempts))))))
 
 (define-var *rofi-palette-command* (make-rofi-backend #:action 'dmenu))
 (define* (rofi-palette-show candidates #:key (theme-overrides '())
 							(command *rofi-palette-command*))
+  (rofi-kill)
   (let* ((display-strings (map %rofi-item-formatter candidates))
          (input-str (string-join display-strings "\n"))
          ;; printf to escape null byte needed for metadata injection
@@ -339,22 +370,78 @@
         #f
         (string->number selected))))
 
+(define-var *rofi-launcher-command* (make-rofi-backend #:action 'launcher))
+(define* (rofi-launcher-show #:key (theme-overrides '())
+							 (command *rofi-launcher-command*))
+  (rofi-kill)
+  (let* ((cmd (string-append command " >/dev/null 2>&1 &")))
+    (system cmd)))
+
+(define (render-span-pango span)
+  "Converts a single toast span into a pango string."
+  (let ((text   (%rofi-pango-escape (assoc-ref span 'text)))
+        (color  (assoc-ref span 'color))
+        (weight (assoc-ref span 'weight)))
+    (let* ((tag-color (if color (format #f " color='~a'" color) ""))
+           (tag-weight (if weight (format #f " weight='~a'" weight) ""))
+           (open-tag (if (or color weight)
+                         (format #f "<span~a~a>" tag-color tag-weight)
+                         #f)))
+      (if open-tag
+          (string-append open-tag text "</span>")
+          text))))
+
+(define (render-rofi-row row)
+  "Compiles row into a rofi-compatible string."
+  (string-join
+   (map (lambda (col)
+          (let* ((spans          (assoc-ref col 'spans))
+                 (width          (assoc-ref col 'width))
+                 (raw-text       (string-join (map (lambda (s) (assoc-ref s 'text)) spans) ""))
+                 (rendered-spans (string-join (map render-span-pango spans) ""))
+                 (raw-len        (string-length raw-text)))
+
+            ;; pad or truncate based on the raw length
+            (if width
+                (if (> raw-len width)
+                    (string-append rendered-spans "...")
+                    (string-append rendered-spans (make-string (- width raw-len) #\space)))
+                rendered-spans)))
+        row)
+   "  "))
+
+(define (render-rofi-rows rows)
+  "Compiles a multiple rows into a rofi-compatible string."
+  (string-join (map render-rofi-row rows) "\n"))
+
+(define-var *rofi-toast-command* (make-rofi-backend #:action 'message))
+(define* (rofi-toast-show message #:key (theme-overrides '()) (name #f)
+						  (timeout 0) (command *rofi-toast-command*))
+  (rofi-kill)
+  (let* ((msg (if (string? message) message (render-rofi-rows message)))
+		 (cmd (string-append command
+							 (if name (string-append " -n " name) "")
+							 " -e " (%rofi-shell-quote msg) " >/dev/null 2>&1 &")))
+	(system cmd)))
+
 (define-command (rofi-install-dmenu-launcher!)
   "Install rofi as the dmenu launcher"
   (set! *palette-backend* rofi-palette-show)
-  (set! *palette-dmenu-options* %rofi-make-dmenu-options))
+  (set! *palette-dmenu-options* %rofi-make-dmenu-options)
+  (set! *palette-backend-kill* rofi-kill))
 
-(define-command (rofi-install-app-launcher!)
+(define-command (rofi-install-launcher!)
   "Install rofi as the app launcher"
-  (set! *dmenu-command* (make-rofi-backend #:action 'launcher)))
+  (set! *launcher-backend* rofi-launcher-show)
+  (set! *launcher-backend-kill* rofi-kill))
 
 (define-command (rofi-install-toast!)
   "Install rofi as the message backend"
-  (set! *toast-backend* (make-rofi-backend #:action 'message)))
+  (set! *toast-backend* rofi-toast-show)
+  (set! *toast-backend-kill* rofi-kill))
 
 (define-command (rofi-install-all!)
   "Install rofi as the dmenu launcher, app launcher, and message backend"
   (rofi-install-dmenu-launcher!)
   (rofi-install-toast!)
-  (rofi-install-dmenu-launcher!))
-
+  (rofi-install-launcher!))
