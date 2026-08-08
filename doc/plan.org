@@ -1,10 +1,11 @@
 * Refactoring
 ** DONE replace default hook modifier in manager.scm with setter functions
 default record setter should be private, another public one should be created to customize the behavior. It's also a good idea to call all hooks needed in setters rather than relying on user to run them. Add an optional parameter to disable hook call.
-** TODO move all extra modules to ~contrib~
+** DONE move all extra modules to ~contrib~
 including ~window-rules~ and any other module that seems like a plugin
 
-** TODO move all configuration to hash table
+** DONE move all configuration to hash table
+NOTE: deprecated, define-var is the preferred approach
 the current configuration file makes it harder to have an common place from which variables are received and set. A better approach is to use the configuration hash-table so that it becomes also easier to listen to changes via hook. the ~config.scm~ file should be deleted.
 
 
@@ -30,13 +31,13 @@ the implementation used to check for specific events like window creation and ap
 ** TODO test multi monitor configuration
 use ~WLR_WL_OUTPUTS=2~ in a nested setup
 
-** TODO make a custom =define-command= macro
+** DONE make a custom =define-command= macro
 this should help in creating a well defined hash-table structure that can be looked up quickly while following ~gliver~'s standards in defining commands
 
-** TODO make a custom =define-var= macro
+** DONE make a custom =define-var= macro
 this should help in creating a well defined hash-table structure that can be looked up quickly while following ~gliver~'s standards in defining variables. Remove all variables from manager ~manager-config~ and make them in a global variables =hash-table= instead.
 
-** TODO make common functions for display
+** DONE make common functions for display
 alternative to emacs minibuffer, messages, and logs. Components provided should be:
 - command palette: allows users to select candidate from options
 - prompt message: allows user to enter a free value
