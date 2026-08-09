@@ -25,24 +25,28 @@
   (define-key *top-map* "s-S-q" 'gliver-quit)
 
   ;; move focus to direction
-  (define-key *top-map* "s-h" container-focus-left)
-  (define-key *top-map* "s-j" container-focus-down)
-  (define-key *top-map* "s-k" container-focus-up)
-  (define-key *top-map* "s-l" container-focus-right)
-  (define-key *top-map* "s-Left" container-focus-left)
-  (define-key *top-map* "s-Down" container-focus-down)
-  (define-key *top-map* "s-Up" container-focus-up)
-  (define-key *top-map* "s-Right" container-focus-right)
+  (define-key *top-map* "s-h" 'container-focus-left)
+  (define-key *top-map* "s-j" 'container-focus-down)
+  (define-key *top-map* "s-k" 'container-focus-up)
+  (define-key *top-map* "s-l" 'container-focus-right)
+  (define-key *top-map* "s-n" 'window-focus-next)
+  (define-key *top-map* "s-p" 'window-focus-prev)
+  (define-key *top-map* "s-Tab" 'window-focus-next)
+  (define-key *top-map* "s-S-Tab" 'window-focus-prev)
+  (define-key *top-map* "s-Left" 'container-focus-left)
+  (define-key *top-map* "s-Down" 'container-focus-down)
+  (define-key *top-map* "s-Up" 'container-focus-up)
+  (define-key *top-map* "s-Right" 'container-focus-right)
 
   ;; move the focused window to direction
-  (define-key *top-map* "s-S-Left" window-container-move-left)
-  (define-key *top-map* "s-S-Down" window-container-move-down)
-  (define-key *top-map* "s-S-Up" window-container-move-up)
-  (define-key *top-map* "s-S-Right" window-container-move-right)
-  (define-key *top-map* "s-S-h" window-container-move-left)
-  (define-key *top-map* "s-S-j" window-container-move-down)
-  (define-key *top-map* "s-S-k" window-container-move-up)
-  (define-key *top-map* "s-S-l" window-container-move-right)
+  (define-key *top-map* "s-S-Left" 'window-container-move-left)
+  (define-key *top-map* "s-S-Down" 'window-container-move-down)
+  (define-key *top-map* "s-S-Up" 'window-container-move-up)
+  (define-key *top-map* "s-S-Right" 'window-container-move-right)
+  (define-key *top-map* "s-H" 'window-container-move-left)
+  (define-key *top-map* "s-J" 'window-container-move-down)
+  (define-key *top-map* "s-K" 'window-container-move-up)
+  (define-key *top-map* "s-L" 'window-container-move-right)
 
   (define-key *top-map* "s-f" 'window-fullscreen)
 
@@ -64,3 +68,5 @@
 
   (gliver-hook-run! *keybinding-sync-request-hook*))
 
+(keybindings-clear!)
+(keybindings-gliver-install-default!)

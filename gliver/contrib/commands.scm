@@ -110,14 +110,14 @@ Returns the PID."
   (and-let* ((win (window-current))
 			 (next (window-next win)))
     (when next
-      (window-focus next))))
+      (window-focus! next))))
 
 (define-command (window-focus-prev)
   "Focus the previous window in the current container."
   (and-let* ((win (window-current))
 			 (prev (window-prev win)))
     (when prev
-      (window-focus prev))))
+      (window-focus! prev))))
 
 (define-command (window-focus-last)
   "Switch to the previously focused window within the current container."
