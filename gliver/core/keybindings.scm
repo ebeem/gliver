@@ -11,6 +11,7 @@
   #:use-module (srfi srfi-9)
   #:use-module (srfi srfi-69)
   #:use-module (system foreign)
+  #:use-module (gliver core ffi)
   #:use-module (gliver core logs)
   #:use-module (rnrs bytevectors)
   #:autoload (gliver core types) (define-var)
@@ -132,7 +133,7 @@ Returns a pair: (modifier-bitmask . xkb-keysym-uint)."
 ;; dynamically link the system's libxkbcommon library
 ;; bind the C function: uint32_t xkb_keysym_from_name(const char *name, uint32_t flags);
 ;; this is much better than storing a hash table to map xkb key symbols
-(define xkb-lib-common (dynamic-link "libxkbcommon"))
+(define xkb-lib-common (dynamic-link %libxkbcommon))
 (define xkb-keysym-from-name
   (pointer->procedure
    uint32

@@ -12,6 +12,10 @@ BINDIR     ?= $(PREFIX)/bin
 GUILEDIR   ?= $(PREFIX)/share/guile/site/3.0
 GUILE      ?= guile
 GUILD      ?= guild
+PKG_CONFIG ?= pkg-config
+
+LIBXKBCOMMON_LIBDIR = $(shell $(PKG_CONFIG) --variable libdir xkbcommon)
+LIBWAYLAND_CLIENT_LIBDIR = $(shell $(PKG_CONFIG) --variable libdir wayland-client)
 
 MODULES =   gliver/core/logs.scm \
 			gliver/core/types.scm \
@@ -23,6 +27,7 @@ MODULES =   gliver/core/logs.scm \
 			gliver/core/workspace.scm \
 			gliver/core/container.scm \
 			gliver/core/window.scm \
+			gliver/core/ffi.scm \
 			gliver/core.scm \
 			gliver/wayland/client.scm \
 			gliver/wayland/gen/wayland.scm \
@@ -67,6 +72,9 @@ all: compile
 
 compile: $(COMPILED)
 
+gliver/core/ffi.scm: gliver/core/ffi.scm.in
+	sed -e "s|@LIBXKBCOMMON_LIBDIR@|$(LIBXKBCOMMON_LIBDIR)|" \
+		-e "s|@LIBWAYLAND_CLIENT_LIBDIR@|$(LIBWAYLAND_CLIENT_LIBDIR)|" < $< > $@
 %.go: %.scm
 	@mkdir -p $(dir $@)
 	GUILE_LOAD_PATH=. $(GUILD) compile -L . -o $@ $<

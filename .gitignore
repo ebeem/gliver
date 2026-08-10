@@ -11,3 +11,4 @@ gliver/wayland/egl.scm
 gliver/wayland/client_.scm
 gliver/wayland/cursor.scm
 gliver/wayland/server.scm
+gliver/core/ffi.scm
