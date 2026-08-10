@@ -62,6 +62,11 @@
         (config-path (option-ref options 'config #f)))
 
     ;; step 2: initialize logging
+    (for-each
+      (lambda (dir)
+        (unless (file-exists? dir)
+          (mkdir dir)))
+      (list *gliver-config-dir* *gliver-runtime-dir* *gliver-state-dir*))
     (log-level-set! (string->symbol log-level))
     (log-file-set! (string-append *gliver-state-dir* "/gliver.log"))
     (log-info "Gliver ~a starting..." *version*)
