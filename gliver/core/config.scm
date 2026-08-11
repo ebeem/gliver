@@ -303,16 +303,10 @@ following the same order in a keyboard numpad
   (string-append *xdg-config-home* "/gliver"))
 
 (define-var *gliver-runtime-dir*
-  (let ((dir (string-append *xdg-runtime-dir* "/gliver")))
-    (unless (file-exists? dir)
-      (mkdir dir))
-    dir))
+  (string-append *xdg-runtime-dir* "/gliver"))
 
 (define-var *gliver-state-dir*
-  (let ((dir (string-append *xdg-state-home* "/gliver")))
-    (unless (file-exists? dir)
-      (mkdir dir #o755))
-    dir))
+  (string-append *xdg-state-home* "/gliver"))
 
 ;;; configuration file loading
 (define-var *config-file-path*
