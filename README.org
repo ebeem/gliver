@@ -58,6 +58,21 @@ Because Gliver relies on River, you launch it from within River's initialization
 river -c gliver
 #+END_SRC
 
+*** Running
+
+You can run Gliver directly from source without installing it on your system, which is ideal for rapid development and testing. Ensure that River is running first, then execute:
+
+#+BEGIN_SRC sh
+make && make run
+#+END_SRC
+
+*Note:* If you are running River in a nested session (which is useful for debugging), you must set the correct ~WAYLAND_DISPLAY~ environment variable before starting Gliver:
+
+#+BEGIN_SRC sh
+export WAYLAND_DISPLAY=wayland-1
+make && make run
+#+END_SRC
+
 ** Contributing
 
 Pull requests are always welcome! Here are some guidelines to ensure your contribution gets merged:
