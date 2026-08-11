@@ -57,56 +57,30 @@ MODULES =   gliver/core/logs.scm \
 			gliver/contrib/keybindings/gliver.scm \
 			gliver/contrib/layout/alternating.scm
 
-COMPILED = $(patsubst %.scm, build/%.go, $(MODULES))
+# phony and default make command
+.PHONY: all compile test install uninstall clean gen check lint
+all: compile
 
+# compile scheme files into go in the provided directory
 build/%.go: %.scm
 	@echo "Compiling $<..."
 	@mkdir -p $(dir $@)
 	@guild compile -L . -o $@ $<
 
-.PHONY: all compile test install uninstall clean gen check lint
-
-all: compile
-
-## ---- Compilation ----
-
-compile: $(COMPILED)
-
+# build ffi.scm and include its dependencies
+# gliver/core/keybindings.scm -> xkb
+# gliver/wayland/client.scm -> libwayland-client
 gliver/core/ffi.scm: gliver/core/ffi.scm.in
 	sed -e "s|@LIBXKBCOMMON_LIBDIR@|$(LIBXKBCOMMON_LIBDIR)|" \
 		-e "s|@LIBWAYLAND_CLIENT_LIBDIR@|$(LIBWAYLAND_CLIENT_LIBDIR)|" < $< > $@
-%.go: %.scm
-	@mkdir -p $(dir $@)
-	GUILE_LOAD_PATH=. $(GUILD) compile -L . -o $@ $<
 
-## ---- Testing ----
+# build each .scm file specified in modules into .go
+# file in the build directory
+COMPILED = $(patsubst %.scm, build/%.go, $(MODULES))
+$(COMPILED): gliver/core/ffi.scm
+compile: $(COMPILED)
 
-test: $(TESTS)
-	@echo "=== Running test suite ==="
-	@failed_count=0; \
-	failed_files=""; \
-	for t in $(TESTS); do \
-		echo "--- $$t ---"; \
-		GUILE_LOAD_PATH=. $(GUILE) -L . $$t; \
-		if [ $$? -ne 0 ]; then \
-			failed_count=$$((failed_count + 1)); \
-			failed_files="$$failed_files $$t"; \
-		fi; \
-	done; \
-	echo ""; \
-	echo "=== Test Summary ==="; \
-	if [ $$failed_count -eq 0 ]; then \
-		echo "✅ All $(words $(TESTS)) test file(s) passed."; \
-	else \
-		echo "❌ $$failed_count test file(s) failed:"; \
-		for f in $$failed_files; do \
-			echo "   - $$f"; \
-		done; \
-		exit 1; \
-	fi
-
-check: test
-
+# auto-generate the river wayland protocol bindings
 gen:
 	$(GUILE) -L . tools/generate-bindings.scm \
 		protocols/river-window-management-v1.xml \
@@ -119,17 +93,10 @@ gen:
         protocols/wlr-layer-shell-unstable-v1.xml \
 		gliver/wayland/gen
 
-lint:
-	@echo "Checking module imports..."
-	@for m in $(MODULES); do \
-		$(GUILE) -L . -c "(use-modules ($(shell echo $$m | sed 's|/| |g;s|\.scm||')))" 2>&1 \
-		| grep -v "^$$" && echo "FAIL: $$m" || echo "OK: $$m"; \
-	done
-
 install: compile
 	@echo "Installing to $(PREFIX)..."
 	install -Dm755 bin/gliver    $(DESTDIR)$(BINDIR)/gliver
-	install -Dm755 bin/gliver-msg $(DESTDIR)$(BINDIR)/gliver-msg
+	install -Dm755 bin/gliver-repl $(DESTDIR)$(BINDIR)/gliver-repl
 
 	# modules
 	@for m in $(MODULES); do \
@@ -156,18 +123,14 @@ install: compile
 
 uninstall:
 	rm -f $(DESTDIR)$(BINDIR)/gliver
-	rm -f $(DESTDIR)$(BINDIR)/gliver-msg
+	rm -f $(DESTDIR)$(BINDIR)/gliver-repl
 	rm -rf $(DESTDIR)$(GUILEDIR)/gliver
 	rm -rf $(DESTDIR)$(PREFIX)/share/gliver
 
 clean:
 	rm -rf build
+	rm -f gliver/core/ffi.scm
 	rm -rf "$${XDG_CACHE_HOME:-$$HOME/.cache}/guile/ccache/"*"$(CURDIR)"
-
-repl:
-	$(GUILE) -L . -l gliver/core.scm
 
 run:
 	./bin/gliver
-
-.PHONY: repl run
