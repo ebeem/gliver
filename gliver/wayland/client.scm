@@ -13,6 +13,7 @@
   #:use-module (rnrs bytevectors)
   #:use-module (ice-9 format)
   #:use-module (ice-9 match)
+  #:use-module (gliver core ffi)
   #:use-module (gliver core logs)
   #:export (;; display
             wl-display-connect
@@ -61,7 +62,7 @@
 (define libwayland-client
   (catch #t
     (lambda ()
-      (dynamic-link "libwayland-client"))
+      (dynamic-link %libwayland-client))
     (lambda (key . args)
       (log-error "Failed to load libwayland-client: ~a ~a" key args)
       (log-error "Make sure libwayland-client is installed.")
