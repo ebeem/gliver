@@ -232,43 +232,41 @@ Must be called during a manage sequence."
   "Synchronize all Gliver keybindings with River.
 Creates river_xkb_binding_v1 objects for all bindings and enables
 those matching the current mode."
-
   ;; destroy existing bindings
   (for-each (lambda (pair)
-              (river-xkb-binding-v1-destroy (cdr pair)))
+			  (river-xkb-binding-v1-destroy (cdr pair)))
             *active-bindings*)
   (set! *active-bindings* '())
 
   ;; generate binding specs
   (let* ((specs (gliver-binding-spec-generate *top-map* *root-map*
-                                            (manager-config-ref 'prefix-key)
-                                            'prefix))
+											  'prefix))
          (seat (%km-seat)))
 
     (if (not seat)
         (log-warn "Skipping keybindings sync: no seat available.")
         (begin
-          (log-info "Syncing ~a keybindings to River..." (length specs))
+		  (log-info "Syncing ~a keybindings to River..." (length specs))
 
-          ;; create xkb binding objects for each spec
-          (set! *active-bindings*
-            (map (lambda (spec)
-                   (let ((proxy (river-xkb-bindings-v1-get-xkb-binding
-                                 *xkb-bindings*
-                                 seat
-                                 (gliver-binding-spec-keysym spec)
-                                 (gliver-binding-spec-modifiers spec))))
-                     ;; attach the shared event listener for pressed/released
-                     (unless (null-pointer? proxy)
-                       (wl-proxy-add-listener proxy *xkb-binding-listener*
-                                              %null-pointer))
-                     ;; enable bindings matching the current mode
-                     (when (eq? (gliver-binding-spec-mode spec) *current-mode*)
-                       (river-xkb-binding-v1-enable proxy))
-                     (cons spec proxy)))
-                 specs))
+		  ;; create xkb binding objects for each spec
+		  (set! *active-bindings*
+				(map (lambda (spec)
+					   (let ((proxy (river-xkb-bindings-v1-get-xkb-binding
+									 *xkb-bindings*
+									 seat
+									 (gliver-binding-spec-keysym spec)
+									 (gliver-binding-spec-modifiers spec))))
+						 ;; attach the shared event listener for pressed/released
+						 (unless (null-pointer? proxy)
+						   (wl-proxy-add-listener proxy *xkb-binding-listener*
+												  %null-pointer))
+						 ;; enable bindings matching the current mode
+						 (when (eq? (gliver-binding-spec-mode spec) *current-mode*)
+						   (river-xkb-binding-v1-enable proxy))
+						 (cons spec proxy)))
+					 specs))
 
-          (log-info "Keybindings synced (~a bindings created)."
+		  (log-info "Keybindings synced (~a bindings created)."
                     (length *active-bindings*))))))
 
 (define (keybindings-manager-request-keybinding-sync!)

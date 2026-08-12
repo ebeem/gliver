@@ -14,7 +14,6 @@
   #:use-module (gliver core logs)
   #:use-module (gliver core hooks)
   #:use-module (system foreign)
-  #:autoload (gliver core keybindings) (make-gliver-key)
   #:export (
 			command-docstring
 			command-interactive-spec
@@ -400,7 +399,6 @@
 
 (define *manager*
   (let ((cfg (make-hash-table)))
-    (hash-table-set! cfg 'prefix-key             (make-gliver-key '(Control) 't))
     (hash-table-set! cfg 'prefix-timeout         1000)  ; ms
     (hash-table-set! cfg 'message-timeout        5)     ; seconds
     (hash-table-set! cfg 'mode                   'normal)
