@@ -189,6 +189,9 @@ does have a container ~%window-container-remove!~ will be called."
 	(unless (and (eq? current window) (not force))
 	  (log-debug "focusing window ~a from current ~a" window current)
 	  (%container-window-current-set! container window)
+	  ;; place window at top so it becomes visible
+	  ;; if some windows are above it
+	  (window-place-top! window)
 	  (when (and focus-parent container)
 		(container-focus! container #:focus-child #f))
 	  ;; unfocus previous window
@@ -273,6 +276,36 @@ window record will be updated accordingly to have a node reference."
 			(log-debug "Setting node of window: ~a to ~a" proxy-window proxy-node)
 			(%window-wl-node-proxy-set! window proxy-node)
 			proxy-node)))))
+
+(define (window-place-top! window)
+  "Places the window given on top of all other windows."
+  (let ((node (window-node-get! window)))
+	(when node
+      (with-render-sequence
+       ((@ (gliver river wm-node-manager) wm-node-place-top!) node)))))
+
+(define (window-place-above! window window-other)
+  "Places the window given on above a given window."
+  (let ((node (window-node-get! window))
+		(node-other (window-node-get! window-other)))
+	(when node
+      (with-render-sequence
+       ((@ (gliver river wm-node-manager) wm-node-place-above!) node node-other)))))
+
+(define (window-place-bottom! window)
+  "Places the window given on bottom of all other windows."
+  (let ((node (window-node-get! window)))
+	(when node
+      (with-render-sequence
+       ((@ (gliver river wm-node-manager) wm-node-place-bottom!) node)))))
+
+(define (window-place-below! window window-other)
+  "Places the window given on below a given window."
+  (let ((node (window-node-get! window))
+		(node-other (window-node-get! window-other)))
+	(when node
+      (with-render-sequence
+       ((@ (gliver river wm-node-manager) wm-node-place-below!) node node-other)))))
 
 (define* (window-dimensions-propose! window width height #:key (animate #t))
   "Propose dimensions (width and height) for a window.
