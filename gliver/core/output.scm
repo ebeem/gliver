@@ -65,7 +65,7 @@
   (let ((remaining (delete output (manager-outputs *manager*))))
     (%manager-outputs-set! *manager* remaining)
     (when (eq? (manager-output-current *manager*) output)
-      (manager-output-current-set! *manager*
+      (%manager-output-current-set! *manager*
         (and (pair? remaining) (car remaining))))
     (gliver-hook-run! *output-removed-hook* output)))
 

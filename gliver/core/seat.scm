@@ -50,7 +50,7 @@
 (define (seat-remove! seat)
   (let ((remaining (delete seat (manager-seats *manager*))))
     (%manager-seats-set! *manager* remaining))
-  (gliver-hook-run! *seat-removed-hook* seat))
+  (gliver-hook-run! *seat-destroy-hook* seat))
 
 ;;; window manager api calls
 (define (seat-wm-window-focus seat window)
@@ -179,12 +179,14 @@ Hook: *seat-destroy-hook*"
 		(seat-wm-window-focus seat window))
 	  (gliver-hook-run! *seat-window-interacted-hook* seat window))))
 
-(define (seat-on-shell-interaction data proxy-seat shell-proxy)
+(define (seat-on-shell-interaction data proxy-seat proxy-shell)
   "Surface is clicked or input is sent to it"
   ;; TODO: need to figure this hook out and test it
   ;; I don't thing it's of any use at the moment honestly
-  (log-debug "Seat ~a is interacting with surface: ~a" seat shell-proxy)
-  (gliver-hook-run! *seat-shell-interacted-hook* seat window))
+  (log-debug "Seat ~a is interacting with surface: ~a" proxy-seat proxy-shell)
+  (let ((seat (seat-find-by-proxy proxy-seat)))
+	;; TODO: shell should be resolved here
+	(gliver-hook-run! *seat-shell-interacted-hook* seat #f)))
 
 (define (seat-on-op-delta data proxy-seat dx dy)
   "This event indicates the total change in position since the
@@ -198,7 +200,7 @@ start of the operation of the pointer/touch point/etc."
   "The input driving the current interactive operation has been released."
   (let ((seat (seat-find-by-proxy proxy-seat)))
     (when seat
-	  (log-debug "Seat ~a interaction released" seat dx dy)
+	  (log-debug "Seat ~a interaction released" seat)
 	  (gliver-hook-run! *seat-seat-op-released-hook* seat))))
 
 (define (seat-on-pointer-position data proxy-seat x y)
