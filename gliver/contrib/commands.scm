@@ -4,6 +4,7 @@
 ;;; SPDX-License-Identifier: GPL-3.0-or-later
 
 (define-module (gliver contrib commands)
+  #:use-module (gliver core)
   #:use-module (ice-9 format)
   #:use-module (ice-9 match)
   #:use-module (ice-9 optargs)
@@ -15,9 +16,9 @@
   #:use-module (srfi srfi-9)
   #:use-module (srfi srfi-69)
   #:use-module (gliver river connector)
-  #:use-module (gliver core)
   #:use-module (gliver contrib ui palette)
   #:use-module (gliver contrib ui launcher)
+  #:use-module (gliver contrib commands media)
   #:declarative? #f
   #:export (
 			shell-command-output
@@ -75,7 +76,6 @@
 			prefix-activated
 			prefix-abort
 			enter-submap
-			send-prefix-key
 			keybindings-clear!
 ))
 
@@ -572,13 +572,6 @@ Returns the PID."
   "Enter a sub-keymap by name."
   (log-debug "Entering submap: ~a" name))
 
-(define-command (send-prefix-key)
-  "Send the prefix key to the focused application."
-  (manager-config-set! 'mode 'normal)
-  (let ((prefix (manager-config-ref 'prefix-key)))
-    (shell-process-spawn-detached
-     (format #f "wtype -M ctrl -k t -m ctrl" ))))
-
 (define-command (keybindings-clear!)
   "Clear all keybindings from all standard keymaps."
   (gliver-keymap-clear! *top-map*)
@@ -586,3 +579,14 @@ Returns the PID."
   (gliver-keymap-clear! *workspace-map*)
   (gliver-keymap-clear! *resize-map*)
   (gliver-hook-run! *keybinding-sync-request-hook*))
+
+(define-syntax re-export-modules
+  (syntax-rules ()
+    ((_ (mod ...) ...)
+     (begin
+       (module-use! (module-public-interface (current-module))
+                    (resolve-interface '(mod ...)))
+       ...))))
+
+(re-export-modules (gliver contrib commands media))
+
