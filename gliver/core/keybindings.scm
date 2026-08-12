@@ -31,6 +31,8 @@
 			xkb-lib-common
 			xkb-keysym-from-name
 			keysym-name->xkb-value
+			xkb-keysym-get-name
+			xkb-value->keysym-name
 			kbd
 			gliver-keymap-bindings
 			gliver-keymap-name
@@ -45,6 +47,8 @@
 			gliver-binding?
 			make-gliver-binding
 			define-key
+			define-keys
+			keymap
 			undefine-key
 			lookup-key
 			gliver-keymap-clear!
@@ -59,6 +63,7 @@
 			gliver-binding-spec-keysym
 			gliver-binding-spec?
 			make-gliver-binding-spec
+			gliver-binding-spec->modifiers-list
 			gliver-binding-spec->string
 			gliver-binding-spec-generate
 ))
@@ -101,17 +106,17 @@
   (< (modifier-weight a) (modifier-weight b)))
 
 (define (gliver-key=? a b)
-  "Return #t if a and b represent the same key binding."  
+  "Return #t if a and b represent the same key binding."
   (and (eq? (gliver-key-keysym a) (gliver-key-keysym b))
        (equal? (gliver-key-modifiers a) (gliver-key-modifiers b))))
 
 (define (gliver-key->string key)
   "Convert a gliver-key to its display string, e.g., \"C-t\"."
   (let* ((mods (map (lambda (m)
-					  (let ((pair (find (lambda (p) (eq? (cdr p) m)) 
+					  (let ((pair (find (lambda (p) (eq? (cdr p) m))
                                         *modifier-map*)))
-                        (if pair 
-                            (car pair) 
+                        (if pair
+                            (car pair)
                             (symbol->string m))))
                     (gliver-key-modifiers key)))
          (keysym (symbol->string (gliver-key-keysym key))))
@@ -184,8 +189,8 @@ Returns gliver-key"
               (error "Trailing dash in key string" str)
               (make-gliver-key (reverse mods) (string->symbol keysym-str)))))
 
-       ;; Case 2: Special "C--" handling. 
-       ;; If the current part is a modifier and the NEXT part is empty, 
+       ;; Case 2: Special "C--" handling.
+       ;; If the current part is a modifier and the NEXT part is empty,
        ;; it means the dash was intended as the keysym.
        ((and (assoc-ref *modifier-map* (car remaining))
              (string=? (cadr remaining) "")
@@ -247,6 +252,22 @@ instead of returning to *top-map*."
   (let ((k (if (gliver-key? key) key (kbd key))))
     (hash-table-set! (gliver-keymap-bindings keymap) k
                      (make-gliver-binding action persist))))
+
+(define-syntax define-keys
+  (syntax-rules ()
+    ;; case 0: no bindings provided
+    ((_ keymap)
+     (begin))
+
+    ;; case 1: 1 binding pair left
+    ((_ keymap key action)
+     (define-key keymap key action))
+
+    ;; case 2: more than one binding pair
+    ((_ keymap key action rest ...)
+     (begin
+       (define-key keymap key action)
+       (define-keys keymap rest ...)))))
 
 (define (undefine-key keymap key)
   "Remove the binding for KEY from KEYMAP."
@@ -315,7 +336,10 @@ instead of returning to *top-map*."
          (keysym (xkb-value->keysym-name (gliver-binding-spec-keysym spec))))
     (string-join (append mods (list keysym)) "-")))
 
-(define (gliver-binding-spec-generate top-map root-map prefix-key mode-name)
+;; TODO: review again, so many assumptions were changed
+;; this should probably change as the maps are almost completely
+;; controlled and configured by user
+(define (gliver-binding-spec-generate top-map root-map mode-name)
   "Generate a list of <gliver-binding-spec> records for XKB key bindings.
 Returns a list of gliver-binding-spec records.
 
@@ -340,17 +364,6 @@ Prefix key activation and escape bindings are included."
                   persist)
                  specs))))
      (gliver-keymap->alist top-map))
-
-    ;; prefix key activation (in normal mode)
-    (let ((pk (gliver-key->xkb-binding-args prefix-key)))
-      (set! specs
-        (cons (make-gliver-binding-spec
-               (cdr pk)
-               (car pk)
-               'prefix-activated
-               'normal
-               #f)
-              specs)))
 
     ;; root-map bindings (in prefix mode)
     (let ((mode-sym (if (symbol? mode-name)
