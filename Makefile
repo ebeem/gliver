@@ -44,6 +44,14 @@ MODULES =   gliver/core/logs.scm \
 			gliver/river/keybindings-manager.scm \
 			gliver/river/layer-shell-manager.scm \
 			gliver/contrib/commands.scm \
+			gliver/contrib/commands/container.scm \
+			gliver/contrib/commands/media.scm \
+			gliver/contrib/commands/output.scm \
+			gliver/contrib/commands/window.scm \
+			gliver/contrib/commands/workspace.scm \
+			gliver/contrib/commands/shell.scm \
+			gliver/contrib/commands/help.scm \
+			gliver/contrib/commands/keybindings.scm \
 			gliver/contrib/debug/ipc-server.scm \
 			gliver/contrib/debug/repl-server.scm \
 			gliver/contrib/utils/systemd.scm \

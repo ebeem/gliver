@@ -4,10 +4,12 @@
 ;;; SPDX-License-Identifier: GPL-3.0-or-later
 
 (define-module (gliver contrib commands media)
-  #:use-module (gliver contrib commands)
+  #:use-module (gliver contrib commands shell)
   #:use-module (gliver core)
   #:declarative? #f
   #:export (
+			media-volume-delta
+			media-brightness-delta
 			media-audio-mute
 			media-audio-volume-decrease
 			media-audio-volume-increase
