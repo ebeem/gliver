@@ -174,6 +174,7 @@
           #:key
 		  (action 'dmenu)
 		  (name "rofi")
+		  (inherit-config? #f)
           (prompt *palette-prompt*)
           (font (format #f "~a ~a" *palette-font* *palette-font-size*))
           (case-sensitive? *palette-case-sensitive?*)
@@ -231,6 +232,7 @@
 			"-name" name
 			"-p" prompt
             ,@(if case-sensitive? '() '("-i"))
+			,@(if inherit-config? '() '("-no-config"))
             ,@(if show-icons? '("-show-icons") '())
             ,@(if markup-rows? '("-markup-rows" "-markup") '())
 			))

@@ -38,14 +38,11 @@
   (when (null? (output-workspaces output))
 	(let ((workspace
 		   (make-workspace #:name (format #f "workspace-~d-~d" (output-id output) 1)
-						   #:layout `((layout . alternating)
-									  (initial-split-direction . horizontal)
+						   #:layout `((layout . manual)
+									  (layout-type . manual)
 									  (split-ratio . 0.5)
-									  (max-depth . 5)
-									  (alternate-direction? . #t)
 									  (inner-gap . #f)
-									  (outer-gap . #f)
-									  (append-method . tail))
+									  (outer-gap . #f))
 						   #:output output)))
 	  (workspace-add! workspace)))
 
