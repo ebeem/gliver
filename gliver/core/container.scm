@@ -181,23 +181,23 @@
 (define* (container-size-set! container width height #:key (animate #t))
   "Resize the container to the provided width and height."
   (let* ((windows (container-windows container))
-		 (window (or (container-window-current container)
-					 (and (pair? windows) (car windows))))
 		 (int-width (inexact->exact (floor width)))
 		 (int-height (inexact->exact (floor height))))
 	(%container-width-set! container int-width)
 	(%container-height-set! container int-height)
-	(when window
-	  (window-dimensions-propose! window int-width int-height #:animate animate))))
+	(for-each
+	 (lambda (window)
+	   (window-dimensions-propose! window int-width int-height #:animate animate))
+	 windows)))
 
 (define* (container-position-set! container x y #:key (animate #t))
   "Move the container position to the provided x and y."
   (let* ((windows (container-windows container))
-		 (window (or (container-window-current container)
-					 (and (pair? windows) (car windows))))
 		 (int-x (inexact->exact (floor x)))
 		 (int-y (inexact->exact (floor y))))
 	(%container-x-set! container int-x)
 	(%container-y-set! container int-y)
-	(when window
-	  (window-position-set! window int-x int-y #:animate animate))))
+	(for-each
+	 (lambda (window)
+	   (window-position-set! window int-x int-y #:animate animate))
+	 windows)))
