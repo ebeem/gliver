@@ -1,6 +1,6 @@
 * Data Types
 
-Gliver models its core state using Guile SRFI-9 records defined in =gliver/core/types.scm=. The data model is hierarchical and tracks the Wayland state as well as internal window management state.
+Gliver models its core state using Guile SRFI-9 records defined in [[file:../gliver/core/types.scm][gliver/core/types.scm]]. The data model is hierarchical and tracks the Wayland state as well as internal window management state.
 
 ** Hierarchy Overview
 
