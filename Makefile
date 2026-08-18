@@ -31,6 +31,7 @@ MODULES =   gliver/core/logs.scm \
 			gliver/core.scm \
 			gliver/wayland/client.scm \
 			gliver/wayland/gen/wayland.scm \
+			gliver/wayland/gen/xdg-shell.scm \
 			gliver/wayland/gen/river-input-management-v1.scm \
 			gliver/wayland/gen/river-layer-shell-v1.scm \
 			gliver/wayland/gen/river-libinput-config-v1.scm \
@@ -99,12 +100,14 @@ gen:
 		protocols/river-layer-shell-v1.xml \
         protocols/wayland.xml \
         protocols/wlr-layer-shell-unstable-v1.xml \
+        protocols/xdg-shell.xml \
 		gliver/wayland/gen
 
 install: compile
 	@echo "Installing to $(PREFIX)..."
 	install -Dm755 bin/gliver    $(DESTDIR)$(BINDIR)/gliver
 	install -Dm755 bin/gliver-repl $(DESTDIR)$(BINDIR)/gliver-repl
+	install -Dm755 bin/window-placeholder $(DESTDIR)$(BINDIR)/window-placeholder
 
 	# modules
 	@for m in $(MODULES); do \
