@@ -14,6 +14,11 @@ GUILE      ?= guile
 GUILD      ?= guild
 PKG_CONFIG ?= pkg-config
 
+# export local paths so all make commands and spawned scripts resolve local modules first
+export GUILE_LOAD_PATH := $(CURDIR):$(GUILE_LOAD_PATH)
+export GUILE_LOAD_COMPILED_PATH := $(CURDIR)/build:$(GUILE_LOAD_COMPILED_PATH)
+export PATH := $(CURDIR)/bin:$(PATH)
+
 LIBXKBCOMMON_LIBDIR = $(shell $(PKG_CONFIG) --variable libdir xkbcommon)
 LIBWAYLAND_CLIENT_LIBDIR = $(shell $(PKG_CONFIG) --variable libdir wayland-client)
 
@@ -107,7 +112,7 @@ install: compile
 	@echo "Installing to $(PREFIX)..."
 	install -Dm755 bin/gliver    $(DESTDIR)$(BINDIR)/gliver
 	install -Dm755 bin/gliver-repl $(DESTDIR)$(BINDIR)/gliver-repl
-	install -Dm755 bin/window-placeholder $(DESTDIR)$(BINDIR)/window-placeholder
+	install -Dm755 bin/gliver-placeholder $(DESTDIR)$(BINDIR)/gliver-placeholder
 
 	# modules
 	@for m in $(MODULES); do \
@@ -135,6 +140,7 @@ install: compile
 uninstall:
 	rm -f $(DESTDIR)$(BINDIR)/gliver
 	rm -f $(DESTDIR)$(BINDIR)/gliver-repl
+	rm -f $(DESTDIR)$(BINDIR)/gliver-placeholder
 	rm -rf $(DESTDIR)$(GUILEDIR)/gliver
 	rm -rf $(DESTDIR)$(PREFIX)/share/gliver
 
@@ -145,3 +151,9 @@ clean:
 
 run:
 	./bin/gliver
+
+repl:
+	./bin/gliver-repl
+
+placeholder:
+	./bin/gliver-placeholder
