@@ -1,5 +1,6 @@
 (define-module (gliver contrib ui launcher)
   #:use-module (gliver core)
+  #:declarative? #f
   #:export (
 			*launcher-backend*
 			*launcher-backend-kill*
