@@ -134,3 +134,4 @@ instead of having one config file to define all variables, define them using the
 ** TODO create additional ui integration with both quickshell and noctalia
 also create noctalia integration with gliver
 
+** TODO make placeholder a single process that can spawn multiple windows
