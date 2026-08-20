@@ -29,6 +29,7 @@
 			window-add!
 			window-apply-defaults!
 			window-remove!
+			workspace-manual?
 			%window-container-remove!
 			%window-container-add!
 			window-focus!
@@ -36,6 +37,10 @@
 			color-hex->rgba-32
 			window-close!
 			window-node-get!
+			window-place-top!
+			window-place-above!
+			window-place-bottom!
+			window-place-below!
 			window-dimensions-propose!
 			window-hide!
 			window-show!
@@ -136,31 +141,51 @@
 	(%window-destroyed-set! window #t)
     (gliver-hook-run! *window-destroyed-hook* window container workspace)))
 
+(define (workspace-manual? workspace)
+  "Return #t if WORKSPACE uses manual layout."
+  (and workspace
+       (let* ((layout-cfg (workspace-layout workspace))
+              (layout-type (if (list? layout-cfg)
+                               (or (assq-ref layout-cfg 'layout-type)
+                                   (assq-ref layout-cfg 'layout))
+                               layout-cfg)))
+         (eq? layout-type 'manual))))
+
 (define* (%window-container-remove! window #:key (focus #t))
   "Remove a window from the container. This function makes the window state
 invalid as the window should always have a container."
   (let* ((container (window-container window))
-		 (windows (container-windows container))
-		 (windows-remaining (delete window windows)))
+		 (workspace (if container (container-workspace container) #f))
+		 (windows (if container (container-windows container) '()))
+		 (idx (list-index (lambda (w) (eq? w window)) windows))
+		 (windows-remaining (delete window windows))
+		 (window-target (and (pair? windows-remaining)
+							 (if (and idx (< idx (length windows-remaining)))
+								 (list-ref windows-remaining idx)
+								 (last windows-remaining)))))
     (%window-container-set! window #f)
-    (%container-windows-set! container windows-remaining)
-	(gliver-hook-run! %window-container-removed-hook* window container)
-	;; if removed window is currently focused, focus next window in container
-    (when (eq? (container-window-current container) window)
-	  ;; if focus parameter is true, another window in the container will be focused
-	  ;; otherwise the container will just have it as current window without seat focusing it
-	  (let* ((container-target (if container
-								   (or (container-next container #:recursive #f)
-									   (container-prev container #:recursive #f)) #f))
-			 (window-target (or (window-next window #:recursive #f)
-								(window-prev window #:recursive #f)))
-			 (window-target-inclusive (or window-target
-										  (if container-target (container-window-current container-target) #f))))
-
-		(log-debug "current window deleted, focusing window (~a) ~a" (and focus window-target) window-target)
+    (when container
+	  (%container-windows-set! container windows-remaining)
+	  (gliver-hook-run! %window-container-removed-hook* window container)
+	  ;; if removed window is currently focused, focus next window in container
+	  (when (eq? (container-window-current container) window)
 		(%container-window-current-set! container window-target)
-		(when (and focus window-target-inclusive)
-		  (window-focus! window-target-inclusive))))))
+		(cond
+		 (window-target
+		  (log-debug "current window deleted, focusing next window in same container: ~a" window-target)
+		  (when focus
+			(window-focus! window-target)))
+		 ((workspace-manual? workspace)
+		  ;; in manual layout, keep container focused as a placeholder will be spawned to fill it
+		  (log-debug "all windows removed from container ~a in manual layout, keeping container focused"
+					 (container-id container)))
+		 (else
+		  ;; in automatic layout, focus next container's window if available
+		  (let* ((container-target (or (container-next container #:recursive #f)
+									   (container-prev container #:recursive #f)))
+				 (target-win (if container-target (container-window-current container-target) #f)))
+			(when (and focus target-win)
+			  (window-focus! target-win)))))))))
 
 (define* (%window-container-add! window container #:key (focus #t))
   "Add a window to a container. The window should have no container. if it
