@@ -12,6 +12,9 @@
 			*default-workspace-name*
 			*terminal*
 			*startup-message*
+			*prevent-killing-placeholder*
+			*placeholder-app-id*
+			*placeholder-script*
 			*wm-behavior-focus-mouse-enter*
 			*wm-behavior-focus-clear-mouse-leave*
 			*wm-behavior-focus-mouse-click*
@@ -111,6 +114,13 @@
 			"Terminal emulator to be used when spawning terminals.")
 (define-var *startup-message* #t
 			"Whether to show message at startup.")
+(define-var *prevent-killing-placeholder* #t
+			"Whether to prevent users from kill placeholder windows.")
+(define-var *placeholder-app-id* "gliver-placeholder"
+			"The application id of the gliver placeholder.")
+(define-var *placeholder-script* "gliver-placeholder"
+			"The script/command to spawn a gliver placeholder.")
+
 
 ;;; window manager behavior
 (define-var *wm-behavior-focus-mouse-enter* #f)
