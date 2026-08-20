@@ -160,7 +160,7 @@
   "Returns true if the container is currently focused"
   (eq? container (container-current)))
 
-(define* (container-focus! container  #:key (focus-child #t) (focus-parent #t))
+(define* (container-focus! container #:key (focus-child #t) (focus-parent #t))
   "Focus a container by focusing its last focused window."
   ;; target window is current focused or first window
   (log-debug "focusing container ~a, is focused? = ~a" container
@@ -169,8 +169,12 @@
 	(let* ((windows (container-windows container))
 		   (window (or (container-window-current container)
 					   (and (pair? windows) (car windows))))
+		   (window-current (window-current))
 		   (workspace (container-workspace container))
 		   (prev-container (workspace-container-current workspace)))
+	  ;; unfocus previous window
+	  (when window-current
+		(gliver-hook-run! *window-unfocused-hook* window-current))
 	  (when (and focus-child window)
 		(window-focus! window #:focus-parent #f))
 	  (%workspace-container-previous-set! workspace prev-container)
