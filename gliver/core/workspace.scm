@@ -25,7 +25,9 @@
 			workspace-add!
 			%workspace-remove-target
 			workspace-containers-move
+			workspace-manual?
 			workspace-remove!
+			workspace-focused?
 			workspace-focus!
 			workspace-next
 			workspace-prev
@@ -102,6 +104,16 @@ and then @var{s-workspace}'s container list is emptied."
                                (append (workspace-containers t-workspace)
                                        (workspace-containers s-workspace)))
     (%workspace-containers-set! s-workspace '())))
+
+(define (workspace-manual? workspace)
+  "Return #t if WORKSPACE uses manual layout."
+  (and workspace
+       (let* ((layout-cfg (workspace-layout workspace))
+              (layout-type (if (list? layout-cfg)
+                               (or (assq-ref layout-cfg 'layout-type)
+                                   (assq-ref layout-cfg 'layout))
+                               layout-cfg)))
+         (eq? layout-type 'manual))))
 
 (define* (workspace-remove! workspace #:key (t-workspace #f))
   "Delete @var{workspace}, moving its containers to @var{t-workspace}."

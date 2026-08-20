@@ -23,13 +23,13 @@
   #:autoload (gliver core container) (container-focus!
 									  container-prev
 									  container-next)
+  #:autoload (gliver core workspace) (workspace-manual?)
   #:export (
 			window-next
 			window-prev
 			window-add!
 			window-apply-defaults!
 			window-remove!
-			workspace-manual?
 			%window-container-remove!
 			%window-container-add!
 			window-focus!
@@ -140,16 +140,6 @@
 	(%window-container-remove! window)
 	(%window-destroyed-set! window #t)
     (gliver-hook-run! *window-destroyed-hook* window container workspace)))
-
-(define (workspace-manual? workspace)
-  "Return #t if WORKSPACE uses manual layout."
-  (and workspace
-       (let* ((layout-cfg (workspace-layout workspace))
-              (layout-type (if (list? layout-cfg)
-                               (or (assq-ref layout-cfg 'layout-type)
-                                   (assq-ref layout-cfg 'layout))
-                               layout-cfg)))
-         (eq? layout-type 'manual))))
 
 (define* (%window-container-remove! window #:key (focus #t))
   "Remove a window from the container. This function makes the window state
