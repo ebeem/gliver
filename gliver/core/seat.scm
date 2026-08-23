@@ -63,12 +63,31 @@ Must be called in a ~manage_sequence~."
 	  (unless (eq? window (seat-window-focused seat))
 		(%seat-window-focused-set! seat window)
 		;; unfocus old window and focus the new one via hooks as well
-		(with-manage-sequence	   
-		 (wm-seat-window-focus proxy-seat proxy-window)	   
+		(with-manage-sequence
+		 (wm-seat-window-focus proxy-seat proxy-window)
 		 (gliver-hook-run! *seat-window-focused-hook* seat window))))))
 
 ;; NOTE: wm-seat-shell-focus should be implemented here
 ;; I am not sure if it's actually needed, so I skipped it
+;; (define (seat-wm-shell-focus seat shell-surface)
+;;   "Request that the compositor send keyboard input to the given shell surface.
+;; Must be called in a ~manage_sequence~."
+;;   (let ((proxy-seat (seat-wl-proxy seat))
+;; 		(proxy-shell-surface (shell-surface-wl-proxy shell-surface)))
+;;     (when (and proxy-seat proxy-shell-surface)
+;; 	  (log-debug "Seat ~a focusing surface ~a" seat shell-surface)
+;; 	  (unless (eq? shell-surface (seat-shell-surface-focused seat))
+;; 		(%seat-shell-surface-focused-set! seat shell-surface)
+;; 		;; unfocus old shell-surface and focus the new one via hooks as well
+;; 		(with-manage-sequence
+;; 		 (wm-seat-shell-surface-focus proxy-seat proxy-shell-surface)
+;; 		 (gliver-hook-run! *seat-shell-surface-focused-hook* seat shell-surface))))))
+
+(let ((proxy-seat (seat-wl-proxy seat)))
+    (when (and proxy-seat proxy-shell-surface)
+      (log-debug "Seat ~a focusing shell surface ~a" seat proxy-shell-surface)
+      (with-manage-sequence
+       (wm-seat-shell-focus proxy-seat proxy-shell-surface)))))
 
 (define (seat-wm-window-focus-clear seat)
   "Request that the compositor send keyboard input to the given window.
@@ -131,7 +150,7 @@ Must be called in a ~manage_sequence~."
 (define (seat-on-removed data proxy-seat)
   "Seat was removed. This will take care of
 Removing the seat record and clearing up memory.
-It calls wm-seat-destroy to destroy wayland references 
+It calls wm-seat-destroy to destroy wayland references
 Hook: *seat-destroy-hook*"
   (let ((seat (seat-find-by-proxy proxy-seat)))
 	(log-debug "Seat removed: ~a" seat)
@@ -220,4 +239,3 @@ start of the operation of the pointer/touch point/etc."
 (gliver-hook-add! %seat-op-delta-changed-hook 'seat-on-op-delta 0)
 (gliver-hook-add! %seat-op-released-hook 'seat-on-op-release 0)
 (gliver-hook-add! %seat-pointer-position-changed-hook 'seat-on-pointer-position 0)
-
