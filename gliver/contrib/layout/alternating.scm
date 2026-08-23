@@ -14,26 +14,34 @@
   #:use-module (srfi srfi-2)
   #:declarative? #f
   #:export (
+			layout-alternating?
 			layout-alternating-make-config
 			layout-alternating-get-param
+			layout-alternating-add-container
 			layout-alternating-update-container
 			layout-alternating-reload
-			layout-alternating-add-container
 			layout-alternating-update
 			layout-alternating-window-created
+			layout-alternating-window-fullscreen-exited
 			layout-alternating-window-destroyed
 			layout-alternating-workspace-created
 			layout-alternating-output-dimensions-changed
-))
+			))
+
+(define (layout-alternating? workspace)
+  "Return #t if the workspace layout is alternating."
+  (and-let* ((layout-cfg (workspace-layout workspace))
+			 (layout-name (if (list? layout-cfg) (assq-ref layout-cfg 'layout) layout-cfg)))
+	(equal? layout-name 'alternating)))
 
 (define* (layout-alternating-make-config #:key
-                                  (initial-split-direction 'horizontal)
-                                  (split-ratio 0.5)
-                                  (max-depth 5)
-                                  (alternate-direction? #t)
-                                  (inner-gap #f)
-                                  (outer-gap #f)
-                                  (append-method 'tail))
+										 (initial-split-direction 'horizontal)
+										 (split-ratio 0.5)
+										 (max-depth 5)
+										 (alternate-direction? #t)
+										 (inner-gap #f)
+										 (outer-gap #f)
+										 (append-method 'tail))
   "Create an associated list for the alternating layout configuration."
   `((layout . alternating)
 	(layout-type . auto)
@@ -52,117 +60,128 @@
         (if pair (cdr pair) default-val))
       default-val))
 
+(define (layout-alternating-add-container workspace)
+  "Creates a new empty container and returns it."
+  (let ((container (make-container #:workspace workspace
+  								   #:x 0
+  								   #:y 0
+  								   #:width 0
+  								   #:height 0)))
+	(container-add! container)
+	container))
+
 (define (layout-alternating-update-container workspace index)
   "Modify the target container at the provided index so that it
 respects the alternating layout system."
-  (let* ((output (workspace-output workspace))
-		 (ow (output-width output))
-		 (oh (output-height output))
-  		 (layout-cfg (workspace-layout workspace))
-		 (containers (workspace-containers workspace))
-  		 (containers-count (length containers))
-		 (container (and (< index containers-count)
-						 (list-ref containers index)))
-		 (first-contaier? (= containers-count 1))
-  		 (tail? (= (+ 1 index) containers-count))
+  (when (layout-alternating? workspace)
+	(let* ((output (workspace-output workspace))
+		   (ow (output-width output))
+		   (oh (output-height output))
+  		   (layout-cfg (workspace-layout workspace))
+		   (containers (workspace-containers workspace))
+  		   (containers-count (length containers))
+		   (container (and (< index containers-count)
+						   (list-ref containers index)))
+		   (first-contaier? (= containers-count 1))
+  		   (tail? (= (+ 1 index) containers-count))
 
-		 ;; inner and outer gap configuration and values
-		 (inner-gap (or (layout-alternating-get-param layout-cfg 'inner-gap #f) 
-						(manager-config-ref 'container-inner-gap)))
-		 (outer-gap (or (layout-alternating-get-param layout-cfg 'outer-gap #f) 
-						(manager-config-ref 'container-outer-gap)))
-		 (border-width (manager-config-ref 'border-width))
-		 (outer-gap-include-border (layout-alternating-get-param layout-cfg 'outer-gap-include-border #t))
-		 (inner-gap-include-border (layout-alternating-get-param layout-cfg 'inner-gap-include-border #t))
-		 (total-outer-gap (if outer-gap-include-border (+ outer-gap border-width) outer-gap))
-		 (total-inner-gap (if inner-gap-include-border (+ inner-gap border-width) inner-gap))
+		   ;; inner and outer gap configuration and values
+		   (inner-gap (or (layout-alternating-get-param layout-cfg 'inner-gap #f)
+						  (manager-config-ref 'container-inner-gap)))
+		   (outer-gap (or (layout-alternating-get-param layout-cfg 'outer-gap #f)
+						  (manager-config-ref 'container-outer-gap)))
+		   (border-width (manager-config-ref 'border-width))
+		   (outer-gap-include-border (layout-alternating-get-param layout-cfg 'outer-gap-include-border #t))
+		   (inner-gap-include-border (layout-alternating-get-param layout-cfg 'inner-gap-include-border #t))
+		   (total-outer-gap (if outer-gap-include-border (+ outer-gap border-width) outer-gap))
+		   (total-inner-gap (if inner-gap-include-border (+ inner-gap border-width) inner-gap))
 
-		 ;; get geometry of previous container or output for 1st container
-		 (prev-container (and (> index 0)
-							  (< (- index 1) containers-count)
-							  (list-ref containers (- index 1))))
-		 (prev-x (if prev-container
-					 (container-x prev-container)
-					 0))
-		 (prev-y (if prev-container
-					 (container-y prev-container)
-					 0))
-		 (prev-width (if prev-container
-						 (container-width prev-container)
-						 ow))
-		 (prev-height (if prev-container
-						  (container-height prev-container)
-						  oh))
-		 (avail-width (- ow (* 2 total-outer-gap)))
-		 (avail-height (- oh (* 2 total-outer-gap)))
-
-		 ;; get index direction split, vertical or horizontal split
-		 (initial-dir (layout-alternating-get-param layout-cfg 'initial-split-direction 'vertical))
-		 (other-dir (if (eq? initial-dir 'vertical) 'horizontal 'vertical))
-		 (split (if (even? index) initial-dir other-dir))
-		 (prev-split (if (even? index) other-dir initial-dir))
-		 (split-ratio (if tail? 1 (layout-alternating-get-param layout-cfg 'split-ratio 0.5)))
-		 (split-ratio-w (if (and (not tail?) (eq? split 'vertical)) 1 split-ratio))
-		 (split-ratio-h (if (and (not tail?) (eq? split 'horizontal)) 1 split-ratio)))
-
-	(cond
-
-	 ((not container)
-      (log-debug "case-0: no container is available at the index ~a" index))
-
-	 ((= 0 index)
-	  (let* ((gap-dt 0)
-			 (gap-db (if (and (not tail?) (eq? split 'vertical)) 1 0))
-			 (gap-dr (if (and (not tail?) (eq? split 'horizontal)) 1 0))
-			 (gap-dl 0)
-			 (curr-width  (- (* avail-width split-ratio-w)
-							 (* (+ gap-dr gap-dl) total-inner-gap)))
-			 (curr-height (- (* avail-height split-ratio-h)
-							 (* (+ gap-dt gap-db) total-inner-gap)))
-			 (curr-x total-outer-gap)
-			 (curr-y total-outer-gap))
-		(container-size-set! container curr-width curr-height)
-		(container-position-set! container curr-x curr-y)))
-
-	 (tail?
-	  ;; tail container just need occupy the remaining space
-	  (let* ((curr-x (if (eq? prev-split 'vertical)
-						 (container-x prev-container)
-						 (+ (container-x prev-container)
-							(container-width prev-container)
-							(* 2 total-inner-gap))))
-			 (curr-y (if (eq? prev-split 'vertical)
-						 (+ (container-y prev-container)
+		   ;; get geometry of previous container or output for 1st container
+		   (prev-container (and (> index 0)
+								(< (- index 1) containers-count)
+								(list-ref containers (- index 1))))
+		   (prev-x (if prev-container
+					   (container-x prev-container)
+					   0))
+		   (prev-y (if prev-container
+					   (container-y prev-container)
+					   0))
+		   (prev-width (if prev-container
+						   (container-width prev-container)
+						   ow))
+		   (prev-height (if prev-container
 							(container-height prev-container)
-							(* 2 total-inner-gap))
-						 (container-y prev-container)))
-			 (curr-width (container-width prev-container))
-			 (curr-height (container-height prev-container)))
-		(container-size-set! container curr-width curr-height)
-		(container-position-set! container curr-x curr-y)))
+							oh))
+		   (avail-width (- ow (* 2 total-outer-gap)))
+		   (avail-height (- oh (* 2 total-outer-gap)))
 
-	 ;; case-3: the container has some containers after and before it
-  	 (else
-	  (let* ((curr-x (if (eq? prev-split 'vertical)
-						 (container-x prev-container)
-						 (+ (container-x prev-container)
-							(container-width prev-container)
-							(* 2 total-inner-gap))))
-			 (curr-y (if (eq? prev-split 'vertical)
-						 (+ (container-y prev-container)
-							(container-height prev-container)
-							(* 2 total-inner-gap))
-						 (container-y prev-container)))
-			 (remaining-width (container-width prev-container))
-			 (remaining-height (container-height prev-container))
-			 (curr-width (if (eq? split 'horizontal)
-							 (- (* remaining-width split-ratio) total-inner-gap)
-							 (container-width prev-container)))
-			 (curr-height (if (eq? split 'vertical)
-							  (- (* remaining-height split-ratio) total-inner-gap)
-							  (container-height prev-container))))
-		(container-size-set! container curr-width curr-height)
-		(container-position-set! container curr-x curr-y))))))
+		   ;; get index direction split, vertical or horizontal split
+		   (initial-dir (layout-alternating-get-param layout-cfg 'initial-split-direction 'vertical))
+		   (other-dir (if (eq? initial-dir 'vertical) 'horizontal 'vertical))
+		   (split (if (even? index) initial-dir other-dir))
+		   (prev-split (if (even? index) other-dir initial-dir))
+		   (split-ratio (if tail? 1 (layout-alternating-get-param layout-cfg 'split-ratio 0.5)))
+		   (split-ratio-w (if (and (not tail?) (eq? split 'vertical)) 1 split-ratio))
+		   (split-ratio-h (if (and (not tail?) (eq? split 'horizontal)) 1 split-ratio)))
+
+	  (cond
+
+	   ((not container)
+		(log-debug "case-0: no container is available at the index ~a" index))
+
+	   ((= 0 index)
+		(let* ((gap-dt 0)
+			   (gap-db (if (and (not tail?) (eq? split 'vertical)) 1 0))
+			   (gap-dr (if (and (not tail?) (eq? split 'horizontal)) 1 0))
+			   (gap-dl 0)
+			   (curr-width  (- (* avail-width split-ratio-w)
+							   (* (+ gap-dr gap-dl) total-inner-gap)))
+			   (curr-height (- (* avail-height split-ratio-h)
+							   (* (+ gap-dt gap-db) total-inner-gap)))
+			   (curr-x total-outer-gap)
+			   (curr-y total-outer-gap))
+		  (container-size-set! container curr-width curr-height)
+		  (container-position-set! container curr-x curr-y)))
+
+	   (tail?
+		;; tail container just need occupy the remaining space
+		(let* ((curr-x (if (eq? prev-split 'vertical)
+						   (container-x prev-container)
+						   (+ (container-x prev-container)
+							  (container-width prev-container)
+							  (* 2 total-inner-gap))))
+			   (curr-y (if (eq? prev-split 'vertical)
+						   (+ (container-y prev-container)
+							  (container-height prev-container)
+							  (* 2 total-inner-gap))
+						   (container-y prev-container)))
+			   (curr-width (container-width prev-container))
+			   (curr-height (container-height prev-container)))
+		  (container-size-set! container curr-width curr-height)
+		  (container-position-set! container curr-x curr-y)))
+
+	   ;; case-3: the container has some containers after and before it
+  	   (else
+		(let* ((curr-x (if (eq? prev-split 'vertical)
+						   (container-x prev-container)
+						   (+ (container-x prev-container)
+							  (container-width prev-container)
+							  (* 2 total-inner-gap))))
+			   (curr-y (if (eq? prev-split 'vertical)
+						   (+ (container-y prev-container)
+							  (container-height prev-container)
+							  (* 2 total-inner-gap))
+						   (container-y prev-container)))
+			   (remaining-width (container-width prev-container))
+			   (remaining-height (container-height prev-container))
+			   (curr-width (if (eq? split 'horizontal)
+							   (- (* remaining-width split-ratio) total-inner-gap)
+							   (container-width prev-container)))
+			   (curr-height (if (eq? split 'vertical)
+								(- (* remaining-height split-ratio) total-inner-gap)
+								(container-height prev-container))))
+		  (container-size-set! container curr-width curr-height)
+		  (container-position-set! container curr-x curr-y)))))))
 
 (define* (layout-alternating-reload workspace #:key (complete #f))
   "Reload function that ensures current workspace adheres to the
@@ -219,32 +238,20 @@ layout rules."
 					 (> (length (workspace-containers workspace)) 1))
 			(container-remove! container)))))
 
-	  ;; update last container's geometry
-	  (layout-alternating-update-container workspace (- (length (workspace-containers workspace)) 1))))
-
-(define (layout-alternating-add-container workspace)
-  "Creates a new empty container and returns it."
-  (let ((container (make-container #:workspace workspace
-  								   #:x 0
-  								   #:y 0
-  								   #:width 0
-  								   #:height 0)))
-	(container-add! container)
-	container))
+	;; update last container's geometry
+	(layout-alternating-update-container workspace (- (length (workspace-containers workspace)) 1))))
 
 (define (layout-alternating-update hook workspace container window)
   "Main orchestrator for the alternating layout."
-  (when (and hook workspace)
+  (when (and hook workspace (layout-alternating? workspace))
 	(let* ((layout-cfg (workspace-layout workspace))
-           (layout-name (if (list? layout-cfg) (assq-ref layout-cfg 'layout) layout-cfg))
 		   (append-method (layout-alternating-get-param layout-cfg 'append-method 'tail))
 		   (append-tail? (eq? append-method 'tail))
 		   (containers (workspace-containers workspace)))
 	  ;; if the append method is tail, move the window to the last container
 	  (when append-tail?
 		(window-move-to-container! window (last containers)))
-      (when (equal? layout-name 'alternating)
-		(layout-alternating-reload workspace #:complete #t)))))
+	  (layout-alternating-reload workspace #:complete #t))))
 
 (define (layout-alternating-window-created window)
   (let* ((container (window-container window))
@@ -266,8 +273,8 @@ layout rules."
 (define (layout-alternating-workspace-created workspace)
   (let* ((container (workspace-container-current workspace))
 		 (window (if container
-						(container-window-current container)
-						#f)))
+					 (container-window-current container)
+					 #f)))
 	(layout-alternating-update 'workspace-created workspace container window)))
 
 (define (layout-alternating-output-dimensions-changed output prev-width prev-height)
@@ -281,4 +288,3 @@ layout rules."
 (gliver-hook-add! *window-destroyed-hook* 'layout-alternating-window-destroyed)
 (gliver-hook-add! *workspace-created-hook* 'layout-alternating-workspace-created)
 (gliver-hook-add! *output-dimensions-changed-hook* 'layout-alternating-output-dimensions-changed)
-
