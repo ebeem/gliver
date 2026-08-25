@@ -83,12 +83,6 @@ Must be called in a ~manage_sequence~."
 ;; 		 (wm-seat-shell-surface-focus proxy-seat proxy-shell-surface)
 ;; 		 (gliver-hook-run! *seat-shell-surface-focused-hook* seat shell-surface))))))
 
-(let ((proxy-seat (seat-wl-proxy seat)))
-    (when (and proxy-seat proxy-shell-surface)
-      (log-debug "Seat ~a focusing shell surface ~a" seat proxy-shell-surface)
-      (with-manage-sequence
-       (wm-seat-shell-focus proxy-seat proxy-shell-surface)))))
-
 (define (seat-wm-window-focus-clear seat)
   "Request that the compositor send keyboard input to the given window.
 Must be called in a ~manage_sequence~."
