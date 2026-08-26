@@ -49,6 +49,7 @@ MODULES =   gliver/core/logs.scm \
 			gliver/river/wm-seat-manager.scm \
 			gliver/river/keybindings-manager.scm \
 			gliver/river/layer-shell-manager.scm \
+			gliver/river.scm \
 			gliver/contrib/commands.scm \
 			gliver/contrib/commands/container.scm \
 			gliver/contrib/commands/media.scm \
@@ -69,7 +70,8 @@ MODULES =   gliver/core/logs.scm \
 			gliver/contrib/keybindings/stumpwm.scm \
 			gliver/contrib/keybindings/sway.scm \
 			gliver/contrib/keybindings/gliver.scm \
-			gliver/contrib/layout/alternating.scm
+			gliver/contrib/layout/alternating.scm \
+			gliver/contrib/layout/manual.scm
 
 # phony and default make command
 .PHONY: all compile test install uninstall clean gen check lint

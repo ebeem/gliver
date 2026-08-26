@@ -6,7 +6,7 @@
 
 (use-modules (gliver core)
              (gliver contrib commands)
-			 (gliver contrib layout alternating)
+			 (gliver contrib layout manual)
 			 (gliver contrib utils systemd)
 			 (gliver contrib keybindings gliver)
 			 (gliver contrib ui which-key)
