@@ -260,7 +260,7 @@ layout rules."
 						#f)))
 	(layout-alternating-update 'window-created workspace container window)))
 
-(define (layout-alternating-window-fullscreen-exited window)
+(define (layout-alternating-window-fullscreen-exited window prev-sate)
   (let* ((container (window-container window))
 		 (workspace (if container
 						(container-workspace container)
