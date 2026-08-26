@@ -22,8 +22,6 @@
 
 - A standalone Wayland compositor; it runs alongside River as a client and delegates all rendering and hardware duties.
 
-- A full-blown desktop environment. ~Gliver~ won't implement features like ~top-bar~ / ~mode-line~.
-
 - A drop-in replacement for any other window manager, even though you may find built-in configurations that can replicate most of the features found in other window managers.
     
 ** Architecture
