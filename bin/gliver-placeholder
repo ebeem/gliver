@@ -5,30 +5,12 @@
 ;;; gliver-placeholder --- Minimal Wayland window placeholder
 (use-modules (system foreign)
              (rnrs bytevectors)
+             (gliver deps libc)
              (gliver wayland client)
              (gliver wayland gen wayland)
              (gliver wayland gen xdg-shell))
 
 (define *background-color* #x800c0d13) ;; premultiplied argb8888
-(define *mfd-cloexec* 1)
-(define *prot-read-write* 3)
-(define *map-shared* 1)
-
-;;; libc ffi helpers
-;;; NOTE: libc should already be loaded
-(define libc (dynamic-link))
-(define memfd-create
-  (pointer->procedure int (dynamic-func "memfd_create" libc) (list '* uint32)))
-(define ftruncate
-  (pointer->procedure int (dynamic-func "ftruncate" libc) (list int int64)))
-(define close-fd
-  (pointer->procedure int (dynamic-func "close" libc) (list int)))
-(define mmap
-  (pointer->procedure '* (dynamic-func "mmap" libc) (list '* size_t int int int int64)))
-(define munmap
-  (pointer->procedure int (dynamic-func "munmap" libc) (list '* size_t)))
-
-(define %null-pointer (make-pointer 0))
 
 ;;; wayland state
 (define display (wl-display-connect))
