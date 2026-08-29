@@ -35,9 +35,11 @@ Because ~River~ relies on a non-monolithic architecture, it separates the compos
 *** Prerequisites
 
 - River (v0.4+)
+- libwayland
+- libxkbcommon
 - GNU Guile (3.0+)
-- Guile-Wayland bindings
-- Make
+- Guile-Cairo
+- GNU Make
 - Rofi (Optional, but highly recommended for default configuration)
 - Foot (Optional, but highly recommended for default configuration)
 

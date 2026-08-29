@@ -135,3 +135,6 @@ instead of having one config file to define all variables, define them using the
 also create noctalia integration with gliver
 
 ** TODO make placeholder a single process that can spawn multiple windows
+
+** TODO move any ffi call to gliver/deps
+these are minimal bindings that lack guile library. In the future, if a proper package is created I will probably switch
