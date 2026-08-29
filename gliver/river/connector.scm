@@ -16,6 +16,7 @@
   #:use-module (ice-9 match)
   #:use-module (ice-9 rdelim)
   #:use-module (srfi srfi-1)
+  #:use-module (srfi srfi-69)
   #:use-module (system foreign)
   #:use-module (gliver core types)
   #:use-module (gliver core logs)
@@ -36,8 +37,6 @@
 			*wl-compositor*
 			*wl-shm*
 			*zwlr-layer-shell*
-			*active-bindings*
-			*current-mode*
 			*pending-key-action*
 			river-connected?
 			river-connect!
@@ -62,8 +61,6 @@
 (define *wl-compositor* %null-pointer)    ;; wl_compositor proxy
 (define *wl-shm* %null-pointer)           ;; wl_shm proxy
 (define *zwlr-layer-shell* %null-pointer) ;; zwlr_layer_shell_v1 proxy
-(define *active-bindings* '())            ;; alist: (gliver-binding-spec . xkb-binding-proxy)
-(define *current-mode* 'normal)           ;; current keymap mode
 
 ;;; Manage sequence state
 (define *pending-key-action* #f)
@@ -233,3 +230,40 @@ This integrates Wayland event dispatching with IPC and REPL polling."
           (set! *connected* #f)))))
 
   (log-info "Main event loop exited."))
+
+(define (river-on-globals-bind registry protocol-name object-id version)
+  "Bind Wayland compositor, shm, layer-shell, and output globals."
+  (cond
+   ((string=? protocol-name WL_COMPOSITOR_NAME)
+    (log-info "Binding ~a..." protocol-name)
+    (set! *wl-compositor*
+          (gliver-wl-registry-bind registry object-id
+                                   *wl-compositor-interface*
+                                   (min version 4))))
+   ((string=? protocol-name WL_SHM_NAME)
+    (log-info "Binding ~a..." protocol-name)
+    (set! *wl-shm*
+          (gliver-wl-registry-bind registry object-id
+                                   *wl-shm-interface*
+                                   1)))
+   ((string=? protocol-name ZWLR_LAYER_SHELL_V1_NAME)
+    (log-info "Binding ~a..." protocol-name)
+    (set! *zwlr-layer-shell*
+          (gliver-wl-registry-bind registry object-id
+                                   *zwlr-layer-shell-v1-interface*
+                                   (min version 4))))))
+
+(define (river-on-globals-unbind)
+  "Unbind globals and clean up wallpaper resources."
+  (set! *wl-compositor* %null-pointer)
+  (set! *wl-shm* %null-pointer)
+  (set! *zwlr-layer-shell* %null-pointer))
+
+(define (river-on-globals-verify)
+  "Verify wallpaper globals."
+  (when (null-pointer? *zwlr-layer-shell*)
+    (log-warn "zwlr_layer_shell_v1 not available, background wallpaper features may be disabled")))
+
+(gliver-hook-add! *gliver-globals-bind-hook* 'river-on-globals-bind)
+(gliver-hook-add! *gliver-globals-unbind-hook* 'river-on-globals-unbind)
+(gliver-hook-add! *gliver-globals-verify-hook* 'river-on-globals-verify)
