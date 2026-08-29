@@ -42,7 +42,7 @@ will be automatically managed and called when needed."
 Must be called in a ~render_sequence~."
   (when proxy-docoration
     (log-debug "setting offset of docoration ~a to ~ax~a" proxy-docoration x y)
-    (river-docoration-v1-set-offset proxy-docoration x y)))
+    (river-decoration-v1-set-offset proxy-docoration x y)))
 
 (define (wm-decoration-sync-next-commit! proxy-decoration)
   "Request that synchronize application of the next wl_surface.commit request on the

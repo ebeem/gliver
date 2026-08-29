@@ -113,7 +113,7 @@ This most likely should be used internally only, and it
 will be automatically managed and called when needed."
   (when proxy-window
     (log-debug "destroying window proxy: ~a" proxy-window)
-    (when proxy (river-window-v1-destroy proxy-window))))
+    (river-window-v1-destroy proxy-window)))
 
 (define (wm-window-node-get proxy-window)
   "Return node that corresponds to the window, This can only be
