@@ -51,6 +51,7 @@ MODULES =   gliver/core/logs.scm \
 			gliver/river/wm-seat-manager.scm \
 			gliver/river/keybindings-manager.scm \
 			gliver/river/layer-shell-manager.scm \
+			gliver/river/wallpaper-manager.scm \
 			gliver/river.scm \
 			gliver/contrib/commands.scm \
 			gliver/contrib/commands/container.scm \

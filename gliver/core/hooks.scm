@@ -16,6 +16,7 @@
 			gliver-hook?
 			%make-gliver-hook
 			make-gliver-hook
+			%gliver-hook-add!
 			gliver-hook-add!
 			gliver-hook-remove!
 			%gliver-hook-run
@@ -98,6 +99,7 @@
 			*workspace-switch-hook*
 			*workspace-created-hook*
 			*workspace-destroy-hook*
+			*workspace-wallpaper-changed-hook*
 			%output-created-hook
 			%output-removed-hook
 			%output-object-id-changed-hook
@@ -112,6 +114,7 @@
 			*output-destroy-hook*
 			*output-change-hook*
 			*output-focus-hook*
+			*output-wallpaper-changed-hook*
 			%seat-created-hook
 			%seat-removed-hook
 			%seat-object-id-changed-hook
@@ -141,6 +144,7 @@
 			*shutdown-hook*
 			*restart-hook*
 			*config-loaded-hook*
+			*wallpaper-changed-hook*
 ))
 
 ;;; hooks are named list of functions that are called when an event occurs.
@@ -320,6 +324,7 @@ If a function fails, the error is logged and the script is terminated."
 (define *workspace-switch-hook*      (make-gliver-hook 'workspace-switch 2))
 (define *workspace-created-hook*     (make-gliver-hook 'workspace-created 1))
 (define *workspace-destroy-hook*     (make-gliver-hook 'workspace-destroy 1))
+(define *workspace-wallpaper-changed-hook* (make-gliver-hook 'workspace-wallpaper-changed 2))
 
 (define %output-created-hook				(make-gliver-hook '%output-created 3))
 (define %output-removed-hook				(make-gliver-hook '%output-destroy 2))
@@ -338,6 +343,7 @@ If a function fails, the error is logged and the script is terminated."
 (define *output-destroy-hook*				(make-gliver-hook 'output-destroy 1))
 (define *output-change-hook*				(make-gliver-hook 'output-change 1))
 (define *output-focus-hook*					(make-gliver-hook 'output-focus 2))
+(define *output-wallpaper-changed-hook* (make-gliver-hook 'output-wallpaper-changed 2))
 
 (define %seat-created-hook                  (make-gliver-hook '%seat-created 3))
 (define %seat-removed-hook                  (make-gliver-hook '%seat-removed 2))
@@ -370,4 +376,5 @@ If a function fails, the error is logged and the script is terminated."
 (define *shutdown-hook*              (make-gliver-hook 'shutdown 0))
 (define *restart-hook*               (make-gliver-hook 'restart 0))
 (define *config-loaded-hook*         (make-gliver-hook 'config-loaded 0))
+(define *wallpaper-changed-hook*     (make-gliver-hook 'wallpaper-changed 1))
 

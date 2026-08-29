@@ -156,7 +156,8 @@ and then @var{s-workspace}'s container list is emptied."
 	  (%output-workspace-previous-set! output prev-workspace)
 	  (%output-workspace-current-set! output workspace)
 	  (when (and focus-parent output)
-		(output-focus! output #:focus-child #f)))))
+		(output-focus! output #:focus-child #f))
+	  (gliver-hook-run! *workspace-switch-hook* workspace prev-workspace))))
 
 (define (workspace-next workspace)
   (let* ((output (workspace-output workspace))

@@ -103,6 +103,8 @@
 			*gliver-runtime-dir*
 			*gliver-state-dir*
 			*config-file-path*
+			*wallpaper*
+			*wallpaper-mode*
 			config-load!
 			config-reload!
 ))
@@ -120,6 +122,10 @@
 			"The application id of the gliver placeholder.")
 (define-var *placeholder-script* "gliver-placeholder"
 			"The script/command to spawn a gliver placeholder.")
+(define-var *wallpaper* #f
+			"Default wallpaper (image file path or hex color).")
+(define-var *wallpaper-mode* 'fill
+			"Default wallpaper scaling mode: 'fill, 'fit, 'stretch, 'center, or 'tile.")
 
 
 ;;; window manager behavior

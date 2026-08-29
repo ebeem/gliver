@@ -81,6 +81,10 @@
 			output-name
 			%output-id-set!
 			output-id
+			%output-wallpaper-set!
+			output-wallpaper-set!
+			output-wallpaper
+			output-effective-wallpaper
 			output?
 			%make-output
 			make-output
@@ -115,6 +119,9 @@
 			workspace-name
 			%workspace-id-set!
 			workspace-id
+			%workspace-wallpaper-set!
+			workspace-wallpaper-set!
+			workspace-wallpaper
 			workspace?
 			%make-workspace
 			make-workspace
@@ -429,7 +436,7 @@
 ;;; modules to keep the state synced with river
 (define-record-type <output>
   (%make-output id name x y width height workspaces workspace-current
-                workspace-previous wl-proxy wl-output)
+                workspace-previous wl-proxy wl-output wallpaper)
   output?
   (id                 output-id                 %output-id-set!)
   (name               output-name               output-name-set!)
@@ -441,18 +448,19 @@
   (workspace-current  output-workspace-current  %output-workspace-current-set!)
   (workspace-previous output-workspace-previous %output-workspace-previous-set!)
   (wl-output          output-wl-output          %output-wl-output-set!)
-  (wl-proxy           output-wl-proxy           %output-wl-proxy-set!))
+  (wl-proxy           output-wl-proxy           %output-wl-proxy-set!)
+  (wallpaper          output-wallpaper          %output-wallpaper-set!))
 
 (define* (make-output name
                       #:key (id (manager-output-number-next!)) (wl-proxy #f) (x 0) (y 0) (width 1920) (height 1080)
-					  (workspaces '()) (workspace-current #f) (workspace-previous #f) (wl-output #f))
+					  (workspaces '()) (workspace-current #f) (workspace-previous #f) (wl-output #f) (wallpaper #f))
   "Create a new <output> record with the given NAME.
 Other parameters (x, y, width, height, wl-proxy) can be provided as keyword arguments."
   (%make-output id name
                 x y
                 width height
 				workspaces workspace-current workspace-previous
-                wl-proxy wl-output))
+                wl-proxy wl-output wallpaper))
 
 ;;; Seat: A single seat bundles together the different ways
 ;;; a user can provide input e.g. (mouse, keyboard, touch input)
@@ -474,7 +482,7 @@ Other parameters (x, y, width, height, wl-proxy) can be provided as keyword argu
 ;;; A collection of containers and their associated windows (workspace/virtual desktop)
 (define-record-type <workspace>
   (%make-workspace id name tag-mask containers output
-				   layout container-current container-previous)
+				   layout container-current container-previous wallpaper)
   workspace?
   (id                   workspace-id                   %workspace-id-set!)
   (name                 workspace-name                 workspace-name-set!)
@@ -483,7 +491,8 @@ Other parameters (x, y, width, height, wl-proxy) can be provided as keyword argu
   (output               workspace-output               %workspace-output-set!)
   (layout               workspace-layout               workspace-layout-set!)
   (container-current    workspace-container-current    %workspace-container-current-set!)
-  (container-previous   workspace-container-previous   %workspace-container-previous-set!))
+  (container-previous   workspace-container-previous   %workspace-container-previous-set!)
+  (wallpaper            workspace-wallpaper            %workspace-wallpaper-set!))
 
 (define* (make-workspace #:key
 						 (id (manager-workspace-number-next!))
@@ -491,9 +500,10 @@ Other parameters (x, y, width, height, wl-proxy) can be provided as keyword argu
                          (tag-mask (manager-tag-next!))
                          (containers '())
                          (output #f)
-                         (layout 'tiled))
+                         (layout 'tiled)
+                         (wallpaper #f))
   (%make-workspace id name tag-mask containers
-                   output layout #f #f))
+                   output layout #f #f wallpaper))
 
 ;;; container: similar to an emacs window and stumpwm container
 ;;; a physical container or "slot" on the screen where a list of windows is displayed
@@ -738,6 +748,25 @@ Other parameters (x, y, width, height, wl-proxy) can be provided as keyword argu
 (define (window-output window)
   "Return the window output."
   (workspace-output (window-workspace window)))
+
+(define (output-wallpaper-set! output wallpaper)
+  "Set the wallpaper for OUTPUT and run the output wallpaper changed hook."
+  (%output-wallpaper-set! output wallpaper)
+  (gliver-hook-run! *output-wallpaper-changed-hook* output wallpaper))
+
+(define (workspace-wallpaper-set! workspace wallpaper)
+  "Set the wallpaper for WORKSPACE and run the workspace wallpaper changed hook."
+  (%workspace-wallpaper-set! workspace wallpaper)
+  (gliver-hook-run! *workspace-wallpaper-changed-hook* workspace wallpaper))
+
+(define (output-effective-wallpaper output)
+  "Resolve the effective wallpaper for OUTPUT.
+Priority: workspace -> output -> global *wallpaper* -> #f."
+  (let* ((ws (output-workspace-current output))
+         (ws-wp (and ws (workspace-wallpaper ws)))
+         (out-wp (output-wallpaper output))
+         (global-wp (catch #t (lambda () (var-get '*wallpaper*)) (lambda _ #f))))
+    (or ws-wp out-wp global-wp #f)))
 
 (define* (manager-print-tree #:optional (manager *manager*))
   "Return the manager's state tree as a string."

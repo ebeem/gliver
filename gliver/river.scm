@@ -9,7 +9,9 @@
   #:use-module (gliver river wm-output-manager)
   #:use-module (gliver river wm-seat-manager)
   #:use-module (gliver river wm-shell-surface-manager)
-  #:use-module (gliver river wm-window-manager))
+  #:use-module (gliver river wm-window-manager)
+  #:use-module (gliver river layer-shell-manager)
+  #:use-module (gliver river wallpaper-manager))
 
 (define-syntax re-export-modules
   (syntax-rules ()
@@ -27,5 +29,7 @@
 				   (gliver river wm-output-manager)
 				   (gliver river wm-seat-manager)
 				   (gliver river wm-shell-surface-manager)
-				   (gliver river wm-window-manager))
+				   (gliver river wm-window-manager)
+				   (gliver river layer-shell-manager)
+				   (gliver river wallpaper-manager))
 
