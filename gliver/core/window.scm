@@ -15,6 +15,7 @@
   #:use-module (gliver core config)
   #:use-module (gliver core logs)
   #:use-module (gliver core hooks)
+  #:use-module (gliver deps color)
   #:use-module (gliver river window-manager)
   #:use-module (gliver river wm-window-manager)
   ;; lazy loaded, core type functions shouldn't be imported here
@@ -34,7 +35,6 @@
 			%window-container-add!
 			window-focus!
 			window-move-to-container!
-			color-hex->rgba-32
 			window-close!
 			window-node-get!
 			window-place-top!
@@ -236,35 +236,6 @@ does have a container ~%window-container-remove!~ will be called."
 								(container-width container)
 								(container-height container))
 	(gliver-hook-run! *window-container-moved-hook* window container container-current)))
-
-(define (color-hex->rgba-32 hex-str)
-  ;; strip the leading '#' if it exists
-  (let* ((clean-str (if (char=? (string-ref hex-str 0) #\#)
-                        (substring hex-str 1)
-                        hex-str))
-         (len (string-length clean-str))
-         (get-val (lambda (start)
-                    (string->number (substring clean-str start (+ start 2)) 16)))
-         ;; multiplier to stretch 0-255 into 0-4294967295
-         (scale 16843009)) 
-    (cond
-     ((or (= len 6) (= len 8))
-      (let* ((r (get-val 0))
-             (g (get-val 2))
-             (b (get-val 4))
-             (a (if (= len 8) (get-val 6) 255))
-             
-             ;; calculate pre-multiplied 32-bit values using exact integers.
-			 ;; river uses 32-bit colors rather than 8-bit
-             (a-32 (* a scale))
-             (r-32 (quotient (* r a scale) 255))
-             (g-32 (quotient (* g a scale) 255))
-             (b-32 (quotient (* b a scale) 255)))
-        
-        (list r-32 g-32 b-32 a-32)))
-     (else
-      (log-error "Invalid hex color length. Expected 6 or 8 characters: ~a" hex-str)
-	  (list 4294967295 4294967295 4294967295 4294967295)))))
 
 (define (window-close! window)
   "Close a WINDOW, the window may take time to respond or
