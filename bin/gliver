@@ -123,15 +123,6 @@
       (set! *config-file-path* config-path))
     (config-load!)
 
-    ;; step 13: border configuration
-    ;; in river 0.4.1, borders are applied per-window during render sequences
-    ;; via river_window_v1.set_borders. the display's border-width and
-    ;; border-color values are read at render time by apply-border-config-to-window!
-    (log-info "Border config: width=~a focused=~a unfocused=~a"
-              (manager-config-ref 'border-width)
-              (manager-config-ref 'border-color-focused)
-              (manager-config-ref 'border-color-unfocused))
-
     (log-info "Running startup hooks...")
     (gliver-hook-run! *startup-hook*)
 

@@ -87,10 +87,10 @@ respects the alternating layout system."
 
 		   ;; inner and outer gap configuration and values
 		   (inner-gap (or (layout-alternating-get-param layout-cfg 'inner-gap #f)
-						  (manager-config-ref 'container-inner-gap)))
+						  *container-inner-gap*))
 		   (outer-gap (or (layout-alternating-get-param layout-cfg 'outer-gap #f)
-						  (manager-config-ref 'container-outer-gap)))
-		   (border-width (manager-config-ref 'border-width))
+						  *container-outer-gap*))
+		   (border-width *window-border-width*)
 		   (outer-gap-include-border (layout-alternating-get-param layout-cfg 'outer-gap-include-border #t))
 		   (inner-gap-include-border (layout-alternating-get-param layout-cfg 'inner-gap-include-border #t))
 		   (total-outer-gap (if outer-gap-include-border (+ outer-gap border-width) outer-gap))

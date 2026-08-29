@@ -103,7 +103,7 @@ Returns the PID."
 (define-command (gliver-quit)
   "Quit Gliver."
   (gliver-hook-run! *shutdown-hook*)
-  (manager-config-set! 'running? #f)
+  (var-set! *running?* #f)
   (log-debug "Goodbye."))
 
 (define-command (restart)

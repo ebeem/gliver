@@ -19,6 +19,7 @@
   #:use-module (srfi srfi-69)
   #:use-module (system foreign)
   #:use-module (gliver core types)
+  #:use-module (gliver core config)
   #:use-module (gliver core logs)
   #:use-module (gliver core hooks)
   #:use-module (gliver wayland client)
@@ -51,19 +52,24 @@
 (define WL_SHM_NAME "wl_shm")
 
 ;;; state
-(define *wl-display* #f)
-(define *wl-registry* #f)
-(define *connected* #f)
+(define-var *wl-display* #f
+			"global wayland display.")
+(define-var *wl-registry* #f
+			"global wayland registry.")
+(define-var *connected* #f
+			"Whether gliver is connected to river.")
 
 ;;; window management protocol state
-(define *input-manager* %null-pointer)    ;; river_input_manager_v1 proxy
-(define *layer-shell* %null-pointer)      ;; river_layer_shell_v1 proxy
-(define *wl-compositor* %null-pointer)    ;; wl_compositor proxy
-(define *wl-shm* %null-pointer)           ;; wl_shm proxy
-(define *zwlr-layer-shell* %null-pointer) ;; zwlr_layer_shell_v1 proxy
-
-;;; Manage sequence state
-(define *pending-key-action* #f)
+(define-var *input-manager* %null-pointer
+			"river_input_manager_v1 wayland proxy")
+(define-var *layer-shell* %null-pointer
+			"river_layer_shell_v1 wayland proxy")
+(define-var *wl-compositor* %null-pointer
+			"wl_compositor wayland proxy")
+(define-var *wl-shm* %null-pointer
+			"wl_shm wayland wayland proxy")
+(define-var *zwlr-layer-shell* %null-pointer
+			"zwlr_layer_shell_v1 wayland proxy")
 
 (define (river-connected?)
   *connected*)
@@ -186,10 +192,10 @@
   "Run the main event loop.
 This integrates Wayland event dispatching with IPC and REPL polling."
   (log-info "Entering main event loop.")
-  (manager-config-set! 'running? #t)
+  (var-set! *running?* #t)
 
   (let ((wl-fd (wl-display-get-fd *wl-display*)))
-    (while (and (manager-config-ref 'running?) *connected*)
+    (while (and *running?* *connected*)
       (catch #t
         (lambda ()
           ;; flush outgoing requests

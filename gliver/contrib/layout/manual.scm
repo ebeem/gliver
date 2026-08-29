@@ -142,10 +142,10 @@ fit the current output dimensions (e.g. after container is destroyed)."
 
 		 ;; gap configuration
 		 (inner-gap (or (layout-manual-get-param layout-cfg 'inner-gap #f)
-						(manager-config-ref 'container-inner-gap)))
+						*container-inner-gap*))
 		 (outer-gap (or (layout-manual-get-param layout-cfg 'outer-gap #f)
-						(manager-config-ref 'container-outer-gap)))
-		 (border-width (manager-config-ref 'border-width))
+						*container-outer-gap*))
+		 (border-width *window-border-width*)
 		 (total-outer-gap (+ outer-gap border-width))
 		 (avail-width  (- ow (* 2 total-outer-gap)))
 		 (avail-height (- oh (* 2 total-outer-gap))))

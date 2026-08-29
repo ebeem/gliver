@@ -551,8 +551,8 @@ Must be called in a ~render_sequence~."
   "Handle window focused event."
   ;; colorize the window border with active window border color
   (window-borders-set! window *wm-behavior-default-border-edges*
-					   (manager-config-ref 'border-width)
-					   (manager-config-ref 'border-color-focused)))
+					   *window-border-width*
+					   *window-border-color-focused*))
 (gliver-hook-add! *window-focused-hook* 'window-on-window-focused)
 
 (define (window-on-window-unfocused window)
@@ -560,8 +560,8 @@ Must be called in a ~render_sequence~."
   ;; colorize the window border with inactive window border color
   (log-debug "unfocusing window ~a" window)
   (window-borders-set! window *wm-behavior-default-border-edges*
-					   (manager-config-ref 'border-width)
-					   (manager-config-ref 'border-color-unfocused)))
+					   *window-border-width*
+					   *window-border-color-unfocused*))
 (gliver-hook-add! *window-unfocused-hook* 'window-on-window-unfocused)
 
 (define (window-on-window-title-changed proxy-window title)

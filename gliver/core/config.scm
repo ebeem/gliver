@@ -15,6 +15,16 @@
 			*prevent-killing-placeholder*
 			*placeholder-app-id*
 			*placeholder-script*
+			*mode*
+			*running?*
+			*prefix-timeout*
+			*message-timeout*
+			*window-border-width*
+			*window-border-color-focused*
+			*window-border-color-unfocused*
+			*window-border-color-urgent*
+			*container-inner-gap*
+			*container-outer-gap*
 			*wm-behavior-focus-mouse-enter*
 			*wm-behavior-focus-clear-mouse-leave*
 			*wm-behavior-focus-mouse-click*
@@ -126,6 +136,18 @@
 			"Default wallpaper (image file path or hex color).")
 (define-var *wallpaper-mode* 'fill
 			"Default wallpaper scaling mode: 'fill, 'fit, 'stretch, 'center, or 'tile.")
+(define-var *mode* 'normal
+			"Current input/keybinding mode (e.g. 'normal, 'prefix).")
+(define-var *running?* #f
+			"Whether the window manager main event loop is running.")
+(define-var *prefix-timeout* 1000
+			"Timeout in milliseconds for keybinding prefix sequences.")
+(define-var *message-timeout* 5
+			"Timeout in seconds for notification messages.")
+(define-var *container-inner-gap* 4
+			"Inner gap size between containers in pixels.")
+(define-var *container-outer-gap* 8
+			"Outer gap size around containers in pixels.")
 
 
 ;;; window manager behavior
@@ -225,6 +247,16 @@
             "Default color used for window borders.")
 (define-var *theme-urgent-color* *theme-red*
             "Accent color used to indicate urgent or error states.")
+
+;; window borders
+(define-var *window-border-width* *theme-border-width*
+            "Default window border width in pixels.")
+(define-var *window-border-color-focused* *theme-border-color*
+            "Border color for focused windows.")
+(define-var *window-border-color-unfocused* *theme-mantle*
+            "Border color for unfocused windows.")
+(define-var *window-border-color-urgent* *theme-urgent-color*
+            "Border color for urgent windows.")
 
 ;;; palette/launcher options
 (define-var *palette-font* *theme-font*

@@ -36,8 +36,8 @@ current workspace."
 		 (layout-cfg (workspace-layout workspace))
 		 (inner-gap (or (and (list? layout-cfg)
 							(assq-ref layout-cfg 'inner-gap))
-					    (manager-config-ref 'container-inner-gap)))
-		 (border-width (manager-config-ref 'border-width)))
+					    *container-inner-gap*))
+		 (border-width *window-border-width*))
 	(+ inner-gap border-width)))
 
 ;;; container split commands
@@ -149,8 +149,8 @@ Only works when layout-type is manual."
 				   (layout-cfg (workspace-layout workspace))
 				   (outer-gap (or (and (list? layout-cfg)
 									  (assq-ref layout-cfg 'outer-gap))
-								 (manager-config-ref 'container-outer-gap)))
-				   (border-width (manager-config-ref 'border-width))
+								 *container-outer-gap*))
+				   (border-width *window-border-width*)
 				   (total-outer-gap (+ outer-gap border-width)))
 			  (container-size-set! container
 								   (- (output-width output)  (* 2 total-outer-gap))

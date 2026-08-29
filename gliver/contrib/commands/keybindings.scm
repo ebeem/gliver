@@ -16,12 +16,12 @@
 ;;; prefix mode commands
 (define-command (prefix-activated)
   "Handle prefix key activation."
-  (manager-config-set! 'mode 'prefix)
+  (var-set! *mode* 'prefix)
   (log-debug "Prefix mode activated."))
 
 (define-command (prefix-abort)
   "Abort prefix mode."
-  (manager-config-set! 'mode 'normal)
+  (var-set! *mode* 'normal)
   (log-debug "Aborted."))
 
 (define-command (enter-submap name)

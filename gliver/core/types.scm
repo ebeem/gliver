@@ -37,8 +37,6 @@
 			var-set!
 			%manager-wl-proxy-set!
 			manager-wl-proxy
-			%manager-config-set!
-			manager-config
 			%manager-windows-set!
 			manager-windows
 			%manager-seats-set!
@@ -51,8 +49,11 @@
 			manager-outputs
 			manager-state?
 			%make-manager-state
-			manager-config-ref
-			manager-config-set!
+			*window-number-next*
+			*container-id-next*
+			*output-number-next*
+			*workspace-number-next*
+			*next-tag-bit*
 			manager-window-number-next!
 			manager-workspace-number-next!
 			manager-output-number-next!
@@ -361,74 +362,59 @@
 ;;; modules to keep the state synced with river
 (define-record-type <manager-state>
   (%make-manager-state outputs output-current output-previous
-                       seats windows config wl-proxy)
+                       seats windows wl-proxy)
   manager-state?
   (outputs                manager-outputs                %manager-outputs-set!)
   (output-current         manager-output-current         %manager-output-current-set!)
   (output-previous        manager-output-previous        %manager-output-previous-set!)
   (seats                  manager-seats                  %manager-seats-set!)
   (windows                manager-windows                %manager-windows-set!)
-  (config                 manager-config                 %manager-config-set!)
   (wl-proxy               manager-wl-proxy               %manager-wl-proxy-set!))
 
-(define (manager-config-ref key)
-  "Look up KEY in the manager config hash table."
-  (hash-table-ref/default (manager-config *manager*) key #f))
-
-(define (manager-config-set! key value)
-  "Set KEY to VALUE in the manager config hash table."
-  (hash-table-set! (manager-config *manager*) key value))
+(define-var *window-number-next* 0
+  "Counter for assigning unique window IDs.")
+(define-var *container-id-next* 0
+  "Counter for assigning unique container IDs.")
+(define-var *output-number-next* 0
+  "Counter for assigning unique output IDs.")
+(define-var *workspace-number-next* 0
+  "Counter for assigning unique workspace IDs.")
+(define-var *next-tag-bit* 1
+  "Bitmask tracker for assigning unique workspace tags.")
 
 (define (manager-window-number-next!)
-  (let ((id (manager-config-ref 'window-number-next)))
-    (manager-config-set! 'window-number-next (1+ id))
+  (let ((id *window-number-next*))
+    (var-set! *window-number-next* (1+ id))
     id))
 
 (define (manager-workspace-number-next!)
-  (let ((id (manager-config-ref 'workspace-number-next)))
-    (manager-config-set! 'workspace-number-next (1+ id))
+  (let ((id *workspace-number-next*))
+    (var-set! *workspace-number-next* (1+ id))
     id))
 
 (define (manager-output-number-next!)
-  (let ((id (manager-config-ref 'output-number-next)))
-    (manager-config-set! 'output-number-next (1+ id))
+  (let ((id *output-number-next*))
+    (var-set! *output-number-next* (1+ id))
     id))
 
 (define (manager-tag-next!)
-  (let ((bit (manager-config-ref 'next-tag-bit)))
-    (manager-config-set! 'next-tag-bit (ash bit 1))
+  (let ((bit *next-tag-bit*))
+    (var-set! *next-tag-bit* (ash bit 1))
     bit))
 
 (define (container-id-next!)
-  (let ((n (manager-config-ref 'container-id-next)))
-    (manager-config-set! 'container-id-next (1+ n))
+  (let ((n *container-id-next*))
+    (var-set! *container-id-next* (1+ n))
     n))
 
 (define *manager*
-  (let ((cfg (make-hash-table)))
-    (hash-table-set! cfg 'prefix-timeout         1000)  ; ms
-    (hash-table-set! cfg 'message-timeout        5)     ; seconds
-    (hash-table-set! cfg 'mode                   'normal)
-    (hash-table-set! cfg 'border-width           3)
-    (hash-table-set! cfg 'border-color-focused   "#c6a0f6")
-    (hash-table-set! cfg 'border-color-unfocused "#1e2030")
-    (hash-table-set! cfg 'border-color-urgent    "#ed8796")
-    (hash-table-set! cfg 'container-inner-gap    4)
-    (hash-table-set! cfg 'container-outer-gap    8)
-    (hash-table-set! cfg 'running?               #f)
-    (hash-table-set! cfg 'window-number-next     0)
-    (hash-table-set! cfg 'container-id-next  0)
-    (hash-table-set! cfg 'output-number-next     0)
-    (hash-table-set! cfg 'workspace-number-next  0)
-    (hash-table-set! cfg 'next-tag-bit           1)
-    (%make-manager-state
-     '()   ; outputs
-     #f    ; output-current
-     #f    ; output-previous
-     '()   ; seats
-     '()   ; windows
-     cfg
-     #f))) ; wl-proxy
+  (%make-manager-state
+   '()   ; outputs
+   #f    ; output-current
+   #f    ; output-previous
+   '()   ; seats
+   '()   ; windows
+   #f))  ; wl-proxy
 
 ;;; output: similar to an emacs container and stumpwm screen head
 ;;; a single logical screen/monitor, treated by wayland as output
