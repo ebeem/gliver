@@ -34,6 +34,8 @@ MODULES =   gliver/core/logs.scm \
 			gliver/core/window.scm \
 			gliver/core/ffi.scm \
 			gliver/core.scm \
+			gliver/deps/libc.scm \
+			gliver/deps/color.scm \
 			gliver/wayland/client.scm \
 			gliver/wayland/gen/wayland.scm \
 			gliver/wayland/gen/xdg-shell.scm \
