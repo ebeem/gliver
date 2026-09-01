@@ -114,7 +114,10 @@
 		;; create new wallpaper surface
         (let* ((int-wl-out (output-wl-output output))
 			   ;; get pointer from object-id (int-32) using global registry
-               (wl-out (gliver-wl-registry-bind *wl-registry* int-wl-out *wl-output-interface* 4)))
+			   ;; ensure int-wl-out is initialized (not #f nor invalid pointer)
+               (wl-out (and int-wl-out
+                            (number? int-wl-out)
+                            (gliver-wl-registry-bind *wl-registry* int-wl-out *wl-output-interface* 4))))
           (when (and wl-out (pointer? wl-out) (not (null-pointer? wl-out)))
             (log-info "Initializing wallpaper surface for output ~a..." (output-name output))
             (let* ((surface (wl-compositor-create-surface *wl-compositor*))
