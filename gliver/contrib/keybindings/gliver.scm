@@ -17,49 +17,56 @@
 
 (define (keybindings-gliver-install-default!)
   "Install the default Gliver keybindings."
-  ;; basics
-  (define-key *top-map* "s-Return" 'terminal-spawn)
-  (define-key *top-map* "s-q" 'window-kill)
-  (define-key *top-map* "s-o" 'launcher-run)
-  (define-key *top-map* "s-S-r" 'config-reload)
-  (define-key *top-map* "s-S-q" 'gliver-quit)
+  ;; top-map keys
+  (define-keys *top-map*
+	;; basics
+	"s-Return"  'terminal-spawn
+	"s-q"       'window-kill
+	"s-o"       'launcher-run
+	"s-S-r"     'config-reload!
+	"s-S-q"     'gliver-quit
+	"s-f"       'window-fullscreen
 
-  ;; move focus to direction
-  (define-key *top-map* "s-h" 'container-focus-left)
-  (define-key *top-map* "s-j" 'container-focus-down)
-  (define-key *top-map* "s-k" 'container-focus-up)
-  (define-key *top-map* "s-l" 'container-focus-right)
-  (define-key *top-map* "s-n" 'window-focus-next)
-  (define-key *top-map* "s-p" 'window-focus-prev)
-  (define-key *top-map* "s-Tab" 'window-focus-next)
-  (define-key *top-map* "s-S-Tab" 'window-focus-prev)
-  (define-key *top-map* "s-Left" 'container-focus-left)
-  (define-key *top-map* "s-Down" 'container-focus-down)
-  (define-key *top-map* "s-Up" 'container-focus-up)
-  (define-key *top-map* "s-Right" 'container-focus-right)
+	;; move focus to direction
+	"s-h"       'container-focus-left
+	"s-j"       'container-focus-down
+	"s-k"       'container-focus-up
+	"s-l"       'container-focus-right
+	"s-n"       'window-focus-next
+	"s-p"       'window-focus-prev
+	"s-Tab"     'window-focus-next
+	"s-S-Tab"   'window-focus-prev
+	"s-Left"    'container-focus-left
+	"s-Down"    'container-focus-down
+	"s-Up"      'container-focus-up
+	"s-Right"   'container-focus-right
 
-  ;; move the focused window to direction
-  (define-key *top-map* "s-S-Left" 'window-container-move-left)
-  (define-key *top-map* "s-S-Down" 'window-container-move-down)
-  (define-key *top-map* "s-S-Up" 'window-container-move-up)
-  (define-key *top-map* "s-S-Right" 'window-container-move-right)
-  (define-key *top-map* "s-H" 'window-container-move-left)
-  (define-key *top-map* "s-J" 'window-container-move-down)
-  (define-key *top-map* "s-K" 'window-container-move-up)
-  (define-key *top-map* "s-L" 'window-container-move-right)
+	;; move the focused window to direction
+	"s-S-Left"  'window-container-move-left
+	"s-S-Down"  'window-container-move-down
+	"s-S-Up"    'window-container-move-up
+	"s-S-Right" 'window-container-move-right
+	"s-H"       'window-container-move-left
+	"s-J"       'window-container-move-down
+	"s-K"       'window-container-move-up
+	"s-L"       'window-container-move-right
 
-  (define-key *top-map* "s-f" 'window-fullscreen)
+	;; split containers (only for manual layouts)
+	"s-s"       'container-split-horizontal
+	"s-v"       'container-split-vertical
+	"s-d"       'container-destroy
+	"s-D"       'container-destroy-others
 
-  ;; special keys for volume, brightness, and screenshot
-  (define-key *top-map* "XF86AudioMute" "exec pactl set-sink-mute @DEFAULT_SINK@ toggle")
-  (define-key *top-map* "XF86AudioLowerVolume" "exec pactl set-sink-volume @DEFAULT_SINK@ -5%")
-  (define-key *top-map* "XF86AudioRaiseVolume" "exec pactl set-sink-volume @DEFAULT_SINK@ +5%")
-  (define-key *top-map* "XF86AudioMicMute" "exec pactl set-source-mute @DEFAULT_SOURCE@ toggle")
-  (define-key *top-map* "XF86MonBrightnessDown" "exec brightnessctl set 5%-")
-  (define-key *top-map* "XF86MonBrightnessUp" "exec brightnessctl set 5%+")
-  (define-key *top-map* "Print" "exec grim")
+	;; special keys for volume, brightness, and screenshot
+	"XF86AudioMute"         'media-audio-mute
+	"XF86AudioLowerVolume"  'media-audio-volume-decrease
+	"XF86AudioRaiseVolume"  'media-audio-volume-increase
+	"XF86AudioMicMute"      'media-mic-mute
+	"XF86MonBrightnessDown" 'media-brightness-decrease
+	"XF86MonBrightnessUp"   'media-brightness-increase
+	"Print"                 'media-screenshot
 
-  (define-key *top-map* "s-space" '(enter-submap *root-map*))
+	"s-space" '(enter-submap *root-map*))
 
   (define-key *root-map* "o" 'launcher-run)
   (define-key *root-map* "h" '(enter-submap *help-map*))
