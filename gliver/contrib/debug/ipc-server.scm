@@ -99,7 +99,7 @@
       (let ((line (read-line port)))
         (if (eof-object? line)
             (begin
-              (set! *ipc-clients* (delete port *ipc-clients*))
+              (set! *ipc-clients* (delq port *ipc-clients*))
               (close-port port)
               (log-debug "IPC client disconnected.")
               #f)
