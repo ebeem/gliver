@@ -268,7 +268,7 @@
             "Default container corner radius in pixels.")
 (define-var *container-border-edges* *wm-behavior-default-border-edges*
             "Bitfield of edges on which container borders are drawn.")
-(define-var *container-border-bg-color* "#00000099"
+(define-var *container-border-bg-color* "#00000044"
             "Background color for empty containers.")
 
 ;;; palette/launcher options
