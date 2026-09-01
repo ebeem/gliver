@@ -28,10 +28,10 @@
            (and (char>=? c #\A) (char<=? c #\F)))))
 
 (define (hex-color? str)
-  "Check if STR is a valid hex color string (#RGB, #RRGGBB, or #AARRGGBB)."
+  "Check if STR is a valid hex color string (#RGB, #RGBA, #RRGGBB, or #RRGGBBAA)."
   (and (string? str)
        (string-prefix? "#" str)
-       (memv (string-length str) '(4 7 9))
+       (memv (string-length str) '(4 5 7 9))
        (string-every hex-digit? (substring str 1))))
 
 (define (parse-hex-color-rgba str)
@@ -44,22 +44,28 @@
                 (g (string->number (string (string-ref hex 1) (string-ref hex 1)) 16))
                 (b (string->number (string (string-ref hex 2) (string-ref hex 2)) 16)))
             (and r g b (list (/ r 255.0) (/ g 255.0) (/ b 255.0) 1.0))))
+         ((= (string-length hex) 4)
+          (let ((r (string->number (string (string-ref hex 0) (string-ref hex 0)) 16))
+                (g (string->number (string (string-ref hex 1) (string-ref hex 1)) 16))
+                (b (string->number (string (string-ref hex 2) (string-ref hex 2)) 16))
+                (a (string->number (string (string-ref hex 3) (string-ref hex 3)) 16)))
+            (and r g b a (list (/ r 255.0) (/ g 255.0) (/ b 255.0) (/ a 255.0)))))
          ((= (string-length hex) 6)
           (let ((r (string->number (substring hex 0 2) 16))
                 (g (string->number (substring hex 2 4) 16))
                 (b (string->number (substring hex 4 6) 16)))
             (and r g b (list (/ r 255.0) (/ g 255.0) (/ b 255.0) 1.0))))
          ((= (string-length hex) 8)
-          (let ((a (string->number (substring hex 0 2) 16))
-                (r (string->number (substring hex 2 4) 16))
-                (g (string->number (substring hex 4 6) 16))
-                (b (string->number (substring hex 6 8) 16)))
-            (and a r g b (list (/ r 255.0) (/ g 255.0) (/ b 255.0) (/ a 255.0)))))
+          (let ((r (string->number (substring hex 0 2) 16))
+                (g (string->number (substring hex 2 4) 16))
+                (b (string->number (substring hex 4 6) 16))
+                (a (string->number (substring hex 6 8) 16)))
+            (and r g b a (list (/ r 255.0) (/ g 255.0) (/ b 255.0) (/ a 255.0)))))
          (else #f)))
       #f))
 
 (define (color-hex->rgba-32 hex-str)
-  "Convert a hex color string (with or without '#' prefix, 6 or 8 hex digits)
+  "Convert a hex color string (with or without '#' prefix, 3, 4, 6 or 8 hex digits)
 to a list of 4 pre-multiplied 32-bit integer values (R G B A) in the range [0, 4294967295]."
   ;; strip the leading '#' if it exists
   (let* ((clean-str (if (and (string? hex-str)
@@ -77,18 +83,34 @@ to a list of 4 pre-multiplied 32-bit integer values (R G B A) in the range [0, 4
       (let* ((r (get-val 0))
              (g (get-val 2))
              (b (get-val 4))
-             (a (if (= len 8) (get-val 6) 255))
-
-             ;; calculate pre-multiplied 32-bit values using exact integers.
-             ;; river uses 32-bit colors rather than 8-bit
-             (a-32 (* a scale))
-             (r-32 (quotient (* r a scale) 255))
-             (g-32 (quotient (* g a scale) 255))
-             (b-32 (quotient (* b a scale) 255)))
-
-        (list r-32 g-32 b-32 a-32)))
+             (a (if (= len 8) (get-val 6) 255)))
+        (if (and r g b a)
+            (let* ((a-32 (* a scale))
+                   (r-32 (quotient (* r a scale) 255))
+                   (g-32 (quotient (* g a scale) 255))
+                   (b-32 (quotient (* b a scale) 255)))
+              (list r-32 g-32 b-32 a-32))
+            (begin
+              (format #t "Invalid hex color values: ~a~%" hex-str)
+              (list 4294967295 4294967295 4294967295 4294967295)))))
+     ((and (string? clean-str) (or (= len 3) (= len 4)))
+      (let* ((r (string->number (string (string-ref clean-str 0) (string-ref clean-str 0)) 16))
+             (g (string->number (string (string-ref clean-str 1) (string-ref clean-str 1)) 16))
+             (b (string->number (string (string-ref clean-str 2) (string-ref clean-str 2)) 16))
+             (a (if (= len 4)
+                    (string->number (string (string-ref clean-str 3) (string-ref clean-str 3)) 16)
+                    255)))
+        (if (and r g b a)
+            (let* ((a-32 (* a scale))
+                   (r-32 (quotient (* r a scale) 255))
+                   (g-32 (quotient (* g a scale) 255))
+                   (b-32 (quotient (* b a scale) 255)))
+              (list r-32 g-32 b-32 a-32))
+            (begin
+              (format #t "Invalid hex color values: ~a~%" hex-str)
+              (list 4294967295 4294967295 4294967295 4294967295)))))
      (else
-      (format #t "Invalid hex color length. Expected 6 or 8 characters: ~a" hex-str)
+      (format #t "Invalid hex color length. Expected 3, 4, 6 or 8 characters: ~a~%" hex-str)
       (list 4294967295 4294967295 4294967295 4294967295)))))
 
 (define hex->rgba parse-hex-color-rgba)
@@ -99,8 +121,8 @@ to a list of 4 pre-multiplied 32-bit integer values (R G B A) in the range [0, 4
   "Convert normalized floats or 0-255 integers R G B and optional A to a hex color string."
   (let* ((to-int (lambda (val)
                    (cond
-                    ((and (exact? val) (<= 0 val 255)) val)
-                    ((inexact? val) (max 0 (min 255 (round (* val 255.0)))))
+                    ((and (exact? val) (integer? val) (<= 0 val 255)) val)
+                    ((number? val) (inexact->exact (max 0 (min 255 (round (if (<= val 1.0) (* val 255.0) val))))))
                     (else (error "Invalid color channel value" val)))))
          (ri (to-int r))
          (gi (to-int g))
