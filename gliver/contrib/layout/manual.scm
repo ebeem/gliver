@@ -17,12 +17,18 @@
 			layout-manual-make-config
 			layout-manual-get-param
 			layout-manual-reload
+			layout-manual-reload-all!
 			layout-manual-update
+			layout-manual-container-created
+			layout-manual-window-created
 			layout-manual-window-fullscreen-exited
 			layout-manual-window-destroyed
 			layout-manual-workspace-created
+			layout-manual-workspace-switched
 			layout-manual-output-dimensions-changed
 			layout-manual-container-destroyed
+			layout-manual-config-loaded
+			layout-manual-startup
 ))
 
 (define (layout-manual? workspace)
@@ -118,16 +124,19 @@ fit the current output dimensions (e.g. after container is destroyed)."
   "Main orchestrator for the manual layout.
 In a manual layout the only automatic action is placing new windows
 into the currently focused container."
-  (when (and hook workspace)
-	(let* ((layout-cfg (workspace-layout workspace))
-           (layout-name (if (list? layout-cfg) (assq-ref layout-cfg 'layout) layout-cfg)))
-      (when (equal? layout-name 'manual)
-		(layout-manual-reload workspace #:complete #t)))))
+  (when (and hook workspace (layout-manual? workspace))
+    (layout-manual-reload workspace #:complete #t)))
+
+(define (layout-manual-window-created window)
+  "Handle a window being created in the manual layout."
+  (let* ((container (window-container window))
+		 (workspace (and container (container-workspace container))))
+	(layout-manual-update 'window-created workspace container window)))
 
 (define (layout-manual-window-fullscreen-exited window prev-state)
   (let* ((container (window-container window))
 		 (workspace (and container (container-workspace container))))
-	(when (workspace-manual? workspace)
+	(when (layout-manual? workspace)
 	  (layout-manual-reload workspace #:complete #t))))
 
 (define (layout-manual-window-destroyed window container workspace)
@@ -142,6 +151,11 @@ Ensure placeholders are spawned for empty containers and at most 1 per container
 		 (window (and container (container-window-current container))))
 	(layout-manual-update 'workspace-created workspace container window)))
 
+(define (layout-manual-workspace-switched workspace prev-workspace)
+  "Handle workspace switch for the manual layout."
+  (when (layout-manual? workspace)
+    (layout-manual-reload workspace #:complete #t)))
+
 (define (layout-manual-output-dimensions-changed output prev-width prev-height)
   "Handle output dimensions changes in manual layout."
   (let* ((workspace (output-workspace-current output))
@@ -153,7 +167,7 @@ Ensure placeholders are spawned for empty containers and at most 1 per container
   "Handle container destruction in manual layout.
 Resize the next container after the destroyed container to fill both
 the destroyed container's space and its own space, and clean up placeholders."
-  (when (and workspace (workspace-manual? workspace))
+  (when (and workspace (layout-manual? workspace))
     (let ((remaining (workspace-containers workspace)))
       (when (pair? remaining)
         (let* ((next-container (or (and (memq (workspace-container-current workspace) remaining)
@@ -181,8 +195,43 @@ the destroyed container's space and its own space, and clean up placeholders."
           (container-position-set! next-container new-x new-y)
           (container-size-set! next-container new-w new-h))))))
 
+(define (layout-manual-container-created container)
+  "Handle container creation in manual layout."
+  (let ((workspace (and container (container-workspace container))))
+    (when (and workspace (layout-manual? workspace))
+      (when (= (length (workspace-containers workspace)) 1)
+        (layout-manual-reload workspace #:complete #t)))))
+
+(define (layout-manual-reload-all!)
+  "Reload layout for all manual workspaces across all outputs."
+  (when (and (defined? '*manager*) *manager*)
+    (for-each
+     (lambda (output)
+       (for-each
+        (lambda (ws)
+          (when (layout-manual? ws)
+            (layout-manual-reload ws #:complete #t)))
+        (output-workspaces output)))
+     (manager-outputs *manager*))))
+
+(define (layout-manual-startup)
+  "Handle startup hook by reloading all manual workspaces."
+  (layout-manual-reload-all!))
+
+(define (layout-manual-config-loaded)
+  "Handle configuration reload by updating all manual workspaces."
+  (layout-manual-reload-all!))
+
+(gliver-hook-add! *container-created-hook* 'layout-manual-container-created)
+(gliver-hook-add! *window-created-hook* 'layout-manual-window-created)
 (gliver-hook-add! *window-fullscreen-exited-hook* 'layout-manual-window-fullscreen-exited)
 (gliver-hook-add! *window-destroyed-hook* 'layout-manual-window-destroyed)
 (gliver-hook-add! *workspace-created-hook* 'layout-manual-workspace-created)
+(gliver-hook-add! *workspace-switch-hook* 'layout-manual-workspace-switched)
 (gliver-hook-add! *output-dimensions-changed-hook* 'layout-manual-output-dimensions-changed)
 (gliver-hook-add! *container-destroy-hook* 'layout-manual-container-destroyed)
+(gliver-hook-add! *config-loaded-hook* 'layout-manual-config-loaded)
+(gliver-hook-add! *startup-hook* 'layout-manual-startup)
+
+;; reload any existing manual workspaces immediately upon loading this module
+(layout-manual-reload-all!)
