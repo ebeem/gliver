@@ -67,7 +67,7 @@
   								   #:y 0
   								   #:width 0
   								   #:height 0)))
-	(container-add! container)
+	(container-add! container #:focus #f)
 	container))
 
 (define (layout-alternating-update-container workspace index)
@@ -90,7 +90,7 @@ respects the alternating layout system."
 						  *container-inner-gap*))
 		   (outer-gap (or (layout-alternating-get-param layout-cfg 'outer-gap #f)
 						  *container-outer-gap*))
-		   (border-width *window-border-width*)
+		   (border-width *container-border-width*)
 		   (outer-gap-include-border (layout-alternating-get-param layout-cfg 'outer-gap-include-border #t))
 		   (inner-gap-include-border (layout-alternating-get-param layout-cfg 'inner-gap-include-border #t))
 		   (total-outer-gap (if outer-gap-include-border (+ outer-gap border-width) outer-gap))
@@ -219,10 +219,9 @@ layout rules."
 		  ((>= i windows-count))    ;; stop when i is last window
 		(let* ((window (list-ref windows i))
 			   (current-container (window-container window))
-			   (currently-focused? (or (container-focused? current-container)
-									   (eq? window (window-current))))
+			   (currently-focused? (eq? window (window-current)))
 			   (target-container (list-ref containers (min i (- containers-count 1)))))
-		  (log-debug "current container to be removed is focused ~a" currently-focused?)
+		  (log-debug "current window to be moved is focused ~a" currently-focused?)
 		  (window-move-to-container! window target-container #:focus currently-focused?)))
 
 	  ;; remove any extra empty containers
@@ -248,9 +247,13 @@ layout rules."
 		   (append-method (layout-alternating-get-param layout-cfg 'append-method 'tail))
 		   (append-tail? (eq? append-method 'tail))
 		   (containers (workspace-containers workspace)))
-	  ;; if the append method is tail, move the window to the last container
-	  (when append-tail?
-		(window-move-to-container! window (last containers)))
+	  ;; if the append method is tail, move the new window to the last container
+	  (when (and append-tail?
+				 (eq? hook 'window-created)
+				 (window? window)
+				 (not (window-destroyed? window))
+				 (pair? containers))
+		(window-move-to-container! window (last containers) #:focus #f))
 	  (layout-alternating-reload workspace #:complete #t))))
 
 (define (layout-alternating-window-created window)

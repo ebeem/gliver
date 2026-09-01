@@ -68,6 +68,7 @@ MODULES =   gliver/core/logs.scm \
 			gliver/contrib/ui/which-key.scm \
 			gliver/contrib/ui/palette.scm \
 			gliver/contrib/ui/toast.scm \
+			gliver/contrib/ui/container-border.scm \
 			gliver/contrib/ui/integrations/rofi.scm \
 			gliver/contrib/windows/window-rules.scm \
 			gliver/contrib/keybindings/stumpwm.scm \
@@ -117,7 +118,6 @@ install: compile
 	@echo "Installing to $(PREFIX)..."
 	install -Dm755 bin/gliver    $(DESTDIR)$(BINDIR)/gliver
 	install -Dm755 bin/gliver-repl $(DESTDIR)$(BINDIR)/gliver-repl
-	install -Dm755 bin/gliver-placeholder $(DESTDIR)$(BINDIR)/gliver-placeholder
 
 	# modules
 	@for m in $(MODULES); do \
@@ -145,7 +145,6 @@ install: compile
 uninstall:
 	rm -f $(DESTDIR)$(BINDIR)/gliver
 	rm -f $(DESTDIR)$(BINDIR)/gliver-repl
-	rm -f $(DESTDIR)$(BINDIR)/gliver-placeholder
 	rm -rf $(DESTDIR)$(GUILEDIR)/gliver
 	rm -rf $(DESTDIR)$(PREFIX)/share/gliver
 
@@ -157,8 +156,9 @@ clean:
 run:
 	./bin/gliver
 
+debug:
+	GUILE_AUTO_COMPILE=0 ./bin/gliver
+
 repl:
 	./bin/gliver-repl
 
-placeholder:
-	./bin/gliver-placeholder

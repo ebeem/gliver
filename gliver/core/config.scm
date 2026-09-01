@@ -12,9 +12,6 @@
 			*default-workspace-name*
 			*terminal*
 			*startup-message*
-			*prevent-killing-placeholder*
-			*placeholder-app-id*
-			*placeholder-script*
 			*mode*
 			*running?*
 			*prefix-timeout*
@@ -23,6 +20,13 @@
 			*window-border-color-focused*
 			*window-border-color-unfocused*
 			*window-border-color-urgent*
+			*container-border-width*
+			*container-border-color-focused*
+			*container-border-color-unfocused*
+			*container-border-color-urgent*
+			*container-border-radius*
+			*container-border-edges*
+			*container-border-bg-color*
 			*container-inner-gap*
 			*container-outer-gap*
 			*wm-behavior-focus-mouse-enter*
@@ -126,12 +130,6 @@
 			"Terminal emulator to be used when spawning terminals.")
 (define-var *startup-message* #t
 			"Whether to show message at startup.")
-(define-var *prevent-killing-placeholder* #t
-			"Whether to prevent users from kill placeholder windows.")
-(define-var *placeholder-app-id* "gliver-placeholder"
-			"The application id of the gliver placeholder.")
-(define-var *placeholder-script* "gliver-placeholder"
-			"The script/command to spawn a gliver placeholder.")
 (define-var *wallpaper* #f
 			"Default wallpaper (image file path or hex color).")
 (define-var *wallpaper-mode* 'fill
@@ -248,15 +246,30 @@
 (define-var *theme-urgent-color* *theme-red*
             "Accent color used to indicate urgent or error states.")
 
-;; window borders
+;; container and window borders
 (define-var *window-border-width* *theme-border-width*
             "Default window border width in pixels.")
-(define-var *window-border-color-focused* *theme-border-color*
+(define-var *window-border-color-focused* "#00000000"
             "Border color for focused windows.")
-(define-var *window-border-color-unfocused* *theme-mantle*
+(define-var *window-border-color-unfocused* "#00000000"
             "Border color for unfocused windows.")
-(define-var *window-border-color-urgent* *theme-urgent-color*
+(define-var *window-border-color-urgent* "#00000000"
             "Border color for urgent windows.")
+
+(define-var *container-border-width* *theme-border-width*
+            "Default container border width in pixels.")
+(define-var *container-border-color-focused* *theme-border-color*
+            "Border color for focused containers.")
+(define-var *container-border-color-unfocused* *theme-mantle*
+            "Border color for unfocused containers.")
+(define-var *container-border-color-urgent* *theme-urgent-color*
+            "Border color for urgent containers.")
+(define-var *container-border-radius* *theme-border-radius*
+            "Default container corner radius in pixels.")
+(define-var *container-border-edges* *wm-behavior-default-border-edges*
+            "Bitfield of edges on which container borders are drawn.")
+(define-var *container-border-bg-color* "#00000099"
+            "Background color for empty containers.")
 
 ;;; palette/launcher options
 (define-var *palette-font* *theme-font*
