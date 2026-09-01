@@ -133,8 +133,13 @@ instead of having one config file to define all variables, define them using the
 
 ** TODO create additional ui integration with both quickshell and noctalia
 also create noctalia integration with gliver
+I started thinking it will be better to implement a similar minimal shell using cairo and guile.
+pango is also going to help make this happen, I am really considering how huge some of these tools consume from resources. So far, gliver is consuming very little resources even though it has the rendering engine loaded already. This means implementing the rest of gui modules won't even just make it easier to extend and give more freedom, it will also make the resources consumption much less
 
-** TODO make placeholder a single process that can spawn multiple windows
 
-** TODO move any ffi call to gliver/deps
+** DONE make placeholder a single process that can spawn multiple windows
+now done via cairo rendering, which is even better
+
+** DONE move any ffi call to gliver/deps
 these are minimal bindings that lack guile library. In the future, if a proper package is created I will probably switch
+maybe wayland is also another library to consider moving to deps
