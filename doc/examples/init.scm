@@ -10,11 +10,15 @@
 			 (gliver contrib utils systemd)
 			 (gliver contrib keybindings gliver)
 			 (gliver contrib ui which-key)
-			 (gliver contrib ui integrations rofi))
+			 (gliver contrib ui integrations rofi)
+			 (gliver contrib ui container-border))
 
 (set! *terminal* "foot")
 (set! *theme-font* "Iosevka Nerd Font Bold")
-(log-level-set! 'info)
+(set! *wallpaper* "~/.wallpapers/fixed/flat-16.png")
+(set! *wallpaper-mode* 'fill)
+
+(log-level-set! 'debug)
 (log-info "Loading init.scm configuration")
 
 ;; install gliver default keybindings (you can try out sway, stumpwm, etc)
@@ -23,7 +27,6 @@
 
 ;; install rofi as dmenu and app launcher (you can replace it with fuzzel, fzf, etc)
 (rofi-install-all!)
-
-;; enable which-key module
 (which-key-enable!)
+(container-border-enable!)
 
