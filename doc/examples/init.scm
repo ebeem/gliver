@@ -18,6 +18,7 @@
 (set! *wallpaper* "~/.wallpapers/fixed/flat-16.png")
 (set! *wallpaper-mode* 'fill)
 
+;; set log-level to 'debug (can also be 'info, 'warning, 'error)
 (log-level-set! 'debug)
 (log-info "Loading init.scm configuration")
 
@@ -27,6 +28,8 @@
 
 ;; install rofi as dmenu and app launcher (you can replace it with fuzzel, fzf, etc)
 (rofi-install-all!)
+;; enable which-key module for keybindings discovery
 (which-key-enable!)
+;; enable container-border to add border to active container/window
 (container-border-enable!)
 
