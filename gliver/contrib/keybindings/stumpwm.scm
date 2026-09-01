@@ -86,7 +86,6 @@
   (define-key *root-map* "C-l" 'config-reload)
   (define-key *root-map* "C-q" 'quit)
 
-  ;; send prefix to application
-  (define-key *root-map* "t" 'send-prefix-key)
-  (define-key *root-map* "C-t" 'send-prefix-key)
+  ;; prefix
+  (define-key *top-map* "C-t" '(enter-submap *root-map*))
   (gliver-hook-run! *keybinding-sync-request-hook*))
