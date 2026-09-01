@@ -16,14 +16,10 @@
   "Focus the next output."
   (let ((ns (output-next)))
     (when ns
-      ;(manager-output-previous-set! *manager* (output-current))
-      ;(manager-output-current-set! *manager* ns)
-      (gliver-hook-run! *output-focus-hook* ns (manager-output-previous *manager*)))))
+      (output-focus! ns))))
 
 (define-command (output-focus-prev)
   "Focus the previous output."
   (let ((ps (output-prev)))
     (when ps
-      ;(manager-output-previous-set! *manager* (output-current))
-      ;(manager-output-current-set! *manager* ps)
-      (gliver-hook-run! *output-focus-hook* ps (manager-output-previous *manager*)))))
+      (output-focus! ps))))

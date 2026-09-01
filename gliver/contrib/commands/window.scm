@@ -85,11 +85,8 @@
 			 (title (window-title win))
 			 (app-id (window-app-id win)))
 	;; only kill the target window if it's not a placeholder
-	;; and *prevent-killing-placeholder* is set to #t
-	(unless (and *prevent-killing-placeholder*
-				 (string=? (window-app-id win) *placeholder-app-id*))
-	  (log-debug "Killing window: ~a" title)
-      (window-close! win))))
+	(log-debug "Killing window: ~a" title)
+    (window-close! win)))
 
 ;; TODO
 (define-command (window-float-toggle)

@@ -37,7 +37,7 @@ current workspace."
 		 (inner-gap (or (and (list? layout-cfg)
 							(assq-ref layout-cfg 'inner-gap))
 					    *container-inner-gap*))
-		 (border-width *window-border-width*))
+		 (border-width *container-border-width*))
 	(+ inner-gap border-width)))
 
 ;;; container split commands
@@ -68,12 +68,13 @@ container below it.  Only works when layout-type is manual."
 												#:height bot-h)))
 			;; shrink the current container
 			(container-size-set! container old-w top-h)
-			;; register and focus the new container
-			(container-add! new-container)
-			;; position must be set after add since add may trigger hooks
+			;; register the new container without auto-focus
+			(container-add! new-container #:focus #f)
+			;; position and size must be set before focusing
 			(container-position-set! new-container old-x bot-y)
 			(container-size-set! new-container old-w bot-h)
-			(container-focus! new-container)
+			(when *wm-behavior-focus-new-container*
+			  (container-focus! new-container))
 			(gliver-hook-run! *container-split-hook* container new-container)
 			(log-debug "Split horizontal."))))))
 
@@ -104,12 +105,13 @@ container to the right.  Only works when layout-type is manual."
 												#:height old-h)))
 			;; shrink the current container
 			(container-size-set! container left-w old-h)
-			;; register and focus the new container
-			(container-add! new-container)
-			;; position must be set after add since add may trigger hooks
+			;; register the new container without auto-focus
+			(container-add! new-container #:focus #f)
+			;; position and size must be set before focusing
 			(container-position-set! new-container right-x old-y)
 			(container-size-set! new-container right-w old-h)
-			(container-focus! new-container)
+			(when *wm-behavior-focus-new-container*
+			  (container-focus! new-container))
 			(gliver-hook-run! *container-split-hook* container new-container)
 			(log-debug "Split vertical."))))))
 
@@ -150,7 +152,7 @@ Only works when layout-type is manual."
 				   (outer-gap (or (and (list? layout-cfg)
 									  (assq-ref layout-cfg 'outer-gap))
 								 *container-outer-gap*))
-				   (border-width *window-border-width*)
+				   (border-width *container-border-width*)
 				   (total-outer-gap (+ outer-gap border-width)))
 			  (container-size-set! container
 								   (- (output-width output)  (* 2 total-outer-gap))

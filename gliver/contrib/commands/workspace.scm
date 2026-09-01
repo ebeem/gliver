@@ -23,8 +23,9 @@
   "Create a new workspace."
   (let ((output (output-current)))
     (when output
-      (let ((workspace (workspace-add! (or name "New") output)))
-        (workspace-focus! workspace)
+      (let ((workspace (make-workspace #:name (or name "New")
+                                       #:output output)))
+        (workspace-add! workspace)
         (log-debug "Workspace ~a created." (workspace-name workspace))))))
 
 (define-command (workspace-destroy)
