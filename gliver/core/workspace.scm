@@ -35,7 +35,7 @@
 			workspace-windows-visible
 ))
 
-(define* (workspace-add! workspace)
+(define* (workspace-add! workspace #:key (focus #t))
   "Create a new workspace."
   (log-debug "adding workspace ~a" workspace)
   (let* ((output (workspace-output workspace))
@@ -51,7 +51,7 @@
 							  #:y 0
 							  #:width (output-width output)
 							  #:height (output-height output))))
-		(container-add! container)))
+		(container-add! container #:focus focus)))
 
 	;; add the workspace to the back referenced output workspaces
 	(%output-workspaces-set! output
@@ -59,8 +59,9 @@
 
 	;; focus the workspace if no workspace is currently focused
 	;; or if configuration is set to focus new workspace
-	(when (or *wm-behavior-focus-new-workspace*
-			  (not (output-focused-workspace output)))
+	(when (and focus
+               (or *wm-behavior-focus-new-workspace*
+			       (not output-focused-workspace)))
 	  (workspace-focus! workspace))
 
 	(gliver-hook-run! *workspace-created-hook* workspace)))
@@ -122,14 +123,9 @@ and then @var{s-workspace}'s container list is emptied."
 	(when target
 	  ;; move all containers to the target one
 	  (workspace-containers-move workspace t-workspace)
-	  ;; then move all current containers to it
-	  ;; TODO: this shouldn't be needed anymore, but test
-	  ;; (when (> (length (workspace-windows workspace)) 0)
-	  ;; 	(for-each (lambda (w) (window-move-to-workspace! w target))
-      ;;             (workspace-windows workspace)))
       ;; remove workspace from output
       (%output-workspaces-set! output
-        (delete workspace (output-workspaces output)))
+        (delq workspace (output-workspaces output)))
       ;; if this was current, switch
       (when (eq? (output-workspace-current output) workspace)
         (%output-workspace-current-set! output (car (output-workspaces output))))
@@ -150,13 +146,13 @@ and then @var{s-workspace}'s container list is emptied."
 		   (container (or (workspace-container-current workspace)
 						  (and (pair? containers) (car containers))))
 		   (output (workspace-output workspace))
-		   (prev-workspace (output-workspace-current output)))
-	  (when (and focus-child container)
-		(container-focus! container #:focus-parent #f))
+		   (prev-workspace (and output (output-workspace-current output))))
 	  (%output-workspace-previous-set! output prev-workspace)
 	  (%output-workspace-current-set! output workspace)
 	  (when (and focus-parent output)
 		(output-focus! output #:focus-child #f))
+	  (when (and focus-child container)
+		(container-focus! container #:focus-parent #f))
 	  (gliver-hook-run! *workspace-switch-hook* workspace prev-workspace))))
 
 (define (workspace-next workspace)

@@ -93,6 +93,8 @@
 			*window-fullscreen-exit-requested-hook*
 			*window-minimize-requested-hook*
 			*container-created-hook*
+			*container-focused-hook*
+			*container-unfocused-hook*
 			*container-split-hook*
 			*container-destroy-hook*
 			*container-resize-hook*
@@ -194,9 +196,17 @@ If multiple functions share the same order, they execute in the order they were 
 
 (define (gliver-hook-remove! hook fn)
   "Remove function FN from HOOK."
-  (set-gliver-hook-functions! hook
-    (filter (lambda (pair) (not (eq? (cdr pair) fn)))
-            (gliver-hook-functions hook))))
+  (let ((fn-name (if (symbol? fn) fn (and (procedure? fn) (procedure-name fn)))))
+    (set-gliver-hook-functions! hook
+      (filter (lambda (pair)
+                (let ((existing (cdr pair)))
+                  (not (or
+                        (eq? existing fn)
+                        (and (symbol? fn) (pair? existing) (eq? (car existing) fn))
+                        (and fn-name
+                             (procedure? existing)
+                             (eq? (procedure-name existing) fn-name))))))
+              (gliver-hook-functions hook)))))
 
 (define (%gliver-hook-run hook strict? args)
   (when *log-hooks*
@@ -318,6 +328,8 @@ If a function fails, the error is logged and the script is terminated."
 (define *window-minimize-requested-hook*			(make-gliver-hook 'window-minimize-requested 1))
 
 (define *container-created-hook*     (make-gliver-hook 'container-created 1))
+(define *container-focused-hook*     (make-gliver-hook 'container-focused 1))
+(define *container-unfocused-hook*   (make-gliver-hook 'container-unfocused 1))
 (define *container-split-hook*       (make-gliver-hook 'container-split 2))
 (define *container-destroy-hook*     (make-gliver-hook 'container-destroy 2))
 (define *container-resize-hook*      (make-gliver-hook 'container-resize 1))

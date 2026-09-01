@@ -144,6 +144,10 @@
 			container-workspace
 			%container-id-set!
 			container-id
+			%container-urgent-set!
+			container-urgent?
+			%container-destroyed-set!
+			container-destroyed?
 			container?
 			%make-container
 			make-container
@@ -414,7 +418,7 @@
    #f    ; output-previous
    '()   ; seats
    '()   ; windows
-   #f))  ; wl-proxy
+   %null-pointer))  ; wl-proxy
 
 ;;; output: similar to an emacs container and stumpwm screen head
 ;;; a single logical screen/monitor, treated by wayland as output
@@ -495,25 +499,30 @@ Other parameters (x, y, width, height, wl-proxy) can be provided as keyword argu
 ;;; a physical container or "slot" on the screen where a list of windows is displayed
 (define-record-type <container>
   (%make-container id workspace windows window-current window-previous
-                   x y width height)
+                   x y width height
+                   urgent? destroyed?)
   container?
-  (id              container-id              %container-id-set!)
-  (workspace       container-workspace       %container-workspace-set!)
-  (windows         container-windows         %container-windows-set!)
-  (window-current  container-window-current  %container-window-current-set!)
-  (window-previous container-window-previous %container-window-previous-set!)
-  (x               container-x               %container-x-set!)
-  (y               container-y               %container-y-set!)
-  (width           container-width           %container-width-set!)
-  (height          container-height          %container-height-set!))
+  (id                 container-id                 %container-id-set!)
+  (workspace          container-workspace          %container-workspace-set!)
+  (windows            container-windows            %container-windows-set!)
+  (window-current     container-window-current     %container-window-current-set!)
+  (window-previous    container-window-previous    %container-window-previous-set!)
+  (x                  container-x                  %container-x-set!)
+  (y                  container-y                  %container-y-set!)
+  (width              container-width              %container-width-set!)
+  (height             container-height             %container-height-set!)
+  (urgent?            container-urgent?            %container-urgent-set!)
+  (destroyed?         container-destroyed?         %container-destroyed-set!))
 
-(define* (make-container #:key (workspace #f) (x 0) (y 0) (width 0) (height 0))
+(define* (make-container #:key (workspace #f) (x 0) (y 0) (width 0) (height 0)
+                               (urgent? #f) (destroyed? #f))
   "Create a new flat container."
   (%make-container (container-id-next!) workspace '() #f #f
                    (inexact->exact (floor x))
 				   (inexact->exact (floor y))
 				   (inexact->exact (floor width))
-				   (inexact->exact (floor height))))
+				   (inexact->exact (floor height))
+                   urgent? destroyed?))
 
 ;;; window: similar to an emacs buffer and stumpwm window
 ;;; a single application (like a terminal, a browser, or an editor)
@@ -607,7 +616,7 @@ Other parameters (x, y, width, height, wl-proxy) can be provided as keyword argu
 
 (set-record-type-printer! <workspace>
   (lambda (g port)
-    (format port "#<workspace id=~a name=~s container-current-id=~a, container-current-id=~a tag=~a layout=~a>"
+    (format port "#<workspace id=~a name=~s container-current-id=~a, container-previous-id=~a tag=~a layout=~a>"
             (workspace-id g)
 			(workspace-name g)
 			(if (workspace-container-current g) (container-id (workspace-container-current g)) #f)

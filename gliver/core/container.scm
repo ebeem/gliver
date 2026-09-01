@@ -10,7 +10,6 @@
   #:use-module (srfi srfi-2)
   #:use-module (srfi srfi-9)
   #:use-module (srfi srfi-9 gnu)
-  #:use-module (system foreign)
   #:use-module (gliver core types)
   #:use-module (gliver core logs)
   #:use-module (gliver core config)
@@ -19,7 +18,8 @@
 								   window-position-set!
 								   window-dimensions-propose!
 								   window-move-to-container!)
-  #:autoload (gliver core workspace) (workspace-focus!)
+  #:autoload (gliver core workspace) (workspace-focus!
+									  workspace-focused?)
   #:export (
 			container-next
 			container-prev
@@ -110,22 +110,19 @@
 			#f))
 	  #f))
 
-(define (container-add! container)
+(define* (container-add! container #:key (focus #t))
   "Add a new window to the display, placing it in the current container."
   (log-debug "adding container ~a" container)
-  ;; TODO: each container must at least have one window/node in `container-windows`
-  ;; if it doesn't have any windows, one will be created and focused automatically
-  ;; this is more of a node/placeholder
   (let ((workspace (container-workspace container)))
-
 	;; add the container to the back referenced workspace containers
 	(%workspace-containers-set! workspace
 	 (append (workspace-containers workspace) (list container)))
 
-	;; focus the output if no output is currently focused
-	;; or if configuration is set to focus new output
-	(when (or *wm-behavior-focus-new-container*
-			  (not (workspace-container-current workspace)))
+	;; focus the container if no container is currently focused
+	;; or if configuration is set to focus new container
+	(when (and focus
+               (or *wm-behavior-focus-new-container*
+			       (not (workspace-container-current workspace))))
 	  (container-focus! container))
 
 	(gliver-hook-run! *container-created-hook* container)))
@@ -145,10 +142,12 @@
     (when workspace
 	  (unless (null? (container-windows container))
 		(container-move-windows-to-container! container container-target))
+      ;; mark destroyed
+      (%container-destroyed-set! container #t)
 
       ;; remove container from workspace's container list
       (%workspace-containers-set! workspace
-                                 (delete container (workspace-containers workspace)))
+                                 (delq container (workspace-containers workspace)))
       ;; focus a new container if the current focused container will be removed
       (when (eq? (workspace-container-current workspace) container)
 		;; if we have any windows in the container, they should move to focused container
@@ -169,39 +168,50 @@
 	(let* ((windows (container-windows container))
 		   (window (or (container-window-current container)
 					   (and (pair? windows) (car windows))))
-		   (window-current (window-current))
 		   (workspace (container-workspace container))
-		   (prev-container (workspace-container-current workspace)))
-	  ;; unfocus previous window
-	  (when window-current
-		(gliver-hook-run! *window-unfocused-hook* window-current))
-	  (when (and focus-child window)
-		(window-focus! window #:focus-parent #f))
+		   (prev-container (and workspace (workspace-container-current workspace))))
 	  (%workspace-container-previous-set! workspace prev-container)
 	  (%workspace-container-current-set! workspace container)
+
 	  (when (and focus-parent workspace)
-		(workspace-focus! workspace #:focus-child #f)))))
+		(workspace-focus! workspace #:focus-child #f))
+
+      ;; unfocus previous container and focus new one
+      (when (and prev-container (not (eq? prev-container container)))
+        (gliver-hook-run! *container-unfocused-hook* prev-container))
+      (gliver-hook-run! *container-focused-hook* container)
+
+	  (when (and focus-child window)
+		(window-focus! window #:focus-parent #f)))))
 
 (define* (container-size-set! container width height #:key (animate #t))
   "Resize the container to the provided width and height."
   (let* ((windows (container-windows container))
 		 (int-width (inexact->exact (floor width)))
-		 (int-height (inexact->exact (floor height))))
-	(%container-width-set! container int-width)
-	(%container-height-set! container int-height)
-	(for-each
-	 (lambda (window)
-	   (window-dimensions-propose! window int-width int-height #:animate animate))
-	 windows)))
+		 (int-height (inexact->exact (floor height)))
+		 (w-changed? (not (= (container-width container) int-width)))
+		 (h-changed? (not (= (container-height container) int-height))))
+	(when (or w-changed? h-changed?)
+	  (%container-width-set! container int-width)
+	  (%container-height-set! container int-height)
+	  (for-each
+	   (lambda (window)
+		 (window-dimensions-propose! window int-width int-height #:animate animate))
+	   windows)
+	  (gliver-hook-run! *container-resize-hook* container))))
 
 (define* (container-position-set! container x y #:key (animate #t))
   "Move the container position to the provided x and y."
   (let* ((windows (container-windows container))
 		 (int-x (inexact->exact (floor x)))
-		 (int-y (inexact->exact (floor y))))
-	(%container-x-set! container int-x)
-	(%container-y-set! container int-y)
-	(for-each
-	 (lambda (window)
-	   (window-position-set! window int-x int-y #:animate animate))
-	 windows)))
+		 (int-y (inexact->exact (floor y)))
+		 (x-changed? (not (= (container-x container) int-x)))
+		 (y-changed? (not (= (container-y container) int-y))))
+	(when (or x-changed? y-changed?)
+	  (%container-x-set! container int-x)
+	  (%container-y-set! container int-y)
+	  (for-each
+	   (lambda (window)
+		 (window-position-set! window int-x int-y #:animate animate))
+	   windows)
+	  (gliver-hook-run! *container-resize-hook* container))))

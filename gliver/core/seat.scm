@@ -48,7 +48,7 @@
   (gliver-hook-run! *seat-created-hook* seat))
 
 (define (seat-remove! seat)
-  (let ((remaining (delete seat (manager-seats *manager*))))
+  (let ((remaining (delq seat (manager-seats *manager*))))
     (%manager-seats-set! *manager* remaining))
   (gliver-hook-run! *seat-destroy-hook* seat))
 

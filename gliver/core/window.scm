@@ -129,11 +129,14 @@
 	(window-capabilities-inform! window *wm-behavior-default-capabilties*)	
 	(window-unmaximized-inform! window)
     (window-fullscreen-exit-inform! window)
-    (window-tiled-set! window *wm-behavior-default-edges*)))
+    (window-tiled-set! window *wm-behavior-default-edges*)
+    (window-borders-set! window *wm-behavior-default-border-edges*
+                         *window-border-width*
+                         *window-border-color-unfocused*)))
 
 (define (window-remove! window)
   "Remove a window from the display."
-  (let* ((remaining-windows (delete window (manager-windows *manager*)))
+  (let* ((remaining-windows (delq window (manager-windows *manager*)))
 		 (container (window-container window))
 		 (workspace (container-workspace container)))
     (%manager-windows-set! *manager* remaining-windows)
@@ -148,7 +151,7 @@ invalid as the window should always have a container."
 		 (workspace (if container (container-workspace container) #f))
 		 (windows (if container (container-windows container) '()))
 		 (idx (list-index (lambda (w) (eq? w window)) windows))
-		 (windows-remaining (delete window windows))
+		 (windows-remaining (delq window windows))
 		 (window-target (and (pair? windows-remaining)
 							 (if (and idx (< idx (length windows-remaining)))
 								 (list-ref windows-remaining idx)
@@ -197,7 +200,7 @@ does have a container ~%window-container-remove!~ will be called."
 		  (unless (container-window-current container)
 			(%container-window-current-set! container window))))))
 
-(define* (window-focus! window #:key (seat (seat-current)) (focus-parent #t))
+(define* (window-focus! window #:key (seat (seat-current)) (focus-parent #t) (force #f))
   "Focus a window from the display."
   (let ((container (window-container window))
 		(current (window-current)))
@@ -210,7 +213,7 @@ does have a container ~%window-container-remove!~ will be called."
 	  (when (and focus-parent container)
 		(container-focus! container #:focus-child #f))
 	  ;; unfocus previous window
-	  (when current
+	  (when (and current (not (eq? current window)))
 		(gliver-hook-run! *window-unfocused-hook* current))
 	  (when seat
 		(seat-wm-window-focus seat window))
@@ -624,6 +627,10 @@ Must be called in a ~render_sequence~."
 
 (define (window-on-seat-window-focused seat window)
   (log-debug "window seat has focused ~a" window)
-  (when window
-	(window-focus! window #:seat #f)))
+  (if window
+	  (unless (eq? (window-current) window)
+		(window-focus! window #:seat #f))
+	  (let ((current (window-current)))
+		(when current
+		  (gliver-hook-run! *window-unfocused-hook* current)))))
 (gliver-hook-add! *seat-window-focused-hook* 'window-on-seat-window-focused)

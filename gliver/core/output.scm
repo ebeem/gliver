@@ -21,6 +21,7 @@
 			output-remove!
 			output-next
 			output-prev
+			output-focused?
 			output-focus!
 			output-presentation-mode-set
 			output-on-output
@@ -31,7 +32,7 @@
 ))
 
 ;;; output management
-(define (output-add! output)
+(define* (output-add! output #:key (focus #t))
   ;; each output must at least have one workspace in `output-workspaces`
   ;; if it doesn't have any workspaces, one will be created and focused automatically
   (log-debug "adding output ~a" output)
@@ -44,7 +45,7 @@
 									  (inner-gap . #f)
 									  (outer-gap . #f))
 						   #:output output)))
-	  (workspace-add! workspace)))
+	  (workspace-add! workspace #:focus focus)))
 
   ;; add the output to the back referenced manager outputs
   (%manager-outputs-set! *manager*
@@ -52,14 +53,15 @@
 
   ;; focus the output if no output is currently focused
   ;; or if configuration is set to focus new output
-  (when (or *wm-behavior-focus-new-output*
-			(not (manager-output-current *manager*)))
+  (when (and focus
+             (or *wm-behavior-focus-new-output*
+			     (not (manager-output-current *manager*))))
 	(output-focus! output))
 
   (gliver-hook-run! *output-created-hook* output))
 
 (define (output-remove! output)
-  (let ((remaining (delete output (manager-outputs *manager*))))
+  (let ((remaining (delq output (manager-outputs *manager*))))
     (%manager-outputs-set! *manager* remaining)
     (when (eq? (manager-output-current *manager*) output)
       (%manager-output-current-set! *manager*
@@ -70,7 +72,7 @@
   "Returns true if the output is currently focused"
   (eq? output (manager-output-current *manager*)))
 
-(define* (output-focus! output  #:key (focus-child #t))
+(define* (output-focus! output #:key (focus-child #t))
   "Focus active workspace in the output"
   ;; focus the current manager, it's actually an error
   ;; not to have a current workspace
@@ -81,6 +83,7 @@
 		   (prev-output (manager-output-current *manager*)))
 	  (%manager-output-previous-set! *manager* prev-output)
 	  (%manager-output-current-set! *manager* output)
+	  (gliver-hook-run! *output-focus-hook* output prev-output)
 	  (when (and workspace focus-child)
 		(workspace-focus! workspace #:focus-parent #f)))))
 
