@@ -169,31 +169,138 @@ Resize the next container after the destroyed container to fill both
 the destroyed container's space and its own space, and clean up placeholders."
   (when (and workspace (layout-manual? workspace))
     (let ((remaining (workspace-containers workspace)))
-      (when (pair? remaining)
-        (let* ((next-container (or (and (memq (workspace-container-current workspace) remaining)
-                                        (workspace-container-current workspace))
-                                   (car remaining)))
+      (cond
+       ((null? remaining)
+        #f)
+       ((= (length remaining) 1)
+        (layout-manual-reload workspace #:complete #t))
+       (else
+        (let* ((layout-cfg (workspace-layout workspace))
+               (inner-gap (or (layout-manual-get-param layout-cfg 'inner-gap #f)
+                              *container-inner-gap*))
+               (border-width (or *container-border-width* *window-border-width* *theme-border-width* 3))
+               (total-inner-gap (+ inner-gap border-width))
+               (tolerance (+ (* 2 total-inner-gap) 10))
+
                (x1 (container-x container))
                (y1 (container-y container))
                (w1 (container-width container))
                (h1 (container-height container))
-               (x2 (container-x next-container))
-               (y2 (container-y next-container))
-               (w2 (container-width next-container))
-               (h2 (container-height next-container))
-               (new-x (min x1 x2))
-               (new-y (min y1 y2))
-               (new-w (- (max (+ x1 w1) (+ x2 w2)) new-x))
-               (new-h (- (max (+ y1 h1) (+ y2 h2)) new-y)))
+               (x1-max (+ x1 w1))
+               (y1-max (+ y1 h1))
 
-		  ;; BUG: logic needs more thinking, this will work if the next container size +
-		  ;; destroyed container size = the new size, what could happen is if there are
-		  ;; 3 containers remaining after destroyed container, the new size will overlap with the remaining
-		  ;; reproduce by create 5 alternating splits, then remove the second container (top-right)
-          (log-debug "layout-manual-container-destroyed: resizing container ~a to ~ax~a+~a+~a"
-                     (container-id next-container) new-w new-h new-x new-y)
-          (container-position-set! next-container new-x new-y)
-          (container-size-set! next-container new-w new-h))))))
+               (target (or (and (memq (workspace-container-current workspace) remaining)
+                                (workspace-container-current workspace))
+                           (car remaining)))
+
+               ;; find candidates in each of the 4 adjacent directions
+               (candidates-below
+                (filter
+                 (lambda (c)
+                   (let ((cx (container-x c))
+                         (cy (container-y c))
+                         (cw (container-width c)))
+                     (and (>= cx (- x1 tolerance))
+                          (<= (+ cx cw) (+ x1-max tolerance))
+                          (>= cy (- y1-max tolerance)))))
+                 remaining))
+
+               (candidates-above
+                (filter
+                 (lambda (c)
+                   (let ((cx (container-x c))
+                         (cy (container-y c))
+                         (cw (container-width c))
+                         (ch (container-height c)))
+                     (and (>= cx (- x1 tolerance))
+                          (<= (+ cx cw) (+ x1-max tolerance))
+                          (<= (+ cy ch) (+ y1 tolerance)))))
+                 remaining))
+
+               (candidates-right
+                (filter
+                 (lambda (c)
+                   (let ((cx (container-x c))
+                         (cy (container-y c))
+                         (ch (container-height c)))
+                     (and (>= cy (- y1 tolerance))
+                          (<= (+ cy ch) (+ y1-max tolerance))
+                          (>= cx (- x1-max tolerance)))))
+                 remaining))
+
+               (candidates-left
+                (filter
+                 (lambda (c)
+                   (let ((cx (container-x c))
+                         (cy (container-y c))
+                         (cw (container-width c))
+                         (ch (container-height c)))
+                     (and (>= cy (- y1 tolerance))
+                          (<= (+ cy ch) (+ y1-max tolerance))
+                          (<= (+ cx cw) (+ x1 tolerance)))))
+                 remaining))
+
+               ;; choose the best candidate group
+               ;; prioritize group containing target container then any non-empty group
+               (selected-group
+                (cond
+                 ((and (memq target candidates-below) (pair? candidates-below))
+                  candidates-below)
+                 ((and (memq target candidates-above) (pair? candidates-above))
+                  candidates-above)
+                 ((and (memq target candidates-right) (pair? candidates-right))
+                  candidates-right)
+                 ((and (memq target candidates-left) (pair? candidates-left))
+                  candidates-left)
+                 ((pair? candidates-below) candidates-below)
+                 ((pair? candidates-above) candidates-above)
+                 ((pair? candidates-right) candidates-right)
+                 ((pair? candidates-left)  candidates-left)
+                 (else (list target)))))
+
+          (if (pair? selected-group)
+              (let* ((xs (map container-x selected-group))
+                     (ys (map container-y selected-group))
+                     (min-sx (apply min xs))
+                     (min-sy (apply min ys))
+                     (max-sx (apply max (map (lambda (c) (+ (container-x c) (container-width c))) selected-group)))
+                     (max-sy (apply max (map (lambda (c) (+ (container-y c) (container-height c))) selected-group)))
+                     (sw (max 1 (- max-sx min-sx)))
+                     (sh (max 1 (- max-sy min-sy)))
+
+                     (new-min-x (min x1 min-sx))
+                     (new-min-y (min y1 min-sy))
+                     (new-max-x (max x1-max max-sx))
+                     (new-max-y (max y1-max max-sy))
+                     (new-w (max 1 (- new-max-x new-min-x)))
+                     (new-h (max 1 (- new-max-y new-min-y)))
+
+                     ;; determine if we are scaling along x and y
+                     (scale-x? (and (> (abs (- new-w sw)) tolerance) (> sw 0)))
+                     (scale-y? (and (> (abs (- new-h sh)) tolerance) (> sh 0))))
+
+                (log-debug "layout-manual-container-destroyed: upscaling ~a containers from ~ax~a to ~ax~a"
+                           (length selected-group) sw sh new-w new-h)
+
+                (for-each
+                 (lambda (c)
+                   (let* ((c-x (if scale-x?
+                                   (+ new-min-x (* (/ (- (container-x c) min-sx) sw) new-w))
+                                   (container-x c)))
+                          (c-w (if scale-x?
+                                   (* (/ (container-width c) sw) new-w)
+                                   (container-width c)))
+                          (c-y (if scale-y?
+                                   (+ new-min-y (* (/ (- (container-y c) min-sy) sh) new-h))
+                                   (container-y c)))
+                          (c-h (if scale-y?
+                                   (* (/ (container-height c) sh) new-h)
+                                   (container-height c))))
+                     (container-position-set! c c-x c-y)
+                     (container-size-set! c c-w c-h)))
+                 selected-group))
+              ;; fallback: reload entire layout proportionally
+              (layout-manual-reload workspace #:complete #t))))))))
 
 (define (layout-manual-container-created container)
   "Handle container creation in manual layout."
