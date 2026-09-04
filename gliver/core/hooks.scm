@@ -213,17 +213,29 @@ If multiple functions share the same order, they execute in the order they were 
     (log-debug "Running hook ~a ~a" (gliver-hook-name hook) args))
   (for-each
    (lambda (pair)
-     (let* ((item (cdr pair))
-            (fn (cond
+     (let ((item (cdr pair)))
+       (catch #t
+         (lambda ()
+           (let ((fn (cond
                   ;; if it's a (symbol . module) pair, grab the latest definition
                   ((pair? item)
-                   (module-ref (cdr item) (car item)))
+                       (catch #t
+                         (lambda () (module-ref (cdr item) (car item)))
+                         (lambda (k . r)
+                           (log-error "Hook ~a: could not resolve ~a from ~a: ~a"
+                                      (gliver-hook-name hook) (car item) (cdr item) r)
+                           #f)))
                   ;; if it is a lambda, execute it directly
                   ((procedure? item)
                    item)
-                  (else (log-error "Invalid hook function format ~a" item)))))
-       (catch #t
-         (lambda () (apply fn args))
+                      (else
+                       (log-error "Invalid hook function format ~a" item)
+                       #f))))
+             (if (procedure? fn)
+                 (apply fn args)
+                 (log-error "Hook ~a: ~a is not a procedure"
+                            (gliver-hook-name hook)
+                            (if (pair? item) (car item) item)))))
          (lambda (key . rest)
            (log-error "Hook ~a: function raised ~a: ~a"
                       (gliver-hook-name hook) key rest)

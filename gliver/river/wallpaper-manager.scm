@@ -233,23 +233,24 @@
 
 (define (wallpaper-cleanup-output! output)
   "Clean up layer shell resources for OUTPUT."
-  (let ((state (hash-table-ref/default *wallpaper-output-table* (output-id output) #f)))
-    (when state
-      (hash-table-delete! *wallpaper-output-table* (output-id output))
-      (let ((layer-surf (wallpaper-output-state-layer-surface state))
-            (surface (wallpaper-output-state-surface state))
-            (buffer (wallpaper-output-state-buffer state)))
-        (unless (null-pointer? layer-surf)
-          (catch #t (lambda () (zwlr-layer-surface-v1-destroy layer-surf)) (lambda _ #f)))
-        (unless (null-pointer? surface)
-          (catch #t (lambda () (wl-surface-destroy surface)) (lambda _ #f)))
-        (unless (null-pointer? buffer)
-          (catch #t (lambda () (wl-buffer-destroy buffer)) (lambda _ #f)))))))
+  (when (and output (output? output))
+    (let ((state (hash-table-ref/default *wallpaper-output-table* (output-id output) #f)))
+      (when state
+        (hash-table-delete! *wallpaper-output-table* (output-id output))
+        (let ((layer-surf (wallpaper-output-state-layer-surface state))
+              (surface (wallpaper-output-state-surface state))
+              (buffer (wallpaper-output-state-buffer state)))
+          (unless (null-pointer? layer-surf)
+            (catch #t (lambda () (zwlr-layer-surface-v1-destroy layer-surf)) (lambda _ #f)))
+          (unless (null-pointer? surface)
+            (catch #t (lambda () (wl-surface-destroy surface)) (lambda _ #f)))
+          (unless (null-pointer? buffer)
+            (catch #t (lambda () (wl-buffer-destroy buffer)) (lambda _ #f))))))))
 
 ;; TODO: test the created commands
 (define (wallpaper-update-all!)
   "Update wallpaper across all known outputs."
-  (when *wallpaper-manager-enabled*
+  (when (and *wallpaper-manager-enabled* *manager* (manager-state? *manager*))
     (for-each wallpaper-update-output! (manager-outputs *manager*))))
 
 (define-command (wallpaper-set path-or-color)
@@ -416,10 +417,13 @@ Returns a wayland buffer foreign pointer."
                        (cairo-scale cr scale scale)
                        (paint-pattern! src-surface #f)
                        (cairo-restore cr))))
+                   (cairo-surface-destroy src-surface)
                    (set! rendered? #t)))))))
 
        ;; fallback: solid background color if nothing is rendered
        (unless rendered?
          (paint-bg!))
 
-       (cairo-surface-flush dst-surface)))))
+       (cairo-surface-flush dst-surface)
+       (cairo-destroy cr)
+       (cairo-surface-destroy dst-surface)))))

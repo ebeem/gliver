@@ -79,17 +79,10 @@
 
 (define (window-manager-on-globals-unbind)
   "Unbind/destroy the window manager"
-  (unless (null-pointer? (manager-wl-proxy *manager*))
-    (river-window-manager-v1-destroy (manager-wl-proxy *manager*))
-
-  ;; TODO: clean up all states like nodes, shells, etc?
-  ;; (for-each
-  ;;  (lambda (win)
-  ;; 	 (let ((proxy (window-wl-node-proxy win)))
-  ;; 	   (when proxy
-  ;; 		 (river-node-v1-destroy (window-wl-node-proxy win))))))
-
-  (set! *manager* #f)))
+  (when (and *manager* (manager-state? *manager*))
+    (let ((proxy (manager-wl-proxy *manager*)))
+      (when (and (pointer? proxy) (not (null-pointer? proxy)))
+        (catch #t (lambda () (river-window-manager-v1-destroy proxy)) (lambda _ #f))))))
 
 (define (window-manager-on-globals-verify)
   "Verify critical globals were bound "

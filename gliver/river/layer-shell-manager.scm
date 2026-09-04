@@ -186,8 +186,13 @@ last had focus."
         (when seat
           ;; re-focus the previously focused window if available
           (let ((window (seat-window-focused seat)))
-            (when window
-              (gliver-hook-run! *seat-window-focused-hook* seat window))))))))
+            (cond
+             ((and window (window? window) (not (window-destroyed? window)))
+              (gliver-hook-run! *seat-window-focused-hook* seat window))
+             (else
+              (let ((cur (window-current)))
+                (when (and cur (window? cur) (not (window-destroyed? cur)))
+                  (gliver-hook-run! *seat-window-focused-hook* seat cur)))))))))))
 
 
 ;;; synchronization
