@@ -161,28 +161,28 @@
 
 (define* (container-focus! container #:key (focus-child #t) (focus-parent #t))
   "Focus a container by focusing its last focused window."
-  ;; target window is current focused or first window
-  (log-debug "focusing container ~a, is focused? = ~a" container
-			(container-focused? container))
-  (unless (container-focused? container)
-	(let* ((windows (container-windows container))
-		   (window (or (container-window-current container)
-					   (and (pair? windows) (car windows))))
-		   (workspace (container-workspace container))
-		   (prev-container (and workspace (workspace-container-current workspace))))
-	  (%workspace-container-previous-set! workspace prev-container)
-	  (%workspace-container-current-set! workspace container)
+  (when (and (container? container) (not (container-destroyed? container)))
+    (log-debug "focusing container ~a, is focused? = ~a" container
+			   (container-focused? container))
+    (unless (container-focused? container)
+	  (let* ((windows (container-windows container))
+			 (window (or (container-window-current container)
+						 (and (pair? windows) (car windows))))
+			 (workspace (container-workspace container))
+			 (prev-container (and workspace (workspace-container-current workspace))))
+	    (when (and workspace (workspace? workspace))
+		  (%workspace-container-previous-set! workspace prev-container)
+		  (%workspace-container-current-set! workspace container)
+		  (when focus-parent
+		    (workspace-focus! workspace #:focus-child #f)))
 
-	  (when (and focus-parent workspace)
-		(workspace-focus! workspace #:focus-child #f))
+        ;; unfocus previous container and focus new one
+        (when (and prev-container (not (eq? prev-container container)))
+          (gliver-hook-run! *container-unfocused-hook* prev-container))
+        (gliver-hook-run! *container-focused-hook* container)
 
-      ;; unfocus previous container and focus new one
-      (when (and prev-container (not (eq? prev-container container)))
-        (gliver-hook-run! *container-unfocused-hook* prev-container))
-      (gliver-hook-run! *container-focused-hook* container)
-
-	  (when (and focus-child window)
-		(window-focus! window #:focus-parent #f)))))
+	    (when (and focus-child window)
+		  (window-focus! window #:focus-parent #f))))))
 
 (define* (container-size-set! container width height #:key (animate #t))
   "Resize the container to the provided width and height."

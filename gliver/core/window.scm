@@ -202,22 +202,27 @@ does have a container ~%window-container-remove!~ will be called."
 
 (define* (window-focus! window #:key (seat (seat-current)) (focus-parent #t) (force #f))
   "Focus a window from the display."
-  (let ((container (window-container window))
-		(current (window-current)))
-	(unless (and (eq? current window) (not force))
-	  (log-debug "focusing window ~a from current ~a" window current)
-	  (%container-window-current-set! container window)
-	  ;; place window at top so it becomes visible
-	  ;; if some windows are above it
-	  (window-place-top! window)
-	  (when (and focus-parent container)
-		(container-focus! container #:focus-child #f))
-	  ;; unfocus previous window
-	  (when (and current (not (eq? current window)))
-		(gliver-hook-run! *window-unfocused-hook* current))
-	  (when seat
-		(seat-wm-window-focus seat window))
-	  (gliver-hook-run! *window-focused-hook* window))))
+  (when (and (window? window) (not (window-destroyed? window)))
+    (let ((container (window-container window))
+		  (current (window-current)))
+	  ;; focus if it's currently not the current window
+	  ;; or the seat is not set to focus it
+	  (unless (and (eq? (seat-window-focused seat) window)
+				   (eq? current window)
+				   (not force))
+	    (when (and container (container? container) (not (container-destroyed? container)))
+		  (%container-window-current-set! container window)
+		  (when focus-parent
+		    (container-focus! container #:focus-child #f)))
+	    ;; place window at top so it becomes visible
+	    ;; if some windows are above it
+	    (window-place-top! window)
+	    ;; unfocus previous window
+	    (when (and current (window? current) (not (eq? current window)))
+		  (gliver-hook-run! *window-unfocused-hook* current))
+	    (when (and seat (seat? seat))
+		  (seat-wm-window-focus seat window))
+	    (gliver-hook-run! *window-focused-hook* window)))))
 
 (define* (window-move-to-container! window container #:key (focus #t))
   "Move a window to a container."
@@ -627,10 +632,10 @@ Must be called in a ~render_sequence~."
 
 (define (window-on-seat-window-focused seat window)
   (log-debug "window seat has focused ~a" window)
-  (if window
+  (if (and window (window? window) (not (window-destroyed? window)))
 	  (unless (eq? (window-current) window)
 		(window-focus! window #:seat #f))
 	  (let ((current (window-current)))
-		(when current
+		(when (and current (window? current) (not (window-destroyed? current)))
 		  (gliver-hook-run! *window-unfocused-hook* current)))))
 (gliver-hook-add! *seat-window-focused-hook* 'window-on-seat-window-focused)
