@@ -151,12 +151,25 @@
                      (make-zwlr-layer-surface-v1-listener
 					  ;; on configured event
                       (lambda (data proxy serial width height)
-						(log-info "Wallpaper layer surface configured for output ~a. with=~a, height=~a" (output-name output) width height)
                         (zwlr-layer-surface-v1-ack-configure proxy serial)
-                        (%wallpaper-output-state-rendered-width-set! state width)
-                        (%wallpaper-output-state-rendered-height-set! state height)
-                        (%wallpaper-output-state-configured?-set! state #t)
-                        (wallpaper-render-and-commit! output state))
+                        (let ((prev-w (wallpaper-output-state-rendered-width state))
+                              (prev-h (wallpaper-output-state-rendered-height state))
+                              (prev-wp (wallpaper-output-state-rendered-wallpaper state))
+                              (eff-wp (output-effective-wallpaper output))
+                              (has-buf? (and (wallpaper-output-state-buffer state)
+                                             (not (null-pointer? (wallpaper-output-state-buffer state))))))
+                          (%wallpaper-output-state-rendered-width-set! state width)
+                          (%wallpaper-output-state-rendered-height-set! state height)
+                          (%wallpaper-output-state-configured?-set! state #t)
+                          (if (and has-buf?
+                                   (= prev-w width)
+                                   (= prev-h height)
+                                   (equal? prev-wp eff-wp))
+                              (log-debug "Wallpaper configure unchanged for ~a (~ax~a), skipping re-render"
+                                         (output-name output) width height)
+                              (begin
+                                (log-info "Wallpaper layer surface configured for output ~a. width=~a, height=~a" (output-name output) width height)
+                                (wallpaper-render-and-commit! output state)))))
 					  ;; on closed event
                       (lambda (data proxy)
                         (log-info "Wallpaper layer surface closed for output ~a" (output-name output))
