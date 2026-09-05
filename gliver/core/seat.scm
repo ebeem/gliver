@@ -56,16 +56,17 @@
 (define (seat-wm-window-focus seat window)
   "Request that the compositor send keyboard input to the given window.
 Must be called in a ~manage_sequence~."
-  (let ((proxy-seat (seat-wl-proxy seat))
-		(proxy-window (window-wl-proxy window)))
-    (when (and proxy-seat proxy-window)
-	  (log-debug "Seat ~a focusing surface ~a" seat window)
-	  (unless (eq? window (seat-window-focused seat))
-		(%seat-window-focused-set! seat window)
-		;; unfocus old window and focus the new one via hooks as well
-		(with-manage-sequence
-		 (wm-seat-window-focus proxy-seat proxy-window)
-		 (gliver-hook-run! *seat-window-focused-hook* seat window))))))
+  (when (and (seat? seat) (window? window) (not (window-destroyed? window)))
+    (let ((proxy-seat (seat-wl-proxy seat))
+		  (proxy-window (window-wl-proxy window)))
+      (when (and proxy-seat proxy-window)
+	    (log-debug "Seat ~a focusing surface ~a" seat window)
+	    (unless (eq? window (seat-window-focused seat))
+		  (%seat-window-focused-set! seat window)
+		  ;; unfocus old window and focus the new one via hooks as well
+		  (with-manage-sequence
+		   (wm-seat-window-focus proxy-seat proxy-window)
+		   (gliver-hook-run! *seat-window-focused-hook* seat window)))))))
 
 ;; NOTE: wm-seat-shell-focus should be implemented here
 ;; I am not sure if it's actually needed, so I skipped it
@@ -86,12 +87,13 @@ Must be called in a ~manage_sequence~."
 (define (seat-wm-window-focus-clear seat)
   "Request that the compositor send keyboard input to the given window.
 Must be called in a ~manage_sequence~."
-  (let ((proxy-seat (seat-wl-proxy seat)))
-    (when proxy-seat
-	  (with-manage-sequence
-	   (wm-seat-window-focus-clear proxy-seat)
-	   (%seat-window-focused-set! seat #f)
-	   (gliver-hook-run! *seat-window-focused-hook* seat #f)))))
+  (when (seat? seat)
+    (let ((proxy-seat (seat-wl-proxy seat)))
+      (when proxy-seat
+	    (with-manage-sequence
+	     (wm-seat-window-focus-clear proxy-seat)
+	     (%seat-window-focused-set! seat #f)
+	     (gliver-hook-run! *seat-window-focused-hook* seat #f))))))
 
 (define (seat-wm-pointer-op-start seat)
   "Start an interactive pointer operation.
@@ -223,6 +225,16 @@ start of the operation of the pointer/touch point/etc."
 	  (log-debug "Seat ~a pointer position changed to ~ax~a" seat x y)
 	  (gliver-hook-run! *seat-seat-pointer-position-changed-hook* seat x y))))
 
+(define (seat-on-window-destroyed window container workspace)
+  "Clear focused and entered references if the destroyed window is held by any seat."
+  (for-each
+   (lambda (seat)
+     (when (eq? (seat-window-focused seat) window)
+       (%seat-window-focused-set! seat #f))
+     (when (eq? (seat-window-entered seat) window)
+       (%seat-window-entered-set! seat #f)))
+   (manager-seats *manager*)))
+
 (gliver-hook-add! %seat-created-hook 'seat-on-seat 0)
 (gliver-hook-add! %seat-removed-hook 'seat-on-removed 0)
 (gliver-hook-add! %seat-object-id-changed-hook 'seat-on-wl-seat 0)
@@ -233,3 +245,4 @@ start of the operation of the pointer/touch point/etc."
 (gliver-hook-add! %seat-op-delta-changed-hook 'seat-on-op-delta 0)
 (gliver-hook-add! %seat-op-released-hook 'seat-on-op-release 0)
 (gliver-hook-add! %seat-pointer-position-changed-hook 'seat-on-pointer-position 0)
+(gliver-hook-add! *window-destroyed-hook* 'seat-on-window-destroyed 0)
