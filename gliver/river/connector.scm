@@ -225,7 +225,12 @@ This integrates Wayland event dispatching with IPC and REPL polling."
                               (log-error "Wayland dispatch error")
                               (set! *connected* #f))))
                         ;; timeout, no events, cancel the read lock
-                        (wl-display-cancel-read *wl-display*)))))))
+                        (wl-display-cancel-read *wl-display*))))))
+
+          ;; periodic tick hook for event loop
+		  ;; could be useful for statusbar and monitoring performance
+          (when *connected*
+            (gliver-hook-run! *manager-tick-hook*)))
 
         (lambda (key . args)
           (log-error "Main loop error: ~a ~a" key args)

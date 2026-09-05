@@ -35,6 +35,7 @@
 			*manager-manage-start-hook*
 			*manager-render-start-hook*
 			*manager-layout-changed-hook*
+			*manager-tick-hook*
 			%manager-session-unlocked-hook
 			%manager-session-locked-hook
 			%window-created-hook
@@ -217,17 +218,17 @@ If multiple functions share the same order, they execute in the order they were 
        (catch #t
          (lambda ()
            (let ((fn (cond
-                  ;; if it's a (symbol . module) pair, grab the latest definition
-                  ((pair? item)
+                      ;; if it's a (symbol . module) pair, grab the latest definition
+                      ((pair? item)
                        (catch #t
                          (lambda () (module-ref (cdr item) (car item)))
                          (lambda (k . r)
                            (log-error "Hook ~a: could not resolve ~a from ~a: ~a"
                                       (gliver-hook-name hook) (car item) (cdr item) r)
                            #f)))
-                  ;; if it is a lambda, execute it directly
-                  ((procedure? item)
-                   item)
+                      ;; if it is a lambda, execute it directly
+                      ((procedure? item)
+                       item)
                       (else
                        (log-error "Invalid hook function format ~a" item)
                        #f))))
@@ -278,6 +279,7 @@ If a function fails, the error is logged and the script is terminated."
 (define *manager-manage-start-hook*		(make-gliver-hook 'manager-manage-start 0))
 (define *manager-render-start-hook*		(make-gliver-hook 'manager-render-start 0))
 (define *manager-layout-changed-hook*	(make-gliver-hook 'manager-layout-changed 4))
+(define *manager-tick-hook*				(make-gliver-hook 'manager-tick 0))
 (define %manager-session-unlocked-hook	(make-gliver-hook '%manager-session-unlocked 0))
 (define %manager-session-locked-hook	(make-gliver-hook '%manager-session-locked 0))
 
