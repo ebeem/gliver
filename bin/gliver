@@ -138,7 +138,7 @@
   "Clean shutdown sequence."
   (log-info "Shutting down...")
 
-  (gliver-hook-run! *shutdown-hook*)
+  (catch #t (lambda () (gliver-hook-run! *shutdown-hook*)) (lambda _ #f))
 
   ;; stop servers
   (catch #t (lambda () (ipc-stop!)) (lambda _ #f))
@@ -190,7 +190,8 @@
         (river-event-loop!)
 
 		;; ensure proper shutdown if loop finishes
-        (shutdown!))
+        (shutdown!)
+		(exit 0))
 
       (lambda (key . args)
         (log-error "Fatal error: ~a ~a" key args)

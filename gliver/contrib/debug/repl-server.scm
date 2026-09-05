@@ -104,7 +104,9 @@ Uses Guile's built-in (system repl server) for Geiser compatibility."
   (when *repl-server*
     (catch #t
       (lambda ()
-        ;; if it's a thread from spawn-server, it'll be cleaned up by gc
+        ;; if it's a thread from spawn-server, cancel it
+        (when (thread? *repl-server*)
+          (catch #t (lambda () (cancel-thread *repl-server*)) (lambda _ #f)))
         ;; if it's our simple socket, close it
         (when (port? *repl-server*)
           (close-port *repl-server*))
