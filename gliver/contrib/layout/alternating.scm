@@ -26,6 +26,7 @@
 			layout-alternating-window-destroyed
 			layout-alternating-workspace-created
 			layout-alternating-output-dimensions-changed
+			layout-alternating-output-changed
 			))
 
 (define (layout-alternating? workspace)
@@ -75,8 +76,10 @@
 respects the alternating layout system."
   (when (layout-alternating? workspace)
 	(let* ((output (workspace-output workspace))
-		   (ow (output-width output))
-		   (oh (output-height output))
+		   (ow (output-usable-width output))
+		   (oh (output-usable-height output))
+		   (ox (output-usable-x output))
+		   (oy (output-usable-y output))
   		   (layout-cfg (workspace-layout workspace))
 		   (containers (workspace-containers workspace))
   		   (containers-count (length containers))
@@ -102,10 +105,10 @@ respects the alternating layout system."
 								(list-ref containers (- index 1))))
 		   (prev-x (if prev-container
 					   (container-x prev-container)
-					   0))
+					   ox))
 		   (prev-y (if prev-container
 					   (container-y prev-container)
-					   0))
+					   oy))
 		   (prev-width (if prev-container
 						   (container-width prev-container)
 						   ow))
@@ -138,8 +141,8 @@ respects the alternating layout system."
 							   (* (+ gap-dr gap-dl) total-inner-gap)))
 			   (curr-height (- (* avail-height split-ratio-h)
 							   (* (+ gap-dt gap-db) total-inner-gap)))
-			   (curr-x total-outer-gap)
-			   (curr-y total-outer-gap))
+			   (curr-x (+ ox total-outer-gap))
+			   (curr-y (+ oy total-outer-gap)))
 		  (container-size-set! container curr-width curr-height)
 		  (container-position-set! container curr-x curr-y)))
 
@@ -286,8 +289,18 @@ layout rules."
 		 (window (container-window-current container)))
 	(layout-alternating-update 'output-dimensions-changed workspace container window)))
 
+(define (layout-alternating-output-changed output)
+  "Handle output change hook (e.g. layer shell non-exclusive area change)."
+  (when (and output (output? output))
+    (for-each
+     (lambda (ws)
+       (when (layout-alternating? ws)
+         (layout-alternating-reload ws #:complete #t)))
+     (output-workspaces output))))
+
 (gliver-hook-add! *window-created-hook* 'layout-alternating-window-created)
 (gliver-hook-add! *window-fullscreen-exited-hook* 'layout-alternating-window-fullscreen-exited)
 (gliver-hook-add! *window-destroyed-hook* 'layout-alternating-window-destroyed)
 (gliver-hook-add! *workspace-created-hook* 'layout-alternating-workspace-created)
 (gliver-hook-add! *output-dimensions-changed-hook* 'layout-alternating-output-dimensions-changed)
+(gliver-hook-add! *output-change-hook* 'layout-alternating-output-changed)

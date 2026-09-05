@@ -47,10 +47,10 @@
 	  (log-debug "adding empty container to workspace")
 	  (let* ((container
 			  (make-container #:workspace workspace
-							  #:x 0
-							  #:y 0
-							  #:width (output-width output)
-							  #:height (output-height output))))
+							  #:x (output-usable-x output)
+							  #:y (output-usable-y output)
+							  #:width (output-usable-width output)
+							  #:height (output-usable-height output))))
 		(container-add! container #:focus focus)))
 
 	;; add the workspace to the back referenced output workspaces

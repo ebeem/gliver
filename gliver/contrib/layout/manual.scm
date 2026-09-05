@@ -26,6 +26,7 @@
 			layout-manual-workspace-created
 			layout-manual-workspace-switched
 			layout-manual-output-dimensions-changed
+			layout-manual-output-changed
 			layout-manual-container-destroyed
 			layout-manual-config-loaded
 			layout-manual-startup
@@ -62,8 +63,10 @@ Rescales existing container positions/sizes so they proportionally
 fit the current output dimensions (e.g. after container is destroyed)."
   (log-debug "layout-manual-reload on workspace ~a" workspace)
   (let* ((output (workspace-output workspace))
-		 (ow (output-width output))
-		 (oh (output-height output))
+		 (ow (output-usable-width output))
+		 (oh (output-usable-height output))
+		 (ox (output-usable-x output))
+		 (oy (output-usable-y output))
 		 (layout-cfg (workspace-layout workspace))
 		 (containers (workspace-containers workspace))
 		 (containers-count (length containers))
@@ -87,7 +90,7 @@ fit the current output dimensions (e.g. after container is destroyed)."
 	 ((= containers-count 1)
 	  (let ((c (car containers)))
 		(container-size-set! c avail-width avail-height)
-		(container-position-set! c total-outer-gap total-outer-gap)))
+		(container-position-set! c (+ ox total-outer-gap) (+ oy total-outer-gap))))
 
 	 ;; multiple containers, rescale proportionally.
 	 ;; compute the available area (excluding outer-gap)
@@ -112,8 +115,8 @@ fit the current output dimensions (e.g. after container is destroyed)."
 				  (rel-y (/ (- (container-y c) min-y) bbox-h))
 				  (rel-w (/ (container-width c) bbox-w))
 				  (rel-h (/ (container-height c) bbox-h))
-				  (new-x (+ total-outer-gap (* rel-x avail-width)))
-				  (new-y (+ total-outer-gap (* rel-y avail-height)))
+				  (new-x (+ ox total-outer-gap (* rel-x avail-width)))
+				  (new-y (+ oy total-outer-gap (* rel-y avail-height)))
 				  (new-w (* rel-w avail-width))
 				  (new-h (* rel-h avail-height)))
 			 (container-size-set! c new-w new-h)
@@ -329,6 +332,15 @@ the destroyed container's space and its own space, and clean up placeholders."
   "Handle configuration reload by updating all manual workspaces."
   (layout-manual-reload-all!))
 
+(define (layout-manual-output-changed output)
+  "Handle output change hook (e.g. layer shell non-exclusive area change)."
+  (when (and output (output? output))
+    (for-each
+     (lambda (ws)
+       (when (layout-manual? ws)
+         (layout-manual-reload ws #:complete #t)))
+     (output-workspaces output))))
+
 (gliver-hook-add! *container-created-hook* 'layout-manual-container-created)
 (gliver-hook-add! *window-created-hook* 'layout-manual-window-created)
 (gliver-hook-add! *window-fullscreen-exited-hook* 'layout-manual-window-fullscreen-exited)
@@ -336,6 +348,7 @@ the destroyed container's space and its own space, and clean up placeholders."
 (gliver-hook-add! *workspace-created-hook* 'layout-manual-workspace-created)
 (gliver-hook-add! *workspace-switch-hook* 'layout-manual-workspace-switched)
 (gliver-hook-add! *output-dimensions-changed-hook* 'layout-manual-output-dimensions-changed)
+(gliver-hook-add! *output-change-hook* 'layout-manual-output-changed)
 (gliver-hook-add! *container-destroy-hook* 'layout-manual-container-destroyed)
 (gliver-hook-add! *config-loaded-hook* 'layout-manual-config-loaded)
 (gliver-hook-add! *startup-hook* 'layout-manual-startup)

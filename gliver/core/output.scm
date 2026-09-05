@@ -158,6 +158,10 @@ space changed. The x and y coordinates may be positive or negative."
 			(prev-height (output-height output)))
 		(%output-width-set! output width)
 		(%output-height-set! output height)
+		(when (= (output-usable-width output) prev-width)
+		  (%output-usable-width-set! output width))
+		(when (= (output-usable-height output) prev-height)
+		  (%output-usable-height-set! output height))
 		(gliver-hook-run! *output-dimensions-changed-hook* output prev-width prev-height)))))
 
 (gliver-hook-add! %output-created-hook 'output-on-output 0)

@@ -155,9 +155,11 @@ Only works when layout-type is manual."
 				   (border-width *container-border-width*)
 				   (total-outer-gap (+ outer-gap border-width)))
 			  (container-size-set! container
-								   (- (output-width output)  (* 2 total-outer-gap))
-								   (- (output-height output) (* 2 total-outer-gap)))
-			  (container-position-set! container total-outer-gap total-outer-gap))
+								   (- (output-usable-width output)  (* 2 total-outer-gap))
+								   (- (output-usable-height output) (* 2 total-outer-gap)))
+			  (container-position-set! container
+								   (+ (output-usable-x output) total-outer-gap)
+								   (+ (output-usable-y output) total-outer-gap)))
 			(log-debug "Only one container remaining."))))))
 
 ;;; container focus commands

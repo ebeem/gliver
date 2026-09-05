@@ -70,6 +70,15 @@
 			output-workspace-current
 			%output-workspaces-set!
 			output-workspaces
+			%output-usable-height-set!
+			output-usable-height
+			%output-usable-width-set!
+			output-usable-width
+			%output-usable-y-set!
+			output-usable-y
+			%output-usable-x-set!
+			output-usable-x
+			output-usable-area-set!
 			%output-height-set!
 			output-height
 			%output-width-set!
@@ -426,7 +435,8 @@
 ;;; modules to keep the state synced with river
 (define-record-type <output>
   (%make-output id name x y width height workspaces workspace-current
-                workspace-previous wl-proxy wl-output wallpaper)
+                workspace-previous wl-proxy wl-output wallpaper
+                usable-x usable-y usable-width usable-height)
   output?
   (id                 output-id                 %output-id-set!)
   (name               output-name               output-name-set!)
@@ -439,18 +449,33 @@
   (workspace-previous output-workspace-previous %output-workspace-previous-set!)
   (wl-output          output-wl-output          %output-wl-output-set!)
   (wl-proxy           output-wl-proxy           %output-wl-proxy-set!)
-  (wallpaper          output-wallpaper          %output-wallpaper-set!))
+  (wallpaper          output-wallpaper          %output-wallpaper-set!)
+  (usable-x           output-usable-x           %output-usable-x-set!)
+  (usable-y           output-usable-y           %output-usable-y-set!)
+  (usable-width       output-usable-width       %output-usable-width-set!)
+  (usable-height      output-usable-height      %output-usable-height-set!))
+
+(define (output-usable-area-set! output x y width height)
+  "Set the usable area coordinates and dimensions for OUTPUT."
+  (%output-usable-x-set! output x)
+  (%output-usable-y-set! output y)
+  (%output-usable-width-set! output width)
+  (%output-usable-height-set! output height))
 
 (define* (make-output name
                       #:key (id (manager-output-number-next!)) (wl-proxy #f) (x 0) (y 0) (width 1920) (height 1080)
-					  (workspaces '()) (workspace-current #f) (workspace-previous #f) (wl-output #f) (wallpaper #f))
+					  (workspaces '()) (workspace-current #f) (workspace-previous #f) (wl-output #f) (wallpaper #f)
+                      (usable-x 0) (usable-y 0) (usable-width #f) (usable-height #f))
   "Create a new <output> record with the given NAME.
 Other parameters (x, y, width, height, wl-proxy) can be provided as keyword arguments."
   (%make-output id name
                 x y
                 width height
 				workspaces workspace-current workspace-previous
-                wl-proxy wl-output wallpaper))
+                wl-proxy wl-output wallpaper
+                usable-x usable-y
+                (or usable-width width)
+                (or usable-height height)))
 
 ;;; Seat: A single seat bundles together the different ways
 ;;; a user can provide input e.g. (mouse, keyboard, touch input)
@@ -600,10 +625,12 @@ Other parameters (x, y, width, height, wl-proxy) can be provided as keyword argu
 
 (set-record-type-printer! <output>
   (lambda (out port)
-    (format port "#<output name=~s pos=~ax~a+~a+~a workspaces=~a current-workspace=~a prev-workspace=~a>"
+    (format port "#<output name=~s pos=~ax~a+~a+~a usable=~ax~a+~a+~a workspaces=~a current-workspace=~a prev-workspace=~a>"
             (output-name out)
             (output-width out) (output-height out)
             (output-x out) (output-y out)
+            (output-usable-width out) (output-usable-height out)
+            (output-usable-x out) (output-usable-y out)
             (length (output-workspaces out))
 			(if (output-workspace-current out) (workspace-id (output-workspace-current out)) #f)
 			(if (output-workspace-previous out) (workspace-id (output-workspace-previous out)) #f))))
