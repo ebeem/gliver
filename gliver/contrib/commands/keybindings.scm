@@ -31,5 +31,5 @@
 
 (define-command (keybindings-clear!)
   "Clear all keybindings from all standard and registered keymaps."
-  (for-each gliver-keymap-clear! (all-keymaps))
+  (for-each gliver-keymap-clear! (registered-keymaps))
   (gliver-hook-run! *keybinding-sync-request-hook*))
