@@ -14,7 +14,7 @@
   #:use-module (gliver core ffi)
   #:use-module (gliver core logs)
   #:use-module (rnrs bytevectors)
-  #:autoload (gliver core types) (define-var)
+  #:use-module (gliver core types)
   #:export (
 			*modifier-map*
 			*modifier-bitmask-map*
@@ -40,6 +40,9 @@
 			%make-gliver-keymap
 			gliver-key-hash
 			make-gliver-keymap
+			*registered-keymaps*
+			registered-keymaps
+			register-keymap!
 			gliver-keymap-keys
 			gliver-keymap->alist
 			gliver-binding-persist
@@ -223,8 +226,23 @@ Returns gliver-key"
   "Hash a <gliver-key> by its string representation."
   (apply string-hash (gliver-key->string key) rest))
 
+(define *registered-keymaps* '())
+
+(define (registered-keymaps)
+  "Return a list of all registered keymaps."
+  *registered-keymaps*)
+
+(define (register-keymap! keymap)
+  "Register a keymap in the global registry."
+  (unless (memq keymap *registered-keymaps*)
+    (set! *registered-keymaps* (cons keymap *registered-keymaps*)))
+  keymap)
+
 (define (make-gliver-keymap name)
-  (%make-gliver-keymap name (make-hash-table gliver-key=? gliver-key-hash)))
+  (let* ((sym (if (symbol? name) name (string->symbol name)))
+         (km (%make-gliver-keymap sym (make-hash-table gliver-key=? gliver-key-hash))))
+    (register-keymap! km)
+    km))
 
 (define (gliver-keymap-keys keymap)
   "Return all keys bound in KEYMAP."
@@ -287,19 +305,19 @@ instead of returning to *top-map*."
 
 ;;; standard keymaps
 (define-var *top-map*
-  (make-gliver-keymap "*top*")
+  (make-gliver-keymap '*top-map*)
   "Top map layer (default)")
 
 (define-var *root-map*
-  (make-gliver-keymap "*root*")
+  (make-gliver-keymap '*root-map*)
   "Root map layer (prefix)")
 
 (define-var *workspace-map*
-  (make-gliver-keymap "*workspace*")
+  (make-gliver-keymap '*workspace-map*)
   "workspace map layer")
 
 (define-var *resize-map*
-  (make-gliver-keymap "*resize*")
+  (make-gliver-keymap '*resize-map*)
   "Resize map layer")
 
 ;;; XKB binding spec generation
@@ -336,18 +354,9 @@ instead of returning to *top-map*."
          (keysym (xkb-value->keysym-name (gliver-binding-spec-keysym spec))))
     (string-join (append mods (list keysym)) "-")))
 
-;; TODO: review again, so many assumptions were changed
-;; this should probably change as the maps are almost completely
-;; controlled and configured by user
-(define (gliver-binding-spec-generate top-map root-map mode-name)
-  "Generate a list of <gliver-binding-spec> records for XKB key bindings.
-Returns a list of gliver-binding-spec records.
-
-For top-map: bindings have mode 'normal.
-For root-map: bindings have mode MODE-NAME (a symbol).
-Prefix key activation and escape bindings are included."
+(define (generate-keymap-specs keymap mode-sym)
+  "Generate binding specs for a single keymap under MODE-SYM."
   (let ((specs '()))
-    ;; top-map bindings (always active in normal mode)
     (for-each
      (lambda (pair)
        (let* ((key (car pair))
@@ -355,64 +364,98 @@ Prefix key activation and escape bindings are included."
               (action (gliver-binding-action binding))
               (persist (gliver-binding-persist binding))
               (xkb (gliver-key->xkb-binding-args key)))
-         (set! specs
-           (cons (make-gliver-binding-spec
-                  (cdr xkb)    ;; keysym uint
-                  (car xkb)    ;; modifier bitmask
-                  action
-                  'normal
-                  persist)
-                 specs))))
-     (gliver-keymap->alist top-map))
-
-    ;; root-map bindings (in prefix mode)
-    (let ((mode-sym (if (symbol? mode-name)
-                        mode-name
-                        (string->symbol mode-name))))
-      (for-each
-       (lambda (pair)
-         (let* ((key (car pair))
-                (binding (cdr pair))
-                (action (gliver-binding-action binding))
-                (persist (gliver-binding-persist binding))
-                (xkb (gliver-key->xkb-binding-args key)))
-           (cond
-            ((gliver-keymap? action)
-             ;; sub-keymap: action is to enter that sub-mode
+         (cond
+          ((gliver-keymap? action)
+           ;; sub-keymap: action is to enter that sub-mode by symbol
+           (let ((sub-mode (gliver-keymap-name action)))
              (set! specs
                (cons (make-gliver-binding-spec
                       (cdr xkb)
                       (car xkb)
-                      (list 'enter-submap (gliver-keymap-name action))
+                      (list 'enter-submap sub-mode)
                       mode-sym
                       persist)
-                     specs)))
-            (else
+                     specs))))
+          ((and (list? action) (eq? (car action) 'enter-submap))
+           (let* ((target (cadr action))
+                  (sub-mode (if (gliver-keymap? target)
+                                (gliver-keymap-name target)
+                                (if (symbol? target)
+                                    target
+                                    (string->symbol (format #f "~a" target))))))
              (set! specs
                (cons (make-gliver-binding-spec
                       (cdr xkb)
                       (car xkb)
-                      action
+                      (list 'enter-submap sub-mode)
                       mode-sym
                       persist)
-                     specs))))))
-       (gliver-keymap->alist root-map))
+                     specs))))
+          (else
+           (set! specs
+             (cons (make-gliver-binding-spec
+                    (cdr xkb)
+                    (car xkb)
+                    action
+                    mode-sym
+                    persist)
+                   specs))))))
+     (gliver-keymap->alist keymap))
+    specs))
 
-      ;; escape to exit prefix mode
-	  ;; NOTE: should this be configurable?
-      (let ((esc-xkb (gliver-key->xkb-binding-args (kbd "Escape")))
-            (cg-xkb  (gliver-key->xkb-binding-args (kbd "C-g"))))
+(define* (gliver-binding-spec-generate top-map root-map #:optional (root-mode-sym '*root-map*))
+  "Generate a list of <gliver-binding-spec> records for XKB key bindings.
+Returns a list of gliver-binding-spec records for top-map, root-map,
+and all registered submaps."
+  (let* ((root-sym (if (symbol? root-mode-sym) root-mode-sym (string->symbol root-mode-sym)))
+         (submaps (filter (lambda (km)
+                            (and (not (eq? km top-map))
+                                 (not (eq? km root-map))))
+                          *registered-keymaps*))
+         (specs '()))
+
+    ;; top-map bindings (normal mode)
+    (set! specs (append (generate-keymap-specs top-map 'normal) specs))
+
+    ;; root-map bindings
+    (set! specs (append (generate-keymap-specs root-map root-sym) specs))
+    ;; escape and C-g to exit prefix mode
+    ;; NOTE: should this be configurable?
+    (let ((esc-xkb (gliver-key->xkb-binding-args (kbd "Escape")))
+          (cg-xkb  (gliver-key->xkb-binding-args (kbd "C-g"))))
+      (unless (lookup-key root-map (kbd "Escape"))
         (set! specs
           (cons (make-gliver-binding-spec
                  (cdr esc-xkb) (car esc-xkb)
-                 'prefix-abort mode-sym
-                 #f)
-                specs))
+                 'prefix-abort root-sym #f)
+                specs)))
+      (unless (lookup-key root-map (kbd "C-g"))
         (set! specs
           (cons (make-gliver-binding-spec
                  (cdr cg-xkb) (car cg-xkb)
-                 'prefix-abort mode-sym
-                 #f)
+                 'prefix-abort root-sym #f)
                 specs))))
+
+    ;; submap bindings
+    (for-each
+     (lambda (submap)
+       (let* ((submap-mode (gliver-keymap-name submap))
+              (submap-specs (generate-keymap-specs submap submap-mode))
+              (esc-xkb (gliver-key->xkb-binding-args (kbd "Escape")))
+              (cg-xkb  (gliver-key->xkb-binding-args (kbd "C-g"))))
+         (set! specs (append submap-specs specs))
+         (unless (lookup-key submap (kbd "Escape"))
+           (set! specs
+             (cons (make-gliver-binding-spec
+                    (cdr esc-xkb) (car esc-xkb)
+                    'prefix-abort submap-mode #f)
+                   specs)))
+         (unless (lookup-key submap (kbd "C-g"))
+           (set! specs
+             (cons (make-gliver-binding-spec
+                    (cdr cg-xkb) (car cg-xkb)
+                    'prefix-abort submap-mode #f)
+                   specs)))))
+     submaps)
 
     (reverse specs)))

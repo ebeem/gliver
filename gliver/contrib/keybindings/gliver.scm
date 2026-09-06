@@ -8,11 +8,11 @@
 ))
 
 (define-var *window-map*
-  (make-gliver-keymap "*window*")
+  (make-gliver-keymap '*window-map*)
   "window map layer")
 
 (define-var *help-map*
-  (make-gliver-keymap "*help*")
+  (make-gliver-keymap '*help-map*)
   "help map layer")
 
 (define (keybindings-gliver-install-default!)
@@ -67,6 +67,11 @@
 	"Print"                 'media-screenshot
 
 	"s-space" '(enter-submap *root-map*))
+
+  (define-keys *help-map*
+	"v"         'describe-variable
+	"f"         'describe-command
+	"k"         'describe-key)
 
   (define-key *root-map* "o" 'launcher-run)
   (define-key *root-map* "h" '(enter-submap *help-map*))
