@@ -49,6 +49,11 @@ MODULES =   gliver/core/logs.scm \
 			gliver/river/connector.scm \
 			gliver/river/window-manager.scm \
 			gliver/river/wm-seat-manager.scm \
+			gliver/river/wm-output-manager.scm \
+			gliver/river/wm-window-manager.scm \
+			gliver/river/wm-node-manager.scm \
+			gliver/river/wm-decoration-manager.scm \
+			gliver/river/wm-shell-surface-manager.scm \
 			gliver/river/keybindings-manager.scm \
 			gliver/river/layer-shell-manager.scm \
 			gliver/river/wallpaper-manager.scm \
@@ -67,6 +72,7 @@ MODULES =   gliver/core/logs.scm \
 			gliver/contrib/utils/systemd.scm \
 			gliver/contrib/ui/which-key.scm \
 			gliver/contrib/ui/palette.scm \
+			gliver/contrib/ui/launcher.scm \
 			gliver/contrib/ui/toast.scm \
 			gliver/contrib/ui/container-border.scm \
 			gliver/contrib/ui/integrations/rofi.scm \
