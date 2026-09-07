@@ -9,7 +9,7 @@
   #:use-module (ice-9 pretty-print)
   #:use-module (srfi srfi-1)
   #:use-module (srfi srfi-69)
-  #:use-module (gliver contrib ui palette)
+  #:use-module (gliver contrib ui components palette)
   #:declarative? #f
   #:export (
 			describe-variable

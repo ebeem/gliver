@@ -1,4 +1,4 @@
-;;; gliver/contrib/ui/which-key.scm --- Display available keys in submaps
+;;; gliver/contrib/ui/overlay/which-key.scm --- Display available keys in submaps
 ;;;
 ;;; Copyright (C) 2026 Gliver Contributors
 ;;; SPDX-License-Identifier: GPL-3.0-or-later
@@ -8,15 +8,15 @@
 ;;; configured toast backend.
 ;;;
 ;;; Usage:
-;;;   (use-modules (gliver contrib ui which-key))
+;;;   (use-modules (gliver contrib ui overlay which-key))
 ;;;   (which-key-enable!)
 
-(define-module (gliver contrib ui which-key)
+(define-module (gliver contrib ui overlay which-key)
   #:use-module (ice-9 format)
   #:use-module (ice-9 string-fun)
   #:use-module (srfi srfi-1)
   #:use-module (gliver core)
-  #:use-module (gliver contrib ui toast)
+  #:use-module (gliver contrib ui components toast)
   #:use-module (gliver contrib commands)
   #:declarative? #f
   #:export (

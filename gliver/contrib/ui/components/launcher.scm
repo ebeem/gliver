@@ -1,4 +1,4 @@
-(define-module (gliver contrib ui launcher)
+(define-module (gliver contrib ui components launcher)
   #:use-module (gliver core)
   #:declarative? #f
   #:export (

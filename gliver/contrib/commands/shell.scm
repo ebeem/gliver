@@ -8,7 +8,7 @@
   #:use-module (ice-9 format)
   #:use-module (ice-9 popen)
   #:use-module (ice-9 textual-ports)
-  #:use-module (gliver contrib ui launcher)
+  #:use-module (gliver contrib ui components launcher)
   #:declarative? #f
   #:export (
 			shell-command-output

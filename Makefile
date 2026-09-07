@@ -74,11 +74,11 @@ MODULES =   gliver/core/logs.scm \
 			gliver/contrib/debug/ipc-server.scm \
 			gliver/contrib/debug/repl-server.scm \
 			gliver/contrib/utils/systemd.scm \
-			gliver/contrib/ui/which-key.scm \
-			gliver/contrib/ui/palette.scm \
-			gliver/contrib/ui/launcher.scm \
-			gliver/contrib/ui/toast.scm \
-			gliver/contrib/ui/container-border.scm \
+			gliver/contrib/ui/components/palette.scm \
+			gliver/contrib/ui/components/launcher.scm \
+			gliver/contrib/ui/components/toast.scm \
+			gliver/contrib/ui/overlay/which-key.scm \
+			gliver/contrib/ui/container/container-border.scm \
 			gliver/contrib/ui/integrations/rofi.scm \
 			gliver/contrib/windows/window-rules.scm \
 			gliver/contrib/keybindings/stumpwm.scm \

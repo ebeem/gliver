@@ -1,4 +1,4 @@
-;;; gliver/contrib/ui/container-border.scm --- Container border rendering
+;;; gliver/contrib/ui/container/container-border.scm --- Container border rendering
 ;;;
 ;;; Copyright (C) 2026 Gliver Contributors
 ;;; SPDX-License-Identifier: GPL-3.0-or-later
@@ -6,10 +6,10 @@
 ;;; Manages Cairo-based border rendering for containers.
 ;;;
 ;;; Usage:
-;;;   (use-modules (gliver contrib ui container-border))
+;;;   (use-modules (gliver contrib ui container container-border))
 ;;;   (container-border-enable!)
 
-(define-module (gliver contrib ui container-border)
+(define-module (gliver contrib ui container container-border)
   #:use-module (cairo)
   #:use-module (rnrs bytevectors)
   #:use-module (ice-9 format)

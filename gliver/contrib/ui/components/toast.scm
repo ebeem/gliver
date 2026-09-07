@@ -1,4 +1,4 @@
-(define-module (gliver contrib ui toast)
+(define-module (gliver contrib ui components toast)
   #:use-module (ice-9 popen)
   #:use-module (ice-9 rdelim)
   #:use-module (ice-9 string-fun)
