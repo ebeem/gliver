@@ -17,12 +17,18 @@ make-launcher-backend.")
 			"The command to kill launcher process.")
 
 (define* (launcher-show #:key (theme-overrides '())
-						(backend *launcher-backend*))
+						(backend #f))
   "Prompt the user to select from list of applications.
 BACKEND defaults to the globally configured `*launcher-backend*`. "
-  (backend #:theme-overrides theme-overrides))
+  (let ((launcher (or backend *launcher-backend*)))
+    (if (procedure? launcher)
+        (launcher #:theme-overrides theme-overrides)
+        (begin
+          (log-error "No launcher backend configured")
+          #f))))
 
-(define* (launcher-kill #:key (backend-kill *launcher-backend-kill*))
+(define* (launcher-kill #:key (backend-kill #f))
   "Kill the backend process."
-  (backend-kill))
-
+  (let ((kill-fn (or backend-kill *launcher-backend-kill*)))
+    (when (procedure? kill-fn)
+      (kill-fn))))

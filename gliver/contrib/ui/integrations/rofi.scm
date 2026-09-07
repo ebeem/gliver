@@ -7,6 +7,8 @@
   #:use-module (ice-9 string-fun)
   #:use-module (ice-9 popen)
   #:use-module (ice-9 rdelim)
+  #:use-module (ice-9 threads)
+  #:declarative? #f
   #:export (
 			%rofi-shell-quote
 			%rofi-%rofi-format-rasi-value
@@ -98,10 +100,17 @@
    ">" "&gt;"))
 
 (define (%rofi-item-formatter item)
-  (string-join
-   (map
-	(lambda (x)
-	  (format #f "~a" x)) item) "\t"))
+  (cond
+   ((string? item) item)
+   ((list? item)
+    (string-join
+     (map
+      (lambda (x)
+        (format #f "~a" x)) item) "\t"))
+   ((pair? item)
+    (format #f "~a\t~a" (car item) (cdr item)))
+   (else
+    (format #f "~a" item))))
 
 (define* (%rofi-make-dmenu-options options colors #:key (pango #t)
 							 (widths '()) (searchable '()) (visible '()))
@@ -356,21 +365,38 @@ of WAIT-TIME-MS in between attempts."
 
 (define-var *rofi-palette-command* (make-rofi-backend #:action 'dmenu))
 (define* (rofi-palette-show candidates #:key (theme-overrides '())
-							(command *rofi-palette-command*))
+							(command *rofi-palette-command*)
+							(on-select #f) (on-cancel #f)
+							(prompt #f) (initial-filter ""))
   (rofi-kill)
   (let* ((display-strings (map %rofi-item-formatter candidates))
          (input-str (string-join display-strings "\n"))
-         ;; printf to escape null byte needed for metadata injection
-		 ;; (cmd (string-append "while IFS= read -r line; do printf \"%b\\n\" \"$line\"; done <<'EOF_LAUNCHER' | " command "\n"
-         ;;                     input-str
-         ;;                     "\nEOF_LAUNCHER"))
-		 (cmd (string-append "printf '%s\\n' " (%rofi-shell-quote input-str) " | " command))
-         (port (open-input-pipe cmd))
-         (selected (read-line port)))
-    (close-pipe port)
-	(if (or (eof-object? selected) (string-null? selected))
-        #f
-        (string->number selected))))
+		 (filter-arg (if (and (string? initial-filter) (not (string-null? initial-filter)))
+                         (string-append " -filter " (%rofi-shell-quote initial-filter))
+                         ""))
+		 (prompt-arg (if (and (string? prompt) (not (string-null? prompt)))
+                         (string-append " -p " (%rofi-shell-quote prompt))
+                         ""))
+		 (cmd (string-append "printf '%s\\n' " (%rofi-shell-quote input-str) " | "
+							 command prompt-arg filter-arg)))
+    (if (procedure? on-select)
+        (call-with-new-thread
+         (lambda ()
+           (let* ((port (open-input-pipe cmd))
+                  (selected (read-line port)))
+             (close-pipe port)
+             (let ((res (if (or (eof-object? selected) (string-null? selected))
+                            #f
+                            (string->number selected))))
+               (if res
+                   (on-select res)
+                   (when (procedure? on-cancel) (on-cancel)))))))
+        (let* ((port (open-input-pipe cmd))
+               (selected (read-line port)))
+          (close-pipe port)
+	      (if (or (eof-object? selected) (string-null? selected))
+              #f
+              (string->number selected))))))
 
 (define-var *rofi-launcher-command* (make-rofi-backend #:action 'launcher))
 (define* (rofi-launcher-show #:key (theme-overrides '())

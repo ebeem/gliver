@@ -104,6 +104,9 @@
 			*palette-border-color*
 			*palette-border-width*
 			*palette-border-radius*
+			*palette-match-color*
+			*palette-repeat-rate*
+			*palette-repeat-delay*
 			*palette-location*
 			*palette-anchor*
 			*palette-variables-widths*
@@ -320,6 +323,12 @@
             "Border width of the palette window in pixels.")
 (define-var *palette-border-radius* *theme-border-radius*
             "Corner border radius of the palette window in pixels.")
+(define-var *palette-match-color* "#ed8796"
+            "Color used to highlight query keywords in search results (defaults to red).")
+(define-var *palette-repeat-rate* 25
+            "Key repeat rate in characters per second.")
+(define-var *palette-repeat-delay* 600
+            "Delay in milliseconds before key repeat starts.")
 (define-var *palette-location* 8
             "The integer value of the location of the palette
 following the same order in a keyboard numpad

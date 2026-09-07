@@ -37,7 +37,7 @@
 			which-key-on-keymap-change
 			which-key-enable!
 			which-key-disable!
-			))
+))
 
 ;;; configuration
 (define-var *which-key-separator* " -> ")

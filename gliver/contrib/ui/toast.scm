@@ -4,6 +4,7 @@
   #:use-module (ice-9 string-fun)
   #:use-module (srfi srfi-1)
   #:use-module (gliver core)
+  #:declarative? #f
   #:export (
 			*toast-backend*
 			*toast-backend-kill*
@@ -25,10 +26,13 @@ toast is called. This should be any function that will call
 make-toast-backend.")
 
 (define* (toast-show message #:key (timeout 0)
-					 (name "") (backend *toast-backend*))
+					 (name "") (backend #f))
   "Display the user a dialog with MESSAGE.
 BACKEND defaults to the globally configured `*toast-backend*`."
-  (backend message #:timeout timeout #:name name))
+  (let ((toast (or backend *toast-backend*)))
+    (if (procedure? toast)
+        (toast message #:timeout timeout #:name name)
+        (log-debug "toast: No toast backend configured for toast-show"))))
 
 (define* (toast-make-span text #:key color weight)
   "Creates a text span with formatting attributes."
@@ -40,7 +44,7 @@ BACKEND defaults to the globally configured `*toast-backend*`."
   "Creates a column containing a list of spans, with column metadata."
   ;; ensure spans is always a list, even if the user passes a single span
   (let ((span-list (if (and (list? spans) (not (null? spans)) (pair? (car spans)))
-                       spans 
+                       spans
                        (list spans))))
     `((spans . ,span-list)
       (width . ,width))))
@@ -50,8 +54,9 @@ BACKEND defaults to the globally configured `*toast-backend*`."
   columns)
 
 (define* (toast-kill #:key (name #f)
-					 (backend-kill *toast-backend-kill*))
+					 (backend-kill #f))
   "Kill the user active toast dialog.
 BACKEND defaults to the globally configured `*toast-backend-kill*`."
-  (backend-kill #:name name))
-
+  (let ((kill-fn (or backend-kill *toast-backend-kill*)))
+    (when (procedure? kill-fn)
+      (kill-fn #:name name))))

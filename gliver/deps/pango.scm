@@ -10,6 +10,7 @@
   #:use-module (ice-9 format)
   #:use-module (ice-9 string-fun)
   #:use-module (gliver core ffi)
+  #:use-module (gliver core logs)
   #:export (
             pango-escape-markup
             pango-measure-text
