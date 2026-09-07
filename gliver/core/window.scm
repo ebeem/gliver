@@ -25,6 +25,7 @@
 									  container-prev
 									  container-next)
   #:autoload (gliver core workspace) (workspace-manual?)
+  #:autoload (gliver contrib ui container container-border) (container-wl-node)
   #:export (
 			window-next
 			window-prev
@@ -275,8 +276,13 @@ window record will be updated accordingly to have a node reference."
   "Places the window given on top of all other windows."
   (let ((node (window-node-get! window)))
 	(when node
-      (with-render-sequence
-       ((@ (gliver river wm-node-manager) wm-node-place-top!) node)))))
+	  (let* ((container (window-container window))
+			 (container-node (container-wl-node container)))
+		(if container-node
+			(with-render-sequence
+			 ((@ (gliver river wm-node-manager) wm-node-place-below!) node container-node))
+			(with-render-sequence
+			 ((@ (gliver river wm-node-manager) wm-node-place-top!) node)))))))
 
 (define (window-place-above! window window-other)
   "Places the window given on above a given window."

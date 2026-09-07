@@ -346,8 +346,9 @@ Returns a Wayland buffer foreign pointer."
                   node (pointer? node) (not (null-pointer? node))
                   shell-surf (pointer? shell-surf) (not (null-pointer? shell-surf))
                   (> w 0) (> h 0))
-         (wm-node-position-set! node x y)
-         (wm-node-place-top! node)
+		 (with-render-sequence
+		  (wm-node-position-set! node x y)
+          (wm-node-place-top! node))
          (if reusable?
              (begin
                (wm-shell-surface-sync-next-commit! shell-surf)
