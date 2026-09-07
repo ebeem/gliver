@@ -39,9 +39,8 @@ Because ~River~ relies on a non-monolithic architecture, it separates the compos
 - libxkbcommon
 - GNU Guile (3.0+)
 - Guile-Cairo
+- Pango
 - GNU Make
-- Rofi (Optional, but highly recommended for default configuration)
-- Foot (Optional, but highly recommended for default configuration)
 
 *** Building
 

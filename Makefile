@@ -21,6 +21,9 @@ export PATH := $(CURDIR)/bin:$(PATH)
 
 LIBXKBCOMMON_LIBDIR = $(shell $(PKG_CONFIG) --variable libdir xkbcommon)
 LIBWAYLAND_CLIENT_LIBDIR = $(shell $(PKG_CONFIG) --variable libdir wayland-client)
+LIBPANGO_LIBDIR = $(shell $(PKG_CONFIG) --variable libdir pango)
+LIBPANGOCAIRO_LIBDIR = $(shell $(PKG_CONFIG) --variable libdir pangocairo)
+LIBGOBJECT_LIBDIR = $(shell $(PKG_CONFIG) --variable libdir gobject-2.0)
 
 MODULES =   gliver/core/logs.scm \
 			gliver/core/types.scm \
@@ -36,6 +39,7 @@ MODULES =   gliver/core/logs.scm \
 			gliver/core.scm \
 			gliver/deps/libc.scm \
 			gliver/deps/color.scm \
+			gliver/deps/pango.scm \
 			gliver/wayland/client.scm \
 			gliver/wayland/gen/wayland.scm \
 			gliver/wayland/gen/xdg-shell.scm \
@@ -96,9 +100,13 @@ build/%.go: %.scm
 # build ffi.scm and include its dependencies
 # gliver/core/keybindings.scm -> xkb
 # gliver/wayland/client.scm -> libwayland-client
+# gliver/deps/pango.scm -> pango, pangocairo, gobject
 gliver/core/ffi.scm: gliver/core/ffi.scm.in
 	sed -e "s|@LIBXKBCOMMON_LIBDIR@|$(LIBXKBCOMMON_LIBDIR)|" \
-		-e "s|@LIBWAYLAND_CLIENT_LIBDIR@|$(LIBWAYLAND_CLIENT_LIBDIR)|" < $< > $@
+		-e "s|@LIBWAYLAND_CLIENT_LIBDIR@|$(LIBWAYLAND_CLIENT_LIBDIR)|" \
+		-e "s|@LIBPANGO_LIBDIR@|$(LIBPANGO_LIBDIR)|" \
+		-e "s|@LIBPANGOCAIRO_LIBDIR@|$(LIBPANGOCAIRO_LIBDIR)|" \
+		-e "s|@LIBGOBJECT_LIBDIR@|$(LIBGOBJECT_LIBDIR)|" < $< > $@
 
 # build each .scm file specified in modules into .go
 # file in the build directory
