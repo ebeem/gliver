@@ -53,7 +53,7 @@ sudo make install
 
 *** Starting
 
-Because Gliver relies on River, you launch it from within River's initialization script. Add the following to your River init file to set Gliver as the active layout manager:
+Because ~gliver~ depends on ~river~, the cleanest way to run them is by passing the -c flag which ensures ~river~ initializes first and immediately runs ~gliver~ as its init executable.
 
 #+BEGIN_SRC sh
 river -c gliver
