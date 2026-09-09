@@ -67,7 +67,8 @@ Returns the PID."
 
 (define-command (shell-command)
   "Prompt for and execute a shell command."
-  (read-one-line "Shell: "))
+  ;; TODO: implement read-one-line
+  (log-warn "not implemented yet"))
 
 (define-command (eval-cmd expr-str)
   #:interactive (string)
@@ -91,8 +92,8 @@ Returns the PID."
 
 (define-command (command-palette-open)
   "Open the colon command prompt."
-  (read-one-line ":"
-                 #:completions (map symbol->string (command-all))))
+  ;; TODO: impelment read palette commands
+  (log-warn "not implemented yet"))
 
 (define-command (config-reload)
   "Reload the configuration file."
