@@ -23,8 +23,11 @@
   #:autoload (gliver core seat) (seat-wm-window-focus)
   #:autoload (gliver core container) (container-focus!
 									  container-prev
-									  container-next)
-  #:autoload (gliver core workspace) (workspace-manual?)
+									  container-next
+									  container-add!)
+  #:autoload (gliver core workspace) (workspace-manual?
+									  workspace-windows
+									  workspace-focused?)
   #:autoload (gliver contrib ui container container-border) (container-wl-node)
   #:export (
 			window-next
@@ -36,6 +39,7 @@
 			%window-container-add!
 			window-focus!
 			window-move-to-container!
+			window-move-to-workspace!
 			window-close!
 			window-node-get!
 			window-place-top!
@@ -245,6 +249,14 @@ does have a container ~%window-container-remove!~ will be called."
 								(container-width container)
 								(container-height container))
 	(gliver-hook-run! *window-container-moved-hook* window container container-current)))
+
+(define* (window-move-to-workspace! window workspace #:key (focus #t))
+  "Move WINDOW to WORKSPACE, and place it in WORKSPACE's active container."
+  (when (and (window? window) (not (window-destroyed? window))
+             (workspace? workspace))
+    (and-let* ((output (workspace-output workspace))
+			   (container (workspace-container-current workspace)))
+      (window-move-to-container! window container #:focus focus))))
 
 (define (window-close! window)
   "Close a WINDOW, the window may take time to respond or
@@ -645,3 +657,11 @@ Must be called in a ~render_sequence~."
 		(when (and current (window? current) (not (window-destroyed? current)))
 		  (gliver-hook-run! *window-unfocused-hook* current)))))
 (gliver-hook-add! *seat-window-focused-hook* 'window-on-seat-window-focused)
+
+(define (window-on-workspace-switch workspace prev-workspace)
+  "Handle workspace switch: hide windows of previous workspace and show windows of current workspace."
+  (when (and prev-workspace (workspace? prev-workspace))
+    (for-each window-hide! (workspace-windows prev-workspace)))
+  (when (and workspace (workspace? workspace))
+    (for-each window-show! (workspace-windows workspace))))
+(gliver-hook-add! *workspace-switch-hook* 'window-on-workspace-switch)

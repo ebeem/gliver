@@ -71,7 +71,8 @@
 								 (workspace (workspace-current)))
   "Find the closest container in direction DIR from CURRENT ('left, 'right, 'up, 'down)."
   (if (and current workspace)
-	  (let* ((containers (filter (lambda (f) (not (eq? f current)))
+	  (let* ((dir-sym (if (string? dir) (string->symbol dir) dir))
+			 (containers (filter (lambda (f) (not (eq? f current)))
 								 (workspace-containers workspace)))
 			 (cx (container-center-x current))
 			 (cy (container-center-y current))
@@ -81,7 +82,18 @@
 			 (curr-h (container-height current))
 			 (curr-x-max (+ curr-x curr-w))
 			 (curr-y-max (+ curr-y curr-h))
-			 (candidates
+			 (pick-closest
+			  (lambda (cands)
+				(car (sort cands
+						   (lambda (a b)
+							 (let* ((dx-a (- (container-center-x a) cx))
+									(dy-a (- (container-center-y a) cy))
+									(dist-a (+ (* dx-a dx-a) (* dy-a dy-a)))
+									(dx-b (- (container-center-x b) cx))
+									(dy-b (- (container-center-y b) cy))
+									(dist-b (+ (* dx-b dx-b) (* dy-b dy-b))))
+							   (< dist-a dist-b)))))))
+			 (primary-candidates
 			  (filter
 			   (lambda (f)
 				 (let* ((tx (container-x f))
@@ -90,24 +102,30 @@
 						(th (container-height f))
 						(tx-max (+ tx tw))
 						(ty-max (+ ty th)))
-				   (case dir
-					 ((up)    (< ty-max curr-y))
-					 ((down)  (> ty curr-y-max))
-					 ((right) (> tx curr-x-max))
-					 ((left)  (< tx-max curr-x))
+				   (case dir-sym
+					 ((up)    (and (< (container-center-y f) cy) (<= ty-max (+ curr-y 1))))
+					 ((down)  (and (> (container-center-y f) cy) (>= ty (- curr-y-max 1))))
+					 ((right) (and (> (container-center-x f) cx) (>= tx (- curr-x-max 1))))
+					 ((left)  (< (container-center-x f) cx) (<= tx-max (+ curr-x 1)))
 					 (else #f))))
 			   containers)))
-		(if (pair? candidates)
-			(car (sort candidates
-					   (lambda (a b)
-						 (let* ((dx-a (- (container-center-x a) cx))
-								(dy-a (- (container-center-y a) cy))
-								(dist-a (+ (* dx-a dx-a) (* dy-a dy-a)))
-								(dx-b (- (container-center-x b) cx))
-								(dy-b (- (container-center-y b) cy))
-								(dist-b (+ (* dx-b dx-b) (* dy-b dy-b))))
-						   (< dist-a dist-b)))))
-			#f))
+		(cond
+		 ((pair? primary-candidates)
+		  (pick-closest primary-candidates))
+		 (else
+		  (let ((fallback-candidates
+				 (filter
+				  (lambda (f)
+					(case dir-sym
+					  ((up)    (< (container-center-y f) cy))
+					  ((down)  (> (container-center-y f) cy))
+					  ((right) (> (container-center-x f) cx))
+					  ((left)  (< (container-center-x f) cx))
+					  (else #f)))
+				  containers)))
+			(if (pair? fallback-candidates)
+				(pick-closest fallback-candidates)
+				#f)))))
 	  #f))
 
 (define* (container-add! container #:key (focus #t))

@@ -26,6 +26,9 @@
 			window-container-move-right
 			window-container-move-up
 			window-container-move-down
+			window-container-move-next
+			window-container-move-prev
+			window-container-move-by-number
 			window-pull-by-number
 			window-properties-show
 ))
@@ -126,21 +129,18 @@
      ((not target) (log-debug "Workspace not found: ~a" name))
      (else
       (window-move-to-workspace! win target)
-      (log-debug "Moved to ~a." name)))))
+      (log-debug "Moved window ~a to ~a." win name)))))
 
 (define-command (window-container-move-direction dir)
   #:interactive (string)
   "Move the current window to the container in direction DIR."
-  (let* ((workspace (workspace-current))
-         (container (container-current))
-         (win (window-current))
-         (target (and workspace container (container-in-direction dir container workspace))))
-    (if (and win target)
-        (begin
-          (window-move-to-container! win target)
-          ;(workspace-container-current-set! workspace target)
-          (log-debug "Moved to container ~a" (container-id target)))
-        (log-debug "Cannot move."))))
+  (and-let* ((win (window-current))
+			 (container (window-container win))
+			 (workspace (container-workspace container))
+			 (dir-sym (if (string? dir) (string->symbol dir) dir))
+			 (target (container-in-direction dir-sym #:current container #:workspace workspace)))
+    (window-move-to-container! win target #:focus #t)
+    (log-debug "Moved window to container ~a" target)))
 
 (define-command (window-container-move-left)
   "Focus the container in the left direction."
@@ -158,13 +158,39 @@
   "Focus the container in the left direction."
   (window-container-move-direction 'down))
 
+(define-command (window-container-move-next)
+  "Move the current window to the next container in the current workspace."
+  (and-let* ((win (window-current))
+			 (container (window-container win))
+			 (target (container-next container)))
+    (window-move-to-container! win target #:focus #t)
+    (log-debug "Moved window to next container ~a." (container-id target))))
+
+(define-command (window-container-move-prev)
+  "Move the current window to the previous container in the current workspace."
+  (and-let* ((win (window-current))
+			 (container (window-container win))
+			 (target (container-prev container)))
+    (window-move-to-container! win target #:focus #t)
+    (log-debug "Moved window to next container ~a." (container-id target))))
+
+(define-command (window-container-move-by-number n)
+  #:interactive (integer)
+  "Move the current window to container with ID N in the current workspace."
+  (and-let* ((win (window-current))
+			 (workspace (workspace-current))
+			 (target (container-find-by-number n workspace)))
+    (window-move-to-container! win target #:focus #t)
+    (log-debug "Moved window to container ~a." n)))
+
 (define-command (window-pull-by-number n)
   #:interactive (integer)
   "Pull window N into the current container."
   (let ((win (window-find-by-id n))
         (container (container-current)))
     (when (and win container)
-      (window-move-to-container! win container))))
+      (window-move-to-container! win container #:focus #t)
+	  (log-debug "Pulled window ~a into container ~a." win container))))
 
 (define-command (window-properties-show)
   "Show properties of the current window."

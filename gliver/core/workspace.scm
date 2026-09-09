@@ -122,14 +122,14 @@ and then @var{s-workspace}'s container list is emptied."
 		(target (%workspace-remove-target workspace t-workspace)))
 	(when target
 	  ;; move all containers to the target one
-	  (workspace-containers-move workspace t-workspace)
+	  (workspace-containers-move workspace target)
       ;; remove workspace from output
       (%output-workspaces-set! output
         (delq workspace (output-workspaces output)))
-      ;; if this was current, switch
+      ;; if this was current, switch to the target workspace
       (when (eq? (output-workspace-current output) workspace)
-        (%output-workspace-current-set! output (car (output-workspaces output))))
-      (gliver-hook-run! *workspace-destroy-hook* workspace t-workspace))))
+        (workspace-focus! target))
+      (gliver-hook-run! *workspace-destroy-hook* workspace target))))
 
 (define (workspace-focused? workspace)
   "Returns true if the workspace is currently focused"
@@ -153,14 +153,14 @@ and then @var{s-workspace}'s container list is emptied."
 		(container-focus! container #:focus-parent #f))
 	  (gliver-hook-run! *workspace-switch-hook* workspace prev-workspace))))
 
-(define (workspace-next workspace)
+(define* (workspace-next #:optional (workspace (workspace-current)))
   (let* ((output (workspace-output workspace))
 		 (workspaces (output-workspaces output))
          (current (output-workspace-current output))
          (idx (list-index (lambda (g) (eq? g current)) workspaces)))
     (and idx (list-ref workspaces (modulo (1+ idx) (length workspaces))))))
 
-(define (workspace-prev workspace)
+(define* (workspace-prev #:optional (workspace (workspace-current)))
   (let* ((output (workspace-output workspace))
 		 (workspaces (output-workspaces output))
          (current (output-workspace-current output))
