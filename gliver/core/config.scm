@@ -12,21 +12,12 @@
 			*default-workspace-name*
 			*terminal*
 			*startup-message*
+			*wallpaper*
+			*wallpaper-mode*
 			*mode*
 			*running?*
 			*prefix-timeout*
 			*message-timeout*
-			*window-border-width*
-			*window-border-color-focused*
-			*window-border-color-unfocused*
-			*window-border-color-urgent*
-			*container-border-width*
-			*container-border-color-focused*
-			*container-border-color-unfocused*
-			*container-border-color-urgent*
-			*container-border-radius*
-			*container-border-edges*
-			*container-border-bg-color*
 			*container-inner-gap*
 			*container-outer-gap*
 			*wm-behavior-focus-mouse-enter*
@@ -37,6 +28,7 @@
 			*wm-behavior-focus-new-container*
 			*wm-behavior-focus-new-output*
 			*wm-behavior-workspace-remove-to*
+			*wm-behavior-workspace-destroyable*
 			*wm-behavior-default-decoration*
 			*wm-behavior-default-capabilties*
 			*wm-behavior-default-edges*
@@ -80,6 +72,17 @@
 			*theme-bg-inactive*
 			*theme-border-color*
 			*theme-urgent-color*
+			*window-border-width*
+			*window-border-color-focused*
+			*window-border-color-unfocused*
+			*window-border-color-urgent*
+			*container-border-width*
+			*container-border-color-focused*
+			*container-border-color-unfocused*
+			*container-border-color-urgent*
+			*container-border-radius*
+			*container-border-edges*
+			*container-border-bg-color*
 			*palette-font*
 			*palette-font-size*
 			*palette-icon-color*
@@ -120,8 +123,6 @@
 			*gliver-runtime-dir*
 			*gliver-state-dir*
 			*config-file-path*
-			*wallpaper*
-			*wallpaper-mode*
 			config-load!
 			config-reload!
 ))
@@ -160,6 +161,7 @@
 (define-var *wm-behavior-focus-new-container* #t)
 (define-var *wm-behavior-focus-new-output* #f)
 (define-var *wm-behavior-workspace-remove-to* 'focus)    ;; 'focus | 'index
+(define-var *wm-behavior-workspace-destroyable* #f)      ;; whether workspaces can be destroyed
 (define-var *wm-behavior-default-decoration* 'server)    ;; 'server | 'client
 (define-var *wm-behavior-default-capabilties* 0)
 (define-var *wm-behavior-default-edges* 15)
