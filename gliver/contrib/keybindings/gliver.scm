@@ -42,20 +42,40 @@
 	"s-Right"   'container-focus-right
 
 	;; move the focused window to direction
-	"s-S-Left"  'window-container-move-left
-	"s-S-Down"  'window-container-move-down
-	"s-S-Up"    'window-container-move-up
-	"s-S-Right" 'window-container-move-right
-	"s-H"       'window-container-move-left
-	"s-J"       'window-container-move-down
-	"s-K"       'window-container-move-up
-	"s-L"       'window-container-move-right
+	"s-M-Left"  'window-container-move-left
+	"s-M-Down"  'window-container-move-down
+	"s-M-Up"    'window-container-move-up
+	"s-M-Right" 'window-container-move-right
+	"s-M-h"     'window-container-move-left
+	"s-M-j"     'window-container-move-down
+	"s-M-k"     'window-container-move-up
+	"s-M-l"     'window-container-move-right
+
+	;; move workspace focus to direction
+	"s-C-Left"  'workspace-focus-right
+	"s-C-Down"  'workspace-focus-down
+	"s-C-Up"    'workspace-focus-up
+	"s-C-Right" 'workspace-focus-right
+	"s-C-h"     'workspace-focus-left
+	"s-C-j"     'workspace-focus-down
+	"s-C-k"     'workspace-focus-up
+	"s-C-l"     'workspace-focus-right
+
+	;; move window to workspace in direction
+	"s-C-M-Left"  'window-workspace-move-left
+	"s-C-M-Down"  'window-workspace-move-down
+	"s-C-M-Up"    'window-workspace-move-up
+	"s-C-M-Right" 'window-workspace-move-right
+	"s-C-M-h"     'window-workspace-move-left
+	"s-C-M-j"     'window-workspace-move-down
+	"s-C-M-k"     'window-workspace-move-up
+	"s-C-M-l"     'window-workspace-move-right
 
 	;; split containers (only for manual layouts)
-	"s-s"       'container-split-horizontal
-	"s-v"       'container-split-vertical
-	"s-d"       'container-destroy
-	"s-D"       'container-destroy-others
+	"s-s"         'container-split-horizontal
+	"s-v"         'container-split-vertical
+	"s-d"         'container-destroy
+	"s-D"         'container-destroy-others
 
 	;; special keys for volume, brightness, and screenshot
 	"XF86AudioMute"         'media-audio-mute
