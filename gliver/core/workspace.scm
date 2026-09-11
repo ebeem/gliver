@@ -19,12 +19,14 @@
   #:use-module (gliver core config)
   #:use-module (gliver core hooks)
   #:use-module (gliver core types)
-  #:autoload (gliver core container) (container-focus! container-add!)
+  #:autoload (gliver core container) (container-focus! container-add! container-remove!)
+  #:autoload (gliver core window) (window-move-to-workspace!)
   #:autoload (gliver core output) (output-focus!)
   #:export (
 			workspace-add!
 			%workspace-remove-target
 			workspace-containers-move
+			workspace-windows-move
 			workspace-manual?
 			workspace-remove!
 			workspace-focused?
@@ -96,6 +98,12 @@
                            (find (lambda (ws) (not (eq? ws workspace1)))
                                  workspaces))))))))))
 
+(define (workspace-windows-move s-workspace t-workspace)
+  "Move all windows from @var{s-workspace} to @var{t-workspace}."
+  (for-each (lambda (window)
+              (window-move-to-workspace! window t-workspace #:focus #f))
+            (workspace-windows s-workspace)))
+
 (define (workspace-containers-move s-workspace t-workspace)
   "Move all containers from @var{s-workspace} to @var{t-workspace}.
 This only happens if @var{s-workspace} has any windows. Containers from
@@ -118,18 +126,27 @@ and then @var{s-workspace}'s container list is emptied."
          (eq? layout-type 'manual))))
 
 (define* (workspace-remove! workspace #:key (t-workspace #f))
-  "Delete @var{workspace}, moving its containers to @var{t-workspace}."
+  "Delete @var{workspace}, moving its windows to @var{t-workspace} and destroying its containers."
   (let ((output (workspace-output workspace))
 		(target (%workspace-remove-target workspace t-workspace)))
 	(when target
-	  ;; move all containers to the target one
-	  (workspace-containers-move workspace target)
+	  ;; move all windows to the target workspace
+	  (workspace-windows-move workspace target)
+	  ;; destroy all containers of the workspace
+	  (let ((containers (list-copy (workspace-containers workspace))))
+	    (%workspace-containers-set! workspace '())
+	    (%workspace-container-current-set! workspace #f)
+	    (%workspace-container-previous-set! workspace #f)
+	    (for-each (lambda (c) (container-remove! c #:focus #f))
+	              containers))
       ;; remove workspace from output
       (%output-workspaces-set! output
         (delq workspace (output-workspaces output)))
       ;; if this was current, switch to the target workspace
       (when (eq? (output-workspace-current output) workspace)
         (workspace-focus! target))
+      (when (eq? (output-workspace-previous output) workspace)
+        (%output-workspace-previous-set! output #f))
       (gliver-hook-run! *workspace-destroy-hook* workspace target))))
 
 (define (workspace-focused? workspace)

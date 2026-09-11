@@ -27,7 +27,8 @@
 									  container-add!)
   #:autoload (gliver core workspace) (workspace-manual?
 									  workspace-windows
-									  workspace-focused?)
+									  workspace-focused?
+									  workspace-visible?)
   #:autoload (gliver contrib ui container container-border) (container-wl-node)
   #:export (
 			window-next
@@ -193,7 +194,7 @@ does have a container ~%window-container-remove!~ will be called."
   ;; they pass isn't destroyed, so the validation is done here as well
   (unless (window-destroyed? window)
 	(when (window-container window)
-	  (%window-container-remove! window))
+	  (%window-container-remove! window #:focus focus))
 	(let ((container-windows (append (container-windows container) (list window))))
 	  (%window-container-set! window container)
 	  (%container-windows-set! container container-windows)
@@ -255,8 +256,15 @@ does have a container ~%window-container-remove!~ will be called."
   (when (and (window? window) (not (window-destroyed? window))
              (workspace? workspace))
     (and-let* ((output (workspace-output workspace))
-			   (container (workspace-container-current workspace)))
-      (window-move-to-container! window container #:focus focus))))
+			   (containers (workspace-containers workspace))
+			   (container (or (workspace-container-current workspace)
+							  (and (pair? containers) (car containers)))))
+      (unless (workspace-container-current workspace)
+        (%workspace-container-current-set! workspace container))
+      (window-move-to-container! window container #:focus focus)
+      (if (workspace-visible? workspace)
+          (window-show! window)
+          (window-hide! window)))))
 
 (define (window-close! window)
   "Close a WINDOW, the window may take time to respond or

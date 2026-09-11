@@ -151,7 +151,7 @@
             (window-move-to-container! window target-container #:focus #f))
           (container-windows source-container)))
 
-(define* (container-remove! container #:key (target-container #f))
+(define* (container-remove! container #:key (target-container #f) (focus #t))
   "Remove CONTAINER from its workspace."
   (let* ((workspace (container-workspace container))
 		 (container-target (or target-container
@@ -167,7 +167,7 @@
       (%workspace-containers-set! workspace
                                  (delq container (workspace-containers workspace)))
       ;; focus a new container if the current focused container will be removed
-      (when (eq? (workspace-container-current workspace) container)
+      (when (and focus (eq? (workspace-container-current workspace) container))
 		;; if we have any windows in the container, they should move to focused container
         (container-focus! container-target))
       (log-debug "Running *container-destroy-hook*")
