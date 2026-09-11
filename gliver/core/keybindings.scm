@@ -11,8 +11,8 @@
   #:use-module (srfi srfi-9)
   #:use-module (srfi srfi-69)
   #:use-module (system foreign)
-  #:use-module (gliver core ffi)
   #:use-module (gliver core logs)
+  #:use-module (gliver deps libxkbcommon)
   #:use-module (rnrs bytevectors)
   #:use-module (gliver core types)
   #:export (
@@ -28,11 +28,6 @@
 			gliver-key=?
 			gliver-key->string
 			gliver-key->xkb-binding-args
-			xkb-lib-common
-			xkb-keysym-from-name
-			keysym-name->xkb-value
-			xkb-keysym-get-name
-			xkb-value->keysym-name
 			kbd
 			gliver-keymap-bindings
 			gliver-keymap-name
@@ -68,8 +63,7 @@
 			make-gliver-binding-spec
 			gliver-binding-spec->modifiers-list
 			gliver-binding-spec->string
-			gliver-binding-spec-generate
-))
+			gliver-binding-spec-generate))
 
 ;;; key representation
 (define *modifier-map*
@@ -136,42 +130,6 @@ Returns a pair: (modifier-bitmask . xkb-keysym-uint)."
                          0 mods))
          (keysym-val (keysym-name->xkb-value (gliver-key-keysym key))))
     (cons mod-bits keysym-val)))
-
-;; XKB binding argument conversion
-;; dynamically link the system's libxkbcommon library
-;; bind the C function: uint32_t xkb_keysym_from_name(const char *name, uint32_t flags);
-;; this is much better than storing a hash table to map xkb key symbols
-(define xkb-lib-common (dynamic-link %libxkbcommon))
-(define xkb-keysym-from-name
-  (pointer->procedure
-   uint32
-   (dynamic-func "xkb_keysym_from_name" xkb-lib-common)
-   (list '* uint32)))
-
-(define (keysym-name->xkb-value sym)
-  "Ask libxkbcommon to convert a keysym symbol to its uint value."
-  (let* ((str (symbol->string sym))
-         ;; pass the string pointer, and 0 for XKB_KEYSYM_NO_FLAGS
-         (val (xkb-keysym-from-name (string->pointer str) 0)))
-    (if (= val 0)
-        ;; if xkbcommon returns 0, it means it doesn't recognize the key
-        (begin
-          (log-warn "Unknown keysym: ~a, using 0" sym)
-          0)
-        ;; otherwise, return the actual hex value
-        val)))
-
-(define xkb-keysym-get-name
-  (pointer->procedure int
-                      (dynamic-func "xkb_keysym_get_name" xkb-lib-common)
-                      (list uint32 '* size_t)))
-
-(define (xkb-value->keysym-name val)
-  "Convert a uint value to its keysym string name via libxkbcommon."
-  (let ((ptr (bytevector->pointer (make-bytevector 64))))
-    (if (> (xkb-keysym-get-name val ptr 64) 0)
-        (pointer->string ptr)
-        #f)))
 
 ;; kbd doesn't have a prefix (gliver-kbd) because I want to maintain
 ;; this keyword since it's very common for emacs and stumpwm users

@@ -39,6 +39,7 @@ MODULES =   gliver/core/logs.scm \
 			gliver/core.scm \
 			gliver/deps/libc.scm \
 			gliver/deps/color.scm \
+			gliver/deps/libxkbcommon.scm \
 			gliver/deps/pango.scm \
 			gliver/wayland/client.scm \
 			gliver/wayland/gen/wayland.scm \
@@ -98,7 +99,7 @@ build/%.go: %.scm
 	@guild compile -L . -o $@ $<
 
 # build ffi.scm and include its dependencies
-# gliver/core/keybindings.scm -> xkb
+# gliver/deps/libxkbcommon.scm -> xkb
 # gliver/wayland/client.scm -> libwayland-client
 # gliver/deps/pango.scm -> pango, pangocairo, gobject
 gliver/core/ffi.scm: gliver/core/ffi.scm.in
