@@ -515,7 +515,7 @@ Other parameters (x, y, width, height, wl-proxy) can be provided as keyword argu
                          (tag-mask (manager-tag-next!))
                          (containers '())
                          (output #f)
-                         (layout 'tiled)
+                         (layout 'manual)
                          (wallpaper #f))
   (%make-workspace id name tag-mask containers
                    output layout #f #f wallpaper))

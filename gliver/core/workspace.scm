@@ -28,6 +28,7 @@
 			workspace-manual?
 			workspace-remove!
 			workspace-focused?
+			workspace-visible?
 			workspace-focus!
 			workspace-next
 			workspace-prev
@@ -134,6 +135,11 @@ and then @var{s-workspace}'s container list is emptied."
 (define (workspace-focused? workspace)
   "Returns true if the workspace is currently focused"
   (eq? workspace (workspace-current)))
+
+(define (workspace-visible? workspace)
+  "Returns true if the workspace is currently visible"
+  (eq? workspace
+	   (output-workspace-current (workspace-output workspace))))
 
 (define* (workspace-focus! workspace #:key (focus-child #t) (focus-parent #t))
   "Focus active container in the workspace"

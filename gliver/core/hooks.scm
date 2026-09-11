@@ -148,6 +148,7 @@
 			*restart-hook*
 			*config-loaded-hook*
 			*wallpaper-changed-hook*
+			*keyboard-layout-changed-hook*
 ))
 
 ;;; hooks are named list of functions that are called when an event occurs.
@@ -403,4 +404,5 @@ If a function fails, the error is logged and the script is terminated."
 (define *restart-hook*               (make-gliver-hook 'restart 0))
 (define *config-loaded-hook*         (make-gliver-hook 'config-loaded 0))
 (define *wallpaper-changed-hook*     (make-gliver-hook 'wallpaper-changed 1))
+(define *keyboard-layout-changed-hook* (make-gliver-hook 'keyboard-layout-changed 2))
 

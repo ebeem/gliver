@@ -301,6 +301,7 @@ Returns a Wayland buffer foreign pointer."
 (define* (container-border-render! container #:key (force #f))
   "Render the container border for CONTAINER and commit the surface within a render sequence."
   (when (and (container? container)
+			 (workspace-visible? (container-workspace container))
              (not (container-destroyed? container))
              *wl-display*
              (pointer? *wl-compositor*)
