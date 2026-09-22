@@ -32,7 +32,6 @@
 			alt-name
 			shift-name
 			xkb-keysym-from-name
-			keysym-name->xkb-value
 			xkb-keysym-get-name
 			xkb-value->keysym-name
 			query-xkbcommon-default-layout
@@ -110,21 +109,6 @@
 
 (define xkb-keysym-from-name
   (%xkb-func "xkb_keysym_from_name" uint32 (list '* uint32)))
-
-(define (keysym-name->xkb-value sym)
-  "Ask libxkbcommon to convert a keysym symbol to its uint value."
-  (if (not xkb-keysym-from-name)
-      0
-      (let* ((str (symbol->string sym))
-             ;; pass the string pointer, and 0 for XKB_KEYSYM_NO_FLAGS
-             (val (xkb-keysym-from-name (string->pointer str) 0)))
-        (if (= val 0)
-            ;; if xkbcommon returns 0, it means it doesn't recognize the key
-            (begin
-              (log-warn "Unknown keysym: ~a, using 0" sym)
-              0)
-            ;; otherwise, return the actual hex value
-            val))))
 
 (define xkb-keysym-get-name
   (%xkb-func "xkb_keysym_get_name" int (list uint32 '* size_t)))

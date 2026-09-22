@@ -18,6 +18,8 @@
   #:export (
 			*modifier-map*
 			*modifier-bitmask-map*
+			*keysym-aliases*
+			keysym-name->xkb-value
 			gliver-key-keysym
 			gliver-key-modifiers
 			gliver-key?
@@ -118,6 +120,85 @@
                     (gliver-key-modifiers key)))
          (keysym (symbol->string (gliver-key-keysym key))))
     (string-join (append mods (list keysym)) "-")))
+
+;; stolen from mahogany :)
+(define *keysym-aliases*
+  '(("RET" . "Return")
+	("ESC" . "Escape")
+	("TAB" . "Tab")
+	("DEL" . "BackSpace")
+	("SPC" . "space")
+	("!" . "exclam")
+	("\"" . "quotedbl")
+	("$" . "dollar")
+	("£" . "sterling")
+	("%" . "percent")
+	("&" . "ampersand")
+	("'" . "apostrophe")
+	("`" . "grave")
+	("&" . "ampersand")
+	("(" . "parenleft")
+	(")" . "parenright")
+	("*" . "asterisk")
+	("+" . "plus")
+	("," . "comma")
+	("-" . "minus")
+	("." . "period")
+	("/" . "slash")
+	(":" . "colon")
+	(";" . "semicolon")
+	("<" . "less")
+	("=" . "equal")
+	(">" . "greater")
+	("?" . "question")
+	("@" . "at")
+	("[" . "bracketleft")
+	("\\" . "backslash")
+	("]" . "bracketright")
+	("^" . "asciicircum")
+	("_" . "underscore")
+	("#" . "numbersign")
+	("{" . "braceleft")
+	("|" . "bar")
+	("}" . "braceright")
+	("~" . "asciitilde")
+	("«" . "guillemotleft")
+	("»" . "guillemotright")
+	("À" . "Agrave")
+	("à" . "agrave")
+	("Ç" . "Ccedilla")
+	("ç" . "ccedilla")
+	("É" . "Eacute")
+	("é" . "eacute")
+	("È" . "Egrave")
+	("è" . "egrave")
+	("Ê" . "Ecircumflex")
+	("ê" . "ecircumflex")
+
+	;; user-friendly common aliases
+	("Enter" . "Return")
+	("Esc" . "Escape")
+	("Backspace" . "BackSpace")
+	("Tab" . "Tab")
+	("Space" . "space")))
+
+(define (keysym-name->xkb-value sym)
+  "Ask libxkbcommon to convert a keysym symbol or string to its uint value."
+  (if (not xkb-keysym-from-name)
+      0
+      (let* ((raw-str (if (symbol? sym) (symbol->string sym) (format #f "~a" sym)))
+             (aliased-str (or (assoc-ref *keysym-aliases* raw-str) raw-str))
+             ;; pass the string pointer, and 0 for XKB_KEYSYM_NO_FLAGS
+             (val (xkb-keysym-from-name (string->pointer aliased-str) 0)))
+        (if (= val 0)
+            (if (and (= (string-length aliased-str) 1)
+                     (<= 32 (char->integer (string-ref aliased-str 0)) 126))
+                (char->integer (string-ref aliased-str 0))
+                (begin
+                  (log-warn "Unknown keysym: ~a, using 0" sym)
+                  0))
+            ;; otherwise, return the actual hex value
+            val))))
 
 (define (gliver-key->xkb-binding-args key)
   "Convert a key to XKB binding arguments.
