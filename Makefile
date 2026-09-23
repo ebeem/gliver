@@ -80,6 +80,11 @@ MODULES =   gliver/core/logs.scm \
 			gliver/contrib/ui/components/toast.scm \
 			gliver/contrib/ui/overlay/which-key.scm \
 			gliver/contrib/ui/container/container-border.scm \
+			gliver/contrib/ui/gleui/base.scm \
+			gliver/contrib/ui/gleui/palette.scm \
+			gliver/contrib/ui/gleui/launcher.scm \
+			gliver/contrib/ui/gleui/toast.scm \
+			gliver/contrib/ui/gleui.scm \
 			gliver/contrib/ui/integrations/rofi.scm \
 			gliver/contrib/windows/window-rules.scm \
 			gliver/contrib/keybindings/stumpwm.scm \

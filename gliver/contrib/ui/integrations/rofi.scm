@@ -195,7 +195,7 @@
           (background-alt *palette-bg-color*)
           (foreground *theme-fg-main*)
           (selected *theme-bg-active*)
-          (active *palette-selected-color*)
+          (active *palette-selected-fg-color*)
           (urgent *palette-urgent-color*)
           (border-color *palette-border-color*)
 
