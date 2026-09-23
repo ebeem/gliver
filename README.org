@@ -1,8 +1,12 @@
 #+TITLE: The Gliver Window Manager
+#+STARTUP: inlineimages
 
 * The Gliver Window Manager
 
 ~Gliver~ brings the keyboard-driven, manual-tiling workflow of ~StumpWM~ to ~Wayland~, using ~River~ as the compositor backend and ~GNU Guile Scheme~ as the extension language. It attempts to be highly customizable while relying entirely on the keyboard for input.
+
+#+ATTR_ORG: :width 900
+[[./.preview/screenshot.jpeg]]
 
 ** Philosophy
 
