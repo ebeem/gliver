@@ -403,8 +403,6 @@
             make-wl-seat-listener
             make-wl-output-listener))
 
-(define %null-pointer (make-pointer 0))
-
 ;;; protocol name
 (define WL_DISPLAY_NAME "wl_display")
 

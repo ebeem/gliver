@@ -154,8 +154,6 @@
             make-river-seat-v1-listener
             make-river-window-manager-v1-listener))
 
-(define %null-pointer (make-pointer 0))
-
 ;;; protocol name
 (define RIVER_WINDOW_MANAGER_V1_NAME "river_window_manager_v1")
 

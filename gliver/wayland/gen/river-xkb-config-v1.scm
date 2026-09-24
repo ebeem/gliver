@@ -43,8 +43,6 @@
             make-river-xkb-keyboard-v1-listener
             make-river-xkb-config-v1-listener))
 
-(define %null-pointer (make-pointer 0))
-
 ;;; protocol name
 (define RIVER_XKB_CONFIG_V1_NAME "river_xkb_config_v1")
 

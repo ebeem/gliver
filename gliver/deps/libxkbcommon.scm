@@ -37,8 +37,6 @@
 			query-xkbcommon-default-layout
 ))
 
-(define %null-pointer (make-pointer 0))
-
 (define *libxkbcommon*
   (catch #t
     (lambda ()

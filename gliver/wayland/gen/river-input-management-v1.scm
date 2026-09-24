@@ -36,8 +36,6 @@
             make-river-input-device-v1-listener
             make-river-input-manager-v1-listener))
 
-(define %null-pointer (make-pointer 0))
-
 ;;; protocol name
 (define RIVER_INPUT_MANAGER_V1_NAME "river_input_manager_v1")
 

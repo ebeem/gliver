@@ -132,8 +132,6 @@
             make-xdg-surface-listener
             make-xdg-wm-base-listener))
 
-(define %null-pointer (make-pointer 0))
-
 ;;; protocol name
 (define XDG_WM_BASE_NAME "xdg_wm_base")
 

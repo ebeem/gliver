@@ -29,8 +29,6 @@
             make-river-xkb-binding-v1-listener
             make-river-xkb-bindings-seat-v1-listener))
 
-(define %null-pointer (make-pointer 0))
-
 ;;; protocol name
 (define RIVER_XKB_BINDINGS_V1_NAME "river_xkb_bindings_v1")
 

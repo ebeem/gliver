@@ -30,8 +30,6 @@
 			memset
 ))
 
-(define %null-pointer (make-pointer 0))
-
 (define *mfd-cloexec* 1)
 (define *mfd-allow-sealing* 2)
 

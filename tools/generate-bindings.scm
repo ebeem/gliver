@@ -297,79 +297,79 @@ Uses actual interface pointers for new_id args in the same protocol,
     (when (pair? requests)
       (emit-line ";;; " iface-name " requests")
       (emit-nl)
-      (let loop ((reqs requests) (opcode 0))
-        (when (pair? reqs)
-          (let* ((req       (car reqs))
-                 (req-name  (assq-ref req 'name))
-                 (req-type  (assq-ref req 'type))
-                 (desc      (assq-ref req 'description))
-                 (args      (assq-ref req 'args))
-                 (func-name (request-func-name iface-name req-name))
-                 (is-destructor? (and req-type (string=? req-type "destructor")))
-                 (new-id-arg (find (lambda (a) (string=? (assq-ref a 'type) "new_id")) args))
-                 (param-args (filter (lambda (a) (not (string=? (assq-ref a 'type) "new_id"))) args))
-                 (param-names (map (lambda (a) (snake->kebab (assq-ref a 'name))) param-args))
-                 (is-constructor? (and new-id-arg (not is-destructor?))))
+      (define (docstring-or desc default)
+		(if (and desc (not (string-null? desc))) desc default))
 
-            (cond
-             ;; destructor
-             (is-destructor?
-              (emit ";;; " req-name ": opcode " opcode " (destructor)\n")
-              (emit-line "(define (" func-name " proxy)")
-              (emit-line "  \"" (escape-string (if (string=? desc "") "Destroy the object." desc)) "\"")
-              (emit-line "  (unless (null-pointer? proxy)")
-              (emit-line "    (wl-marshal-request-destroy proxy " opcode ")))")
-              (emit-nl))
+	  (define (emit-proc-header name params doc)
+		(emit "(define (" name " proxy")
+		(for-each (lambda (p) (emit " " p)) params)
+		(emit-line ")")
+		(emit-line "  \"" (escape-string doc) "\""))
 
-             ;; constructor
-             (is-constructor?
-              (let* ((new-iface (assq-ref new-id-arg 'interface))
-                     (in-protocol? (and new-iface (member new-iface iface-names))))
-                (emit ";;; " req-name ": opcode " opcode " (constructor)\n")
-                (emit "(define (" func-name " proxy")
-                (for-each (lambda (p) (emit " " p)) param-names)
-                (emit-line ")")
-                (emit-line "  \"" (escape-string
-                                   (if (string=? desc "")
-                                       (format #f "Create a ~a object." (or new-iface "new"))
-                                       desc)) "\"")
-                (emit-line "  (wl-marshal-constructor proxy " opcode)
-                (emit-line "    " (if in-protocol? (iface-var-name new-iface) "%null-pointer"))
-                (emit-line "    (wl-proxy-get-version proxy)")
-                (emit "    (list")
-                (for-each
-                 (lambda (arg)
-                   (if (string=? (assq-ref arg 'type) "new_id")
-                       (emit " (cons 'new-id 0)")
-                       (emit " (cons " (arg-marshal-tag arg) " "
-                             (snake->kebab (assq-ref arg 'name)) ")")))
-                 args)
-                (emit-line ")))")
-                (emit-nl)))
+	  (define (emit-marshal-arg arg)
+		(if (string=? (assq-ref arg 'type) "new_id")
+			(emit " (cons 'new-id 0)")
+			(emit " (cons " (arg-marshal-tag arg) " "
+				  (snake->kebab (assq-ref arg 'name)) ")")))
 
-             ;; regular request
-             (else
-              (emit ";;; " req-name ": opcode " opcode "\n")
-              (emit "(define (" func-name " proxy")
-              (for-each (lambda (p) (emit " " p)) param-names)
-              (emit-line ")")
-              (emit-line "  \"" (escape-string (if (string=? desc "")
-                                                   (format #f "Send ~a request." req-name)
-                                                   desc)) "\"")
-              (if (null? args)
-                  (emit-line "  (wl-marshal-request proxy " opcode " '()))")
-                  (begin
-                    (emit "  (wl-marshal-request proxy " opcode "\n")
-                    (emit "    (list")
-                    (for-each
-                     (lambda (arg)
-                       (emit " (cons " (arg-marshal-tag arg) " "
-                             (snake->kebab (assq-ref arg 'name)) ")"))
-                     args)
-                    (emit-line ")))")))
-              (emit-nl))))
+	  (define (emit-args-list args)
+		(emit "    (list")
+		(for-each emit-marshal-arg args)
+		(emit-line ")))"))
 
-          (loop (cdr reqs) (1+ opcode)))))))
+	  (define (emit-destructor req-name opcode func-name desc)
+		(emit ";;; " req-name ": opcode " opcode " (destructor)\n")
+		(emit-proc-header func-name '() (docstring-or desc "Destroy the object."))
+		(emit-line "  (unless (null-pointer? proxy)")
+		(emit-line "    (wl-marshal-request-destroy proxy " opcode ")))")
+		(emit-nl))
+
+	  (define (emit-constructor req-name opcode func-name desc args param-names new-id-arg)
+		(let* ((new-iface    (assq-ref new-id-arg 'interface))
+			   (in-protocol? (and new-iface (member new-iface iface-names)))
+			   (target-iface (if in-protocol? (iface-var-name new-iface) "%null-pointer"))
+			   (doc          (docstring-or desc (format #f "Create a ~a object." (or new-iface "new")))))
+		  (emit ";;; " req-name ": opcode " opcode " (constructor)\n")
+		  (emit-proc-header func-name param-names doc)
+		  (emit-line "  (wl-marshal-constructor proxy " opcode)
+		  (emit-line "    " target-iface)
+		  (emit-line "    (wl-proxy-get-version proxy)")
+		  (emit-args-list args)
+		  (emit-nl)))
+
+	  (define (emit-regular-request req-name opcode func-name desc args param-names)
+		(let ((doc (docstring-or desc (format #f "Send ~a request." req-name))))
+		  (emit ";;; " req-name ": opcode " opcode "\n")
+		  (emit-proc-header func-name param-names doc)
+		  (if (null? args)
+			  (emit-line "  (wl-marshal-request proxy " opcode " '()))")
+			  (begin
+				(emit "  (wl-marshal-request proxy " opcode "\n")
+				(emit-args-list args)))
+		  (emit-nl)))
+
+	  (define (emit-request req opcode)
+		(let* ((req-name    (assq-ref req 'name))
+			   (req-type    (assq-ref req 'type))
+			   (desc        (assq-ref req 'description))
+			   (args        (or (assq-ref req 'args) '()))
+			   (func-name   (request-func-name iface-name req-name))
+			   (is-new-id?  (lambda (a) (string=? (assq-ref a 'type) "new_id")))
+			   (new-id-arg  (find is-new-id? args))
+			   (param-args  (filter (lambda (a) (not (is-new-id? a))) args))
+			   (param-names (map (lambda (a) (snake->kebab (assq-ref a 'name))) param-args)))
+		  (cond
+		   ((and req-type (string=? req-type "destructor"))
+			(emit-destructor req-name opcode func-name desc))
+		   (new-id-arg
+			(emit-constructor req-name opcode func-name desc args param-names new-id-arg))
+		   (else
+			(emit-regular-request req-name opcode func-name desc args param-names)))))
+
+	  (let loop ((reqs requests) (opcode 0))
+		(when (pair? reqs)
+		  (emit-request (car reqs) opcode)
+		  (loop (cdr reqs) (1+ opcode)))))))
 
 ;;; code generation event handlers
 (define (emit-event-handlers iface)
@@ -546,10 +546,6 @@ The listener takes one callback argument per event."
                 (emit "\n            " (car exps)))
             (loop (cdr exps) #f)))
         (emit-line "))")
-        (emit-nl)
-
-        ;; %null-pointer
-        (emit-line "(define %null-pointer (make-pointer 0))")
         (emit-nl)
 
         ;; protocol name constant

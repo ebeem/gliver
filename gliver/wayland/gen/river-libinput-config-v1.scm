@@ -161,8 +161,6 @@
             make-river-libinput-device-v1-listener
             make-river-libinput-config-v1-listener))
 
-(define %null-pointer (make-pointer 0))
-
 ;;; protocol name
 (define RIVER_LIBINPUT_CONFIG_V1_NAME "river_libinput_config_v1")
 

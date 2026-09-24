@@ -68,8 +68,6 @@
       (log-error "Make sure libwayland-client is installed.")
       #f)))
 
-(define %null-pointer (make-pointer 0))
-
 ;;; helper to look up a function, returns a dummy if the lib is unavailable
 (define (wl-func name return-type arg-types)
   (if libwayland-client

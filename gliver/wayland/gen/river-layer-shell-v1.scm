@@ -25,8 +25,6 @@
             make-river-layer-shell-output-v1-listener
             make-river-layer-shell-seat-v1-listener))
 
-(define %null-pointer (make-pointer 0))
-
 ;;; protocol name
 (define RIVER_LAYER_SHELL_V1_NAME "river_layer_shell_v1")
 

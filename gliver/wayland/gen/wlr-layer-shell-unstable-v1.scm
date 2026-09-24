@@ -45,8 +45,6 @@
             set-zwlr-layer-surface-v1-closed-handler!
             make-zwlr-layer-surface-v1-listener))
 
-(define %null-pointer (make-pointer 0))
-
 ;;; protocol name
 (define ZWLR_LAYER_SHELL_V1_NAME "zwlr_layer_shell_v1")
 
