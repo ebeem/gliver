@@ -100,7 +100,5 @@ As in ~Emacs~ and ~StumpWM~, you can always get documentation natively through ~
 | =C-SPC h v= | Variables                        |
 | =C-SPC h f= | Functions                        |
 | =C-SPC h k= | Key sequences                    |
-| =C-SPC h c= | Commands                         |
-| =C-SPC h w= | Find key sequences for a command |
 
 You can also drop into the Live REPL at any time to inspect state.
