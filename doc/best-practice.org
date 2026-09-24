@@ -29,3 +29,7 @@ Key pressed: key=s-h action=cmd-container-focus-left mode=normal persist=#f
 * add hooks using function symbols rather than function reference or lambda
 
 Reason: more friendly repl experience allowing overwriting the hook function to be applied rather than referencing the old implementation which requires updating the hooks as well.
+
+* always perform guard checks and validation to avoid exceptions
+
+Reason: if an exception is expected, also catch it and log errors. Gliver shouldn't crash even if user extend it via hooks or defining commands.
