@@ -9,9 +9,9 @@
 			 (gliver contrib layout manual)
 			 (gliver contrib utils systemd)
 			 (gliver contrib keybindings gliver)
-			 (gliver contrib ui which-key)
-			 (gliver contrib ui integrations rofi)
-			 (gliver contrib ui container-border))
+			 (gliver contrib ui overlay which-key)
+             (gliver contrib ui gleui)
+			 (gliver contrib ui container container-border))
 
 (set! *terminal* "foot")
 (set! *theme-font* "Iosevka Nerd Font Bold")
@@ -27,7 +27,7 @@
 (keybindings-gliver-install-default!)
 
 ;; install rofi as dmenu and app launcher (you can replace it with fuzzel, fzf, etc)
-(rofi-install-all!)
+(gleui-install-all!)
 ;; enable which-key module for keybindings discovery
 (which-key-enable!)
 ;; enable container-border to add border to active container/window
