@@ -20,8 +20,6 @@
 
 - Free of a single enforced layout; you can use manual, alternating, scrolling, or any other layout you write yourself.
 
-- Minimalist, relying on integrating with other tools for UI (like ~fuzzel~ / ~rofi~ for input).
-
 *** Gliver is not:
 
 - A standalone Wayland compositor; it runs alongside River as a client and delegates all rendering and hardware duties.
