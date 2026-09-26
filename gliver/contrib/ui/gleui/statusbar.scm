@@ -37,7 +37,7 @@
   #:use-module (gliver river connector)
   #:use-module (gliver contrib commands)
   #:use-module (gliver contrib ui statusbar base)
-  #:use-module (gliver contrib ui statusbar modules)
+  #:use-module (gliver contrib ui statusbar)
   #:declarative? #f
   #:export (
 			statusbar-output-state-hit-boxes
@@ -76,13 +76,12 @@
 			statusbar-on-tick
 			statusbar-render-output!
 			statusbar-render-all!
+			statusbar-active-modules
+			statusbar-attach-active-module-hooks!
 			statusbar-update-all!
 			statusbar-start-timer-thread!
-			statusbar-on-workspace-changed
-			statusbar-on-window-changed
 			statusbar-on-output-created
 			statusbar-on-output-dimensions
-			statusbar-on-keyboard-layout-changed
 			statusbar-enable!
 			statusbar-disable!
 			statusbar-toggle!
@@ -456,6 +455,7 @@ Example: (list 'window (make-module-mpd))"
 (define (statusbar-cleanup-all!)
   "Clean up all statusbar resources across all outputs."
   (set! *statusbar-enabled* #f)
+  (statusbar-detach-module-hooks!)
   (set! *timer-thread-running?* #f)
   (when (and *statusbar-timer-thread* (thread? *statusbar-timer-thread*))
     (catch #t (lambda () (cancel-thread *statusbar-timer-thread*)) (lambda _ #f))
@@ -627,9 +627,21 @@ Runs at most once per second and only re-renders when module contents change."
                     (statusbar-render-and-commit! output state))))
               (manager-outputs *manager*))))
 
+(define (statusbar-active-modules)
+  "Return list of all configured module instances across all sections."
+  (delete-duplicates
+   (append (statusbar-resolve-modules *statusbar-modules-left*)
+           (statusbar-resolve-modules *statusbar-modules-center*)
+           (statusbar-resolve-modules *statusbar-modules-right*))))
+
+(define (statusbar-attach-active-module-hooks!)
+  "Attach event hooks for all active statusbar modules."
+  (statusbar-attach-module-hooks! (statusbar-active-modules)))
+
 (define (statusbar-update-all!)
   "Force immediate update of all modules and re-render."
   (when (and *statusbar-enabled* *manager*)
+    (statusbar-attach-active-module-hooks!)
     (for-each (lambda (output)
                 (statusbar-update-all-modules! output))
               (manager-outputs *manager*))
@@ -654,19 +666,6 @@ Runs at most once per second and only re-renders when module contents change."
                  (loop)))
              (set! *timer-thread-running?* #f))))))
 
-(define (statusbar-on-workspace-changed . args)
-  (when *statusbar-enabled*
-    (statusbar-render-all!)))
-
-(define (statusbar-on-window-changed . args)
-  (when *statusbar-enabled*
-    (let ((win-mod (statusbar-ensure-module 'window)))
-      (when (statusbar-module? win-mod)
-        (let ((old-text (statusbar-module-text win-mod)))
-          (statusbar-module-update! win-mod (output-current))
-          (when (not (equal? old-text (statusbar-module-text win-mod)))
-            (statusbar-render-all!)))))))
-
 (define (statusbar-on-output-created output)
   (when *statusbar-enabled*
     (statusbar-init-output! output)))
@@ -684,23 +683,7 @@ Runs at most once per second and only re-renders when module contents change."
             (when (and (pointer? surface) (not (null-pointer? surface)))
               (wl-surface-commit surface))))))))
 
-(define (statusbar-on-keyboard-layout-changed . args)
-  (when *statusbar-enabled*
-    (let ((kb-mod (statusbar-ensure-module 'keyboard)))
-      (when (statusbar-module? kb-mod)
-        (let ((old-text (statusbar-module-text kb-mod)))
-          (statusbar-module-update! kb-mod (output-current))
-          (when (not (equal? old-text (statusbar-module-text kb-mod)))
-            (statusbar-render-all!)))))))
-
-(gliver-hook-add! *workspace-switch-hook* 'statusbar-on-workspace-changed)
-(gliver-hook-add! *workspace-created-hook* 'statusbar-on-workspace-changed)
-(gliver-hook-add! *workspace-destroy-hook* 'statusbar-on-workspace-changed)
-(gliver-hook-add! *window-focused-hook* 'statusbar-on-window-changed)
-(gliver-hook-add! *window-unfocused-hook* 'statusbar-on-window-changed)
-(gliver-hook-add! *window-title-changed-hook* 'statusbar-on-window-changed)
-(gliver-hook-add! *window-destroyed-hook* 'statusbar-on-window-changed)
-(gliver-hook-add! *keyboard-layout-changed-hook* 'statusbar-on-keyboard-layout-changed)
+(gliver-hook-add! *statusbar-render-request-hook* 'statusbar-render-all!)
 (gliver-hook-add! *output-created-hook* 'statusbar-on-output-created)
 (gliver-hook-add! *output-dimensions-changed-hook* 'statusbar-on-output-dimensions)
 (gliver-hook-add! *output-destroy-hook* 'statusbar-cleanup-output!)
@@ -716,6 +699,7 @@ Runs at most once per second and only re-renders when module contents change."
     (for-each statusbar-init-output! (manager-outputs *manager*)))
   (statusbar-seat-setup!)
   (statusbar-start-timer-thread!)
+  (statusbar-attach-active-module-hooks!)
   (statusbar-update-all!))
 
 (define-command (statusbar-disable!)
