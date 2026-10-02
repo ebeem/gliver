@@ -174,7 +174,7 @@ Example: (list 'window (make-module-mpd))"
       (let ((bg-rgba (parse-hex-color-rgba *statusbar-bg-color*)))
         (when bg-rgba
           (apply (lambda (r g b a) (cairo-set-source-rgba cr r g b a)) bg-rgba)
-          (cairo-rounded-rectangle cr bar-x bar-y bar-w bar-h *statusbar-border-radius*)
+          (statusbar-cairo-rounded-rectangle cr bar-x bar-y bar-w bar-h *statusbar-border-radius*)
           (cairo-fill cr))))
 
     ;; draw border
@@ -185,7 +185,7 @@ Example: (list 'window (make-module-mpd))"
         (when border-rgba
           (apply (lambda (r g b a) (cairo-set-source-rgba cr r g b a)) border-rgba)
           (cairo-set-line-width cr *statusbar-border-width*)
-          (cairo-rounded-rectangle cr bar-x bar-y bar-w bar-h *statusbar-border-radius*)
+          (statusbar-cairo-rounded-rectangle cr bar-x bar-y bar-w bar-h *statusbar-border-radius*)
           (cairo-stroke cr))))
 
     ;; compute dimensions of a single module
@@ -222,7 +222,7 @@ Example: (list 'window (make-module-mpd))"
                   (let ((rgba-bg (parse-hex-color-rgba bg)))
                     (when rgba-bg
                       (apply (lambda (r g b a) (cairo-set-source-rgba cr r g b a)) rgba-bg)
-                      (cairo-rounded-rectangle cr x pill-y mod-w pill-h radius)
+                      (statusbar-cairo-rounded-rectangle cr x pill-y mod-w pill-h radius)
                       (cairo-fill cr))))
 
                 ;; module border
@@ -233,7 +233,7 @@ Example: (list 'window (make-module-mpd))"
                       (when rgba-b
                         (apply (lambda (r g b a) (cairo-set-source-rgba cr r g b a)) rgba-b)
                         (cairo-set-line-width cr b-width)
-                        (cairo-rounded-rectangle cr x pill-y mod-w pill-h radius)
+                        (statusbar-cairo-rounded-rectangle cr x pill-y mod-w pill-h radius)
                         (cairo-stroke cr)))))
 
                 ;; text & icon

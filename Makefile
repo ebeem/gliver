@@ -80,6 +80,22 @@ MODULES =   gliver/core/logs.scm \
 			gliver/contrib/ui/components/toast.scm \
 			gliver/contrib/ui/overlay/which-key.scm \
 			gliver/contrib/ui/container/container-border.scm \
+			gliver/contrib/ui/statusbar.scm \
+			gliver/contrib/ui/statusbar/base.scm \
+			gliver/contrib/ui/statusbar/workspaces.scm \
+			gliver/contrib/ui/statusbar/window.scm \
+			gliver/contrib/ui/statusbar/cpu.scm \
+			gliver/contrib/ui/statusbar/cpu-temp.scm \
+			gliver/contrib/ui/statusbar/ram.scm \
+			gliver/contrib/ui/statusbar/date.scm \
+			gliver/contrib/ui/statusbar/weather.scm \
+			gliver/contrib/ui/statusbar/battery.scm \
+			gliver/contrib/ui/statusbar/disk.scm \
+			gliver/contrib/ui/statusbar/network.scm \
+			gliver/contrib/ui/statusbar/net-speed.scm \
+			gliver/contrib/ui/statusbar/keyboard.scm \
+			gliver/contrib/ui/statusbar/mpd.scm \
+			gliver/contrib/ui/statusbar/custom.scm \
 			gliver/contrib/ui/gleui/base.scm \
 			gliver/contrib/ui/gleui/palette.scm \
 			gliver/contrib/ui/gleui/launcher.scm \
