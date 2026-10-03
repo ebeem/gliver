@@ -8,14 +8,19 @@
   #:use-module (system foreign)
   #:use-module (rnrs bytevectors)
   #:use-module (ice-9 format)
+  #:use-module (ice-9 regex)
   #:use-module (ice-9 string-fun)
   #:use-module (gliver core ffi)
   #:use-module (gliver core logs)
   #:export (
-            pango-escape-markup
-            pango-measure-text
-            pango-draw-text
-            ))
+			*libpango*
+			*libpangocairo*
+			*libgobject*
+			pango-escape-markup
+			pango-escape-ampersands
+			pango-measure-text
+			pango-draw-text
+))
 
 ;; core pango engine
 (define *libpango*
@@ -47,7 +52,7 @@
       (log-error "Make sure pango is installed.")
       #f)))
 
-(define (pango-func lib name ret-type arg-types)
+(define (%pango-func lib name ret-type arg-types)
   (if lib
       (catch #t
         (lambda ()
@@ -56,7 +61,7 @@
           (lambda _ (error (format #f "Pango symbol ~a not found in library" name)))))
       (lambda _ (error (format #f "Pango library not loaded, cannot call ~a" name)))))
 
-(define (cairo-context->raw-pointer cr)
+(define (%cairo-context->raw-pointer cr)
   "Extract the raw C (cairo_t *) pointer from a Guile cairo context SMOB or pointer."
   (cond
    ((not cr) #f)
@@ -70,44 +75,44 @@
 
 ;;; ffi bindings
 (define %pango-cairo-create-layout
-  (pango-func *libpangocairo* "pango_cairo_create_layout" '* (list '*)))
+  (%pango-func *libpangocairo* "pango_cairo_create_layout" '* (list '*)))
 
 (define %pango-cairo-show-layout
-  (pango-func *libpangocairo* "pango_cairo_show_layout" void (list '* '*)))
+  (%pango-func *libpangocairo* "pango_cairo_show_layout" void (list '* '*)))
 
 (define %pango-font-description-from-string
-  (pango-func *libpango* "pango_font_description_from_string" '* (list '*)))
+  (%pango-func *libpango* "pango_font_description_from_string" '* (list '*)))
 
 (define %pango-font-description-free
-  (pango-func *libpango* "pango_font_description_free" void (list '*)))
+  (%pango-func *libpango* "pango_font_description_free" void (list '*)))
 
 (define %pango-layout-set-text
-  (pango-func *libpango* "pango_layout_set_text" void (list '* '* int)))
+  (%pango-func *libpango* "pango_layout_set_text" void (list '* '* int)))
 
 (define %pango-layout-set-markup
-  (pango-func *libpango* "pango_layout_set_markup" void (list '* '* int)))
+  (%pango-func *libpango* "pango_layout_set_markup" void (list '* '* int)))
 
 (define %pango-layout-set-font-description
-  (pango-func *libpango* "pango_layout_set_font_description" void (list '* '*)))
+  (%pango-func *libpango* "pango_layout_set_font_description" void (list '* '*)))
 
 (define %pango-layout-set-width
-  (pango-func *libpango* "pango_layout_set_width" void (list '* int)))
+  (%pango-func *libpango* "pango_layout_set_width" void (list '* int)))
 
 (define %pango-layout-set-ellipsize
-  (pango-func *libpango* "pango_layout_set_ellipsize" void (list '* int)))
+  (%pango-func *libpango* "pango_layout_set_ellipsize" void (list '* int)))
 
 (define %pango-layout-set-alignment
-  (pango-func *libpango* "pango_layout_set_alignment" void (list '* int)))
+  (%pango-func *libpango* "pango_layout_set_alignment" void (list '* int)))
 
 (define %pango-layout-get-pixel-size
-  (pango-func *libpango* "pango_layout_get_pixel_size" void (list '* '* '*)))
+  (%pango-func *libpango* "pango_layout_get_pixel_size" void (list '* '* '*)))
 
 (define %g-object-unref
-  (pango-func *libgobject* "g_object_unref" void (list '*)))
+  (%pango-func *libgobject* "g_object_unref" void (list '*)))
 
 ;; layout lifecycle helper
-(define-syntax-rule (with-pango-layout (layout cr) body ...)
-  (let* ((raw (cairo-context->raw-pointer cr))
+(define-syntax-rule (%with-pango-layout (layout cr) body ...)
+  (let* ((raw (%cairo-context->raw-pointer cr))
          (layout (if (and raw (not (null-pointer? raw)))
                      (%pango-cairo-create-layout raw)
                      #f)))
@@ -131,6 +136,41 @@
         "\"" "&quot;")
        "'" "&apos;")
       (pango-escape-markup (format #f "~a" str))))
+
+(define %entity-rx
+  (make-regexp "^&(amp|lt|gt|quot|apos|#[0-9]+|#x[0-9a-fA-F]+);"))
+
+(define (pango-escape-ampersands str)
+  "Escape & characters that don't form a valid Pango markup."
+  (if (not (string? str))
+      str
+      (let ((len (string-length str)))
+
+        ;; if an entity starts at POS, return its length or #f
+        (define (%entity-length pos)
+          (let ((m (regexp-exec %entity-rx (substring str pos len))))
+            (and m (match:end m 0))))
+
+        ;; preserve the entity or escape the '&'
+        (define (%handle-ampersand amp-pos acc)
+          (let ((ent-len (%entity-length amp-pos)))
+            (if ent-len
+                ;; valid entity, keep it
+                (%step (+ amp-pos ent-len)
+                      (cons (substring str amp-pos (+ amp-pos ent-len)) acc))
+                ;; bare ampersand, escape it
+                (%step (+ amp-pos 1)
+                      (cons "&amp;" acc)))))
+
+        ;; scan text up to the next '&'
+        (define (%step pos acc)
+          (let ((amp (string-index str #\& pos)))
+            (if (not amp)
+                (string-concatenate-reverse (cons (substring str pos len) acc))
+                (let ((prefix (substring str pos amp)))
+                  (%handle-ampersand amp (cons prefix acc))))))
+
+        (%step 0 '()))))
 
 (define (%setup-layout! layout text-or-markup font font-size markup? width ellipsize align)
   (when (or font font-size)
@@ -161,9 +201,13 @@
                (else 0))))
       (%pango-layout-set-alignment layout al)))
 
-  (let ((ptr (string->pointer (if (string? text-or-markup)
-                                  text-or-markup
-                                  (format #f "~a" (or text-or-markup ""))))))
+  (let* ((raw-str (if (string? text-or-markup)
+                      text-or-markup
+                      (format #f "~a" (or text-or-markup ""))))
+         (final-str (if markup?
+                        (pango-escape-ampersands raw-str)
+                        raw-str))
+         (ptr (string->pointer final-str)))
     (if markup?
         (%pango-layout-set-markup layout ptr -1)
         (%pango-layout-set-text layout ptr -1))))
@@ -173,7 +217,7 @@
                              (width #f) (ellipsize 'none))
   "Measure text or markup size in pixels on Cairo context CR.
 Returns (values width height)."
-  (with-pango-layout (layout cr)
+  (%with-pango-layout (layout cr)
 					 (if (or (not layout) (null-pointer? layout))
 						 (values 0 0)
 						 (begin
@@ -196,9 +240,9 @@ Returns (values width height)."
           (py (if y (exact->inexact y) 0.0)))
       (when (not (pointer? cr))
         (cairo-move-to cr px py))))
-  (let ((raw-cr (cairo-context->raw-pointer cr)))
+  (let ((raw-cr (%cairo-context->raw-pointer cr)))
     (when (and raw-cr (not (null-pointer? raw-cr)))
-      (with-pango-layout (layout raw-cr)
+      (%with-pango-layout (layout raw-cr)
 						 (when (and layout (not (null-pointer? layout)))
 						   (%setup-layout! layout text-or-markup font font-size markup? width ellipsize align)
 						   (%pango-cairo-show-layout raw-cr layout))))))
