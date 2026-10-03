@@ -94,6 +94,20 @@ Here's a wishlist of features for the ~Gliver~ project:
 - Implementing animations driven by Guile timers over the =set_dimensions= Wayland request.
 - Tab-list showing the contents of the current container.
 
+** GUI Components & Daemons
+
+| Name                 | Gliver Component            | Good Alternatives |
+|----------------------+-----------------------------+-------------------|
+| output configuration | core built-in               | kanashi           |
+| input configuration  | core built-in               | channel, kwim     |
+| topbar / statusbar   | gleui statusbar             | waybar, swaybar   |
+| screen locker        | TODO                        | swaylock, waylock |
+| idle management      | TODO                        | swayidle          |
+| screen capture       | not planned                 | flameshot, grim   |
+| application launcher | gleui launcher              | fuzzel, rofi      |
+| notification daemon  | TODO (based on gleui toast) | mako, dunst       |
+| wallpaper manager    | core built-in               | swaybg, awww      |
+
 ** Help
 
 As in ~Emacs~ and ~StumpWM~, you can always get documentation natively through ~Gliver~:
