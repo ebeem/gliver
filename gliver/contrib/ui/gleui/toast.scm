@@ -55,19 +55,19 @@
 			gleui-toast-install!
 ))
 
-(define-var *gleui-toast-font* #f
+(define-var *gleui-toast-font* *theme-font*
 			"Font family used for gleui toast notifications (default: *theme-font*).")
 (define-var *gleui-toast-font-size* 12
 			"Font size used for gleui toast notifications (default: *theme-font-size*).")
-(define-var *gleui-toast-bg-color* #f
+(define-var *gleui-toast-bg-color* *theme-bg-main*
 			"Background color for gleui toast notifications (default: *theme-bg-main*).")
-(define-var *gleui-toast-fg-color* #f
+(define-var *gleui-toast-fg-color* *theme-fg-main*
 			"Text color for gleui toast notifications (default: *theme-fg-main*).")
-(define-var *gleui-toast-border-color* #f
+(define-var *gleui-toast-border-color* *theme-border-color*
 			"Border color for gleui toast notifications (default: *theme-border-color*).")
 (define-var *gleui-toast-border-width* 2
 			"Border width in pixels for gleui toast notifications (default: *theme-border-width*).")
-(define-var *gleui-toast-border-radius* #f
+(define-var *gleui-toast-border-radius* *theme-border-radius*
 			"Corner border radius in pixels for gleui toast notifications (default: *theme-border-radius*).")
 (define-var *gleui-toast-location* 8
 			"Gliver position (1-9) for gleui toast notifications.")
