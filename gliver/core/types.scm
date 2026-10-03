@@ -157,6 +157,8 @@
 			container-urgent?
 			%container-destroyed-set!
 			container-destroyed?
+			%container-wl-node-proxy-set!
+			container-wl-node-proxy
 			container?
 			%make-container
 			make-container
@@ -525,7 +527,8 @@ Other parameters (x, y, width, height, wl-proxy) can be provided as keyword argu
 (define-record-type <container>
   (%make-container id workspace windows window-current window-previous
                    x y width height
-                   urgent? destroyed?)
+                   urgent? destroyed?
+                   wl-node-proxy)
   container?
   (id                 container-id                 %container-id-set!)
   (workspace          container-workspace          %container-workspace-set!)
@@ -537,17 +540,19 @@ Other parameters (x, y, width, height, wl-proxy) can be provided as keyword argu
   (width              container-width              %container-width-set!)
   (height             container-height             %container-height-set!)
   (urgent?            container-urgent?            %container-urgent-set!)
-  (destroyed?         container-destroyed?         %container-destroyed-set!))
+  (destroyed?         container-destroyed?         %container-destroyed-set!)
+  (wl-node-proxy      container-wl-node-proxy      %container-wl-node-proxy-set!))
 
 (define* (make-container #:key (workspace #f) (x 0) (y 0) (width 0) (height 0)
-                               (urgent? #f) (destroyed? #f))
+                               (urgent? #f) (destroyed? #f) (wl-node-proxy #f))
   "Create a new flat container."
   (%make-container (container-id-next!) workspace '() #f #f
                    (inexact->exact (floor x))
 				   (inexact->exact (floor y))
 				   (inexact->exact (floor width))
 				   (inexact->exact (floor height))
-                   urgent? destroyed?))
+                   urgent? destroyed?
+                   wl-node-proxy))
 
 ;;; window: similar to an emacs buffer and stumpwm window
 ;;; a single application (like a terminal, a browser, or an editor)

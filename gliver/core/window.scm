@@ -29,7 +29,6 @@
 									  workspace-windows
 									  workspace-focused?
 									  workspace-visible?)
-  #:autoload (gliver contrib ui container container-border) (container-wl-node)
   #:export (
 			window-next
 			window-prev
@@ -297,8 +296,8 @@ window record will be updated accordingly to have a node reference."
   (let ((node (window-node-get! window)))
 	(when node
 	  (let* ((container (window-container window))
-			 (container-node (container-wl-node container)))
-		(if container-node
+			 (container-node (and container (container-wl-node container))))
+		(if (and container-node (pointer? container-node) (not (null-pointer? container-node)))
 			(with-render-sequence
 			 ((@ (gliver river wm-node-manager) wm-node-place-below!) node container-node))
 			(with-render-sequence
