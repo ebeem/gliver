@@ -7,9 +7,10 @@
 #   make clean    - remove build artifacts
 #   make gen      - regenerate protocol bindings
 
-PREFIX     ?= /usr/local
+PREFIX     ?= /usr
 BINDIR     ?= $(PREFIX)/bin
 GUILEDIR   ?= $(PREFIX)/share/guile/site/3.0
+SESSIONDIR ?= $(PREFIX)/share/wayland-sessions
 GUILE      ?= guile
 GUILD      ?= guild
 PKG_CONFIG ?= pkg-config
@@ -164,7 +165,7 @@ install: compile
 	# compiled modules
 	@for g in $(COMPILED); do \
 		if [ -f $$g ]; then \
-			install -Dm644 $$g $(DESTDIR)$(GUILEDIR)/$$g; \
+			install -Dm644 $$g $(DESTDIR)$(GUILEDIR)/$${g#build/}; \
 		fi; \
 	done
 
@@ -177,11 +178,16 @@ install: compile
 	# example config
 	install -Dm644 doc/examples/init.scm \
 		$(DESTDIR)$(PREFIX)/share/gliver/examples/init.scm
+
+	# wayland session desktop file
+	install -Dm644 gliver.desktop \
+		$(DESTDIR)$(SESSIONDIR)/gliver.desktop
 	@echo "Done. You may need to add $(GUILEDIR) to GUILE_LOAD_PATH."
 
 uninstall:
 	rm -f $(DESTDIR)$(BINDIR)/gliver
 	rm -f $(DESTDIR)$(BINDIR)/gliver-repl
+	rm -f $(DESTDIR)$(SESSIONDIR)/gliver.desktop
 	rm -rf $(DESTDIR)$(GUILEDIR)/gliver
 	rm -rf $(DESTDIR)$(PREFIX)/share/gliver
 

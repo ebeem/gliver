@@ -61,6 +61,9 @@ Because ~gliver~ depends on ~river~, the cleanest way to run them is by passing 
 river -c gliver
 #+END_SRC
 
+Note: ~make install~ installs a Wayland session file (=gliver.desktop=) into =$(SESSIONDIR)= (by default =$(PREFIX)/share/wayland-sessions=), you can use your favorite display manager to run ~gliver~ and you should see it listed along with other window managers/candidates available on your system.
+
+
 *** Running
 
 You can run Gliver directly from source without installing it on your system, which is ideal for rapid development and testing. Ensure that River is running first, then execute:

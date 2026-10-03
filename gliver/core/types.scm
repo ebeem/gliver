@@ -4,6 +4,7 @@
 ;;; SPDX-License-Identifier: GPL-3.0-or-later
 
 (define-module (gliver core types)
+  #:declarative? #f
   #:use-module (ice-9 format)
   #:use-module (ice-9 match)
   #:use-module (srfi srfi-1)
@@ -399,27 +400,27 @@
 
 (define (manager-window-number-next!)
   (let ((id *window-number-next*))
-    (var-set! *window-number-next* (1+ id))
+    (set! *window-number-next* (1+ id))
     id))
 
 (define (manager-workspace-number-next!)
   (let ((id *workspace-number-next*))
-    (var-set! *workspace-number-next* (1+ id))
+    (set! *workspace-number-next* (1+ id))
     id))
 
 (define (manager-output-number-next!)
   (let ((id *output-number-next*))
-    (var-set! *output-number-next* (1+ id))
+    (set! *output-number-next* (1+ id))
     id))
 
 (define (manager-tag-next!)
   (let ((bit *next-tag-bit*))
-    (var-set! *next-tag-bit* (ash bit 1))
+    (set! *next-tag-bit* (ash bit 1))
     bit))
 
 (define (container-id-next!)
   (let ((n *container-id-next*))
-    (var-set! *container-id-next* (1+ n))
+    (set! *container-id-next* (1+ n))
     n))
 
 (define *manager*
@@ -467,7 +468,7 @@
 (define* (make-output name
                       #:key (id (manager-output-number-next!)) (wl-proxy #f) (x 0) (y 0) (width 1920) (height 1080)
 					  (workspaces '()) (workspace-current #f) (workspace-previous #f) (wl-output #f) (wallpaper #f)
-                      (usable-x 0) (usable-y 0) (usable-width #f) (usable-height #f))
+                      (usable-x #f) (usable-y #f) (usable-width #f) (usable-height #f))
   "Create a new <output> record with the given NAME.
 Other parameters (x, y, width, height, wl-proxy) can be provided as keyword arguments."
   (%make-output id name
@@ -475,7 +476,8 @@ Other parameters (x, y, width, height, wl-proxy) can be provided as keyword argu
                 width height
 				workspaces workspace-current workspace-previous
                 wl-proxy wl-output wallpaper
-                usable-x usable-y
+                (or usable-x x)
+                (or usable-y y)
                 (or usable-width width)
                 (or usable-height height)))
 

@@ -1,0 +1,6 @@
+[Desktop Entry]
+Name=Gliver
+Comment=A River Based Emacs-inspired Wayland window manager
+Exec=river -c gliver
+Type=Application
+Keywords=wayland;compositor;window manager;river;stumpwm;emacs;

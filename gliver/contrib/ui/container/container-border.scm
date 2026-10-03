@@ -37,7 +37,6 @@
 			ensure-container-border-state!
 			container-wl-surface
 			container-wl-shell-surface
-			container-wl-node
 			container-wl-buffer
 			container-border-color
 			container-shm-buffer-create
@@ -109,16 +108,6 @@
   "Set the Wayland shell surface foreign pointer associated with CONTAINER."
   (let ((state (ensure-container-border-state! container)))
     (%cbs-wl-shell-surface-set! state val)))
-
-(define (container-wl-node container)
-  "Get the Wayland node foreign pointer associated with CONTAINER."
-  (and-let* ((state (get-container-border-state container)))
-    (%cbs-wl-node state)))
-
-(define (%container-wl-node-set! container val)
-  "Set the Wayland node foreign pointer associated with CONTAINER."
-  (let ((state (ensure-container-border-state! container)))
-    (%cbs-wl-node-set! state val)))
 
 (define (container-wl-buffer container)
   "Get the Wayland buffer foreign pointer associated with CONTAINER."
@@ -270,7 +259,7 @@ Returns a Wayland buffer foreign pointer."
                (node (wm-shell-surface-node-get! shell-surf)))
           (%container-wl-surface-set! container surface)
           (%container-wl-shell-surface-set! container shell-surf)
-          (%container-wl-node-set! container node)
+          (%container-wl-node-proxy-set! container node)
           (log-debug "Initialized border surface for container ~a" (container-id container)))))))
 
 (define (container-border-cleanup! container)
@@ -278,9 +267,10 @@ Returns a Wayland buffer foreign pointer."
   (when (container? container)
     (let ((surface (container-wl-surface container))
           (shell-surf (container-wl-shell-surface container))
-          (node (container-wl-node container))
+          (node (container-wl-node-proxy container))
           (buffer (container-wl-buffer container)))
       (hashq-remove! *container-border-table* container)
+      (%container-wl-node-proxy-set! container #f)
       (when (and node (pointer? node) (not (null-pointer? node)))
         (catch #t (lambda () (wm-node-destroy! node)) (lambda _ #f)))
       (when (and shell-surf (pointer? shell-surf) (not (null-pointer? shell-surf)))
@@ -293,7 +283,7 @@ Returns a Wayland buffer foreign pointer."
 (define (container-border-hide! container)
   "Hide container border by moving its node offscreen."
   (when (and (container? container) (not (container-destroyed? container)))
-    (let ((node (container-wl-node container)))
+    (let ((node (container-wl-node-proxy container)))
       (when (and node (pointer? node) (not (null-pointer? node)))
         (with-render-sequence
          (wm-node-position-set! node -10000 -10000))))))
@@ -316,7 +306,7 @@ Returns a Wayland buffer foreign pointer."
      (let* ((state (ensure-container-border-state! container))
             (surface (container-wl-surface container))
             (shell-surf (container-wl-shell-surface container))
-            (node (container-wl-node container))
+            (node (container-wl-node-proxy container))
             (color (container-border-color container))
             (border-w *container-border-width*)
             (border-r *container-border-radius*)
@@ -402,7 +392,7 @@ Returns a Wayland buffer foreign pointer."
 
 (define (container-border-on-workspace-switch workspace prev-workspace)
   "Handle workspace switch, hide previous containers and render current containers."
-  (when prev-workspace
+  (when (and prev-workspace (not (eq? prev-workspace workspace)))
     (for-each container-border-hide! (workspace-containers prev-workspace)))
   (when workspace
     (for-each container-border-render! (workspace-containers workspace))))

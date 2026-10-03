@@ -296,7 +296,7 @@ window record will be updated accordingly to have a node reference."
   (let ((node (window-node-get! window)))
 	(when node
 	  (let* ((container (window-container window))
-			 (container-node (and container (container-wl-node container))))
+			 (container-node (and container (container-wl-node-proxy container))))
 		(if (and container-node (pointer? container-node) (not (null-pointer? container-node)))
 			(with-render-sequence
 			 ((@ (gliver river wm-node-manager) wm-node-place-below!) node container-node))
@@ -667,7 +667,7 @@ Must be called in a ~render_sequence~."
 
 (define (window-on-workspace-switch workspace prev-workspace)
   "Handle workspace switch: hide windows of previous workspace and show windows of current workspace."
-  (when (and prev-workspace (workspace? prev-workspace))
+  (when (and prev-workspace (workspace? prev-workspace) (not (eq? prev-workspace workspace)))
     (for-each window-hide! (workspace-windows prev-workspace)))
   (when (and workspace (workspace? workspace))
     (for-each window-show! (workspace-windows workspace))))

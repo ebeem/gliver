@@ -130,16 +130,11 @@ of layer surfaces."
     (when output-proxy
       (let ((output (output-find-by-proxy output-proxy)))
         (when output
-          (let* ((out-x (output-x output))
-                 (out-y (output-y output))
-                 ;; river_layer_shell_v1 non_exclusive_area x and y are in global coordinate space
-                 (local-x (max 0 (- x out-x)))
-                 (local-y (max 0 (- y out-y))))
-            (log-debug "Layer shell non-exclusive area: output=~a global=~ax~a+(~a+~a) local=~ax~a+(~a+~a)"
-                       (output-name output) x y width height local-x local-y width height)
-            (output-usable-area-set! output local-x local-y width height)
-            ;; fire the output change hook so layout and ui react
-            (gliver-hook-run! *output-change-hook* output)))))))
+          (log-debug "Layer shell non-exclusive area: output=~a global=~ax~a+(~a+~a)"
+                     (output-name output) x y width height)
+          (output-usable-area-set! output x y width height)
+          ;; fire the output change hook so layout and ui react
+          (gliver-hook-run! *output-change-hook* output))))))
 
 (define (find-seat-for-ls-proxy ls-seat-proxy)
   "Look up the seat wl-proxy for a given layer shell seat proxy."

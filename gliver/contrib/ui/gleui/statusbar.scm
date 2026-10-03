@@ -380,11 +380,13 @@ Example: (list 'window (make-module-mpd))"
      ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_NONE))
 
   (define (update-usable-area! total-height)
-    (let* ((cur-w  (output-width output))
+    (let* ((cur-x  (output-x output))
+           (cur-y  (output-y output))
+           (cur-w  (output-width output))
            (cur-h  (output-height output))
-           (new-uy (if (eq? *statusbar-position* 'bottom) 0 total-height))
+           (new-uy (+ cur-y (if (eq? *statusbar-position* 'bottom) 0 total-height)))
            (new-uh (max 0 (- cur-h total-height))))
-      (output-usable-area-set! output 0 new-uy cur-w new-uh)
+      (output-usable-area-set! output cur-x new-uy cur-w new-uh)
       (gliver-hook-run! *output-change-hook* output)))
 
   (define (make-output-listener state)
@@ -449,7 +451,7 @@ Example: (list 'window (make-module-mpd))"
           (when (and (pointer? buffer) (not (null-pointer? buffer)))
             (catch #t (lambda () (wl-buffer-destroy buffer)) (lambda _ #f))))
         ;; restore usable area to full output dimensions
-        (output-usable-area-set! output 0 0 (output-width output) (output-height output))
+        (output-usable-area-set! output (output-x output) (output-y output) (output-width output) (output-height output))
         (gliver-hook-run! *output-change-hook* output)))))
 
 (define (statusbar-cleanup-all!)
