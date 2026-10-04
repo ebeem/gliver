@@ -695,8 +695,8 @@ Other parameters (x, y, width, height, wl-proxy) can be provided as keyword argu
                        (= (pointer-address output-proxy) addr))))
               outputs))))
 
-(define (output-find-by-name output-name)
-  (find (lambda (s) (string=? (output-name s) output-name))
+(define (output-find-by-name target-name)
+  (find (lambda (s) (string=? (output-name s) target-name))
         (manager-outputs *manager*)))
 
 (define (output-find-by-id target-id)
