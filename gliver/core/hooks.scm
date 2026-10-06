@@ -118,6 +118,7 @@
 			*output-change-hook*
 			*output-focus-hook*
 			*output-wallpaper-changed-hook*
+			*output-statusbar-changed-hook*
 			%seat-created-hook
 			%seat-removed-hook
 			%seat-object-id-changed-hook
@@ -371,6 +372,7 @@ If a function fails, the error is logged and the script is terminated."
 (define *output-change-hook*				(make-gliver-hook 'output-change 1))
 (define *output-focus-hook*					(make-gliver-hook 'output-focus 2))
 (define *output-wallpaper-changed-hook* (make-gliver-hook 'output-wallpaper-changed 2))
+(define *output-statusbar-changed-hook* (make-gliver-hook 'output-statusbar-changed 2))
 
 (define %seat-created-hook                  (make-gliver-hook '%seat-created 3))
 (define %seat-removed-hook                  (make-gliver-hook '%seat-removed 2))

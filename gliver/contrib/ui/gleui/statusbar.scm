@@ -51,6 +51,7 @@
 			statusbar-output-state-layer-surface
 			statusbar-output-state-surface
 			statusbar-output-state-output
+			statusbar-output-state-statusbar
 			statusbar-output-state?
 			*statusbar-output-table*
 			*pointer-surface*
@@ -82,16 +83,22 @@
 			statusbar-start-timer-thread!
 			statusbar-on-output-created
 			statusbar-on-output-dimensions
+			statusbar-on-output-statusbar-changed
 			statusbar-enable!
 			statusbar-disable!
 			statusbar-toggle!
 			statusbar-reload!
+			statusbar-output-set!
+			statusbar-output-remove!
+			statusbar-output-toggle!
+			statusbar-assign-all!
 ))
 
 (define-record-type <statusbar-output-state>
   (%make-statusbar-output-state output surface layer-surface buffer
                                 rendered-width rendered-height configured?
-                                listener pointer pointer-listener hit-boxes)
+                                listener pointer pointer-listener hit-boxes
+                                statusbar)
   statusbar-output-state?
   (output           statusbar-output-state-output)
   (surface          statusbar-output-state-surface          %statusbar-output-state-surface-set!)
@@ -103,7 +110,8 @@
   (listener         statusbar-output-state-listener         %statusbar-output-state-listener-set!)
   (pointer          statusbar-output-state-pointer          %statusbar-output-state-pointer-set!)
   (pointer-listener statusbar-output-state-pointer-listener %statusbar-output-state-pointer-listener-set!)
-  (hit-boxes        statusbar-output-state-hit-boxes        %statusbar-output-state-hit-boxes-set!))
+  (hit-boxes        statusbar-output-state-hit-boxes        %statusbar-output-state-hit-boxes-set!)
+  (statusbar        statusbar-output-state-statusbar        %statusbar-output-state-statusbar-set!))
 
 ;; each output has its own statusbar instance
 (define *statusbar-output-table* (make-hash-table))
@@ -151,165 +159,178 @@ Example: (list 'window (make-module-mpd))"
 
 (define (statusbar-render-surface! output state cr width height)
   "Render the full statusbar for OUTPUT onto Cairo context CR."
-  (let* ((bar-x 0)
-         (bar-y 0)
-         (bar-w width)
-         (bar-h height)
-         (font (or *statusbar-font* *theme-font* "Sans"))
-         (font-size (or *statusbar-font-size* *theme-font-size* 11))
-         (new-hit-boxes '())
-         (record-hit-box!
-          (lambda (x1 y1 x2 y2 mod custom-data)
-            (set! new-hit-boxes
-                  (cons (vector x1 y1 x2 y2 mod custom-data)
-                        new-hit-boxes)))))
+  (let ((bar (or (statusbar-output-state-statusbar state)
+                 (output-statusbar output))))
+    (when (and bar (statusbar? bar))
+      (let* ((bar-x 0)
+             (bar-y 0)
+             (bar-w width)
+             (bar-h height)
+             (font (or (statusbar-font bar) *statusbar-font*))
+             (font-size (or (statusbar-font-size bar) *statusbar-font-size*))
+             (bg-color (or (statusbar-bg-color bar) *statusbar-bg-color*))
+             (border-color (or (statusbar-border-color bar) *statusbar-border-color*))
+             (border-width (or (statusbar-border-width bar) *statusbar-border-width*))
+             (border-radius (or (statusbar-border-radius bar) *statusbar-border-radius*))
+             (fg-color (or (statusbar-fg-color bar) *statusbar-fg-color*))
+             (spacing (or (statusbar-spacing bar) *statusbar-spacing*))
+             (padding-x (or (statusbar-padding-x bar) *statusbar-padding-x*))
+             (pill-radius (or (statusbar-pill-radius bar) *statusbar-pill-radius*))
+             (pill-pad-x (or (statusbar-pill-padding-x bar) *statusbar-pill-padding-x*))
+             (pill-pad-y (or (statusbar-pill-padding-y bar) *statusbar-pill-padding-y*))
+             (new-hit-boxes '())
+             (record-hit-box!
+              (lambda (x1 y1 x2 y2 mod custom-data)
+                (set! new-hit-boxes
+                      (cons (vector x1 y1 x2 y2 mod custom-data)
+                            new-hit-boxes)))))
 
-    ;; transparent surface
-    (cairo-set-operator cr 'clear)
-    (cairo-paint cr)
-    (cairo-set-operator cr 'over)
+		;; compute dimensions of a single module
+        (define (measure-module mod)
+          (let ((m-fn (statusbar-module-measure-fn mod)))
+            (if (procedure? m-fn)
+                (m-fn cr mod output)
+                (let* ((txt (or (statusbar-module-text mod) ""))
+                       (pad-x (or (statusbar-module-padding-x mod) pill-pad-x))
+                       (pad-y (or (statusbar-module-padding-y mod) pill-pad-y)))
+                  (if (string-null? txt)
+                      (values 0 0)
+                      (let-values (((tw th) (pango-measure-text cr txt #:font font #:font-size font-size)))
+                        (values (+ tw (* pad-x 2))
+                                (+ th (* pad-y 2)))))))))
 
-    ;; draw background
-    (when (and *statusbar-bg-color* (> (string-length *statusbar-bg-color*) 0))
-      (let ((bg-rgba (parse-hex-color-rgba *statusbar-bg-color*)))
-        (when bg-rgba
-          (apply (lambda (r g b a) (cairo-set-source-rgba cr r g b a)) bg-rgba)
-          (statusbar-cairo-rounded-rectangle cr bar-x bar-y bar-w bar-h *statusbar-border-radius*)
-          (cairo-fill cr))))
+		;; draw a single module
+        (define (render-module mod x y mod-w mod-h)
+          (let ((r-fn (statusbar-module-render-fn mod)))
+            (if (procedure? r-fn)
+                (r-fn cr x y mod-w mod-h mod output record-hit-box!)
+                (let* ((txt (or (statusbar-module-text mod) ""))
+                       (pad-x (or (statusbar-module-padding-x mod) pill-pad-x))
+                       (pad-y (or (statusbar-module-padding-y mod) pill-pad-y))
+                       (radius (or (statusbar-module-border-radius mod) pill-radius))
+                       (bg (or (statusbar-module-bg-color mod) bg-color))
+                       (fg (or (statusbar-module-fg-color mod) fg-color))
+                       (pill-h (min bar-h mod-h))
+                       (pill-y (+ y (/ (- bar-h pill-h) 2.0))))
+                  (unless (string-null? txt)
 
-    ;; draw border
-    (when (and (> *statusbar-border-width* 0)
-               *statusbar-border-color*
-               (> (string-length *statusbar-border-color*) 0))
-      (let ((border-rgba (parse-hex-color-rgba *statusbar-border-color*)))
-        (when border-rgba
-          (apply (lambda (r g b a) (cairo-set-source-rgba cr r g b a)) border-rgba)
-          (cairo-set-line-width cr *statusbar-border-width*)
-          (statusbar-cairo-rounded-rectangle cr bar-x bar-y bar-w bar-h *statusbar-border-radius*)
-          (cairo-stroke cr))))
+                    ;; module background
+                    (when bg
+                      (let ((rgba-bg (parse-hex-color-rgba bg)))
+                        (when rgba-bg
+                          (apply (lambda (r g b a) (cairo-set-source-rgba cr r g b a)) rgba-bg)
+                          (statusbar-cairo-rounded-rectangle cr x pill-y mod-w pill-h radius)
+                          (cairo-fill cr))))
 
-    ;; compute dimensions of a single module
-    (define (measure-module mod)
-      (let ((m-fn (statusbar-module-measure-fn mod)))
-        (if (procedure? m-fn)
-            (m-fn cr mod output)
-            (let* ((txt (or (statusbar-module-text mod) ""))
-                   (pad-x (or (statusbar-module-padding-x mod) *statusbar-pill-padding-x*))
-                   (pad-y (or (statusbar-module-padding-y mod) *statusbar-pill-padding-y*)))
-              (if (string-null? txt)
-                  (values 0 0)
-                  (let-values (((tw th) (pango-measure-text cr txt #:font font #:font-size font-size)))
-                    (values (+ tw (* pad-x 2))
-                            (+ th (* pad-y 2)))))))))
+                    ;; module border
+                    (let ((b-color (statusbar-module-border-color mod))
+                          (b-width (or (statusbar-module-border-width mod) 0)))
+                      (when (and b-color (> b-width 0))
+                        (let ((rgba-b (parse-hex-color-rgba b-color)))
+                          (when rgba-b
+                            (apply (lambda (r g b a) (cairo-set-source-rgba cr r g b a)) rgba-b)
+                            (cairo-set-line-width cr b-width)
+                            (statusbar-cairo-rounded-rectangle cr x pill-y mod-w pill-h radius)
+                            (cairo-stroke cr)))))
 
-    ;; draw a single module
-    (define (render-module mod x y mod-w mod-h)
-      (let ((r-fn (statusbar-module-render-fn mod)))
-        (if (procedure? r-fn)
-            (r-fn cr x y mod-w mod-h mod output record-hit-box!)
-            (let* ((txt (or (statusbar-module-text mod) ""))
-                   (pad-x (or (statusbar-module-padding-x mod) *statusbar-pill-padding-x*))
-                   (pad-y (or (statusbar-module-padding-y mod) *statusbar-pill-padding-y*))
-                   (radius (or (statusbar-module-border-radius mod) *statusbar-pill-radius*))
-                   (bg (or (statusbar-module-bg-color mod) *theme-bg-main*))
-                   (fg (or (statusbar-module-fg-color mod) *statusbar-fg-color* *theme-text*))
-                   (pill-h (min bar-h mod-h))
-                   (pill-y (+ y (/ (- bar-h pill-h) 2.0))))
-              (unless (string-null? txt)
+                    ;; text & icon
+                    (let-values (((tw th) (pango-measure-text cr txt #:font font #:font-size font-size)))
+                      (let ((rgba-fg (parse-hex-color-rgba fg))
+                            (tx (+ x pad-x))
+                            (ty (+ pill-y (/ (- pill-h th) 2.0))))
+                        (when rgba-fg
+                          (apply (lambda (r g b a) (cairo-set-source-rgba cr r g b a)) rgba-fg)
+                          (cairo-move-to cr tx ty)
+                          (pango-draw-text cr txt
+                                           #:x tx
+                                           #:y ty
+                                           #:font font
+                                           #:font-size font-size
+                                           #:markup? #f))))
 
-                ;; module background
-                (when bg
-                  (let ((rgba-bg (parse-hex-color-rgba bg)))
-                    (when rgba-bg
-                      (apply (lambda (r g b a) (cairo-set-source-rgba cr r g b a)) rgba-bg)
-                      (statusbar-cairo-rounded-rectangle cr x pill-y mod-w pill-h radius)
-                      (cairo-fill cr))))
+                    ;; record hit box for clicks
+                    (record-hit-box! x pill-y (+ x mod-w) (+ pill-y pill-h) mod #f))))))
 
-                ;; module border
-                (let ((b-color (statusbar-module-border-color mod))
-                      (b-width (or (statusbar-module-border-width mod) 0)))
-                  (when (and b-color (> b-width 0))
-                    (let ((rgba-b (parse-hex-color-rgba b-color)))
-                      (when rgba-b
-                        (apply (lambda (r g b a) (cairo-set-source-rgba cr r g b a)) rgba-b)
-                        (cairo-set-line-width cr b-width)
-                        (statusbar-cairo-rounded-rectangle cr x pill-y mod-w pill-h radius)
-                        (cairo-stroke cr)))))
+        (define (filter-visible mods)
+          "Filter active visible modules."
+          (filter (lambda (mod)
+                    (let ((visible? (statusbar-module-visible? mod)))
+                      (if (procedure? visible?)
+                          (visible? mod output)
+                          visible?)))
+                  mods))
 
-                ;; text & icon
-                (let-values (((tw th) (pango-measure-text cr txt #:font font #:font-size font-size)))
-                  (let ((rgba-fg (parse-hex-color-rgba fg))
-                        (tx (+ x pad-x))
-                        (ty (+ pill-y (/ (- pill-h th) 2.0))))
-                    (when rgba-fg
-                      (apply (lambda (r g b a) (cairo-set-source-rgba cr r g b a)) rgba-fg)
-                      (cairo-move-to cr tx ty)
-                      (pango-draw-text cr txt
-                                       #:x tx
-                                       #:y ty
-                                       #:font font
-                                       #:font-size font-size
-                                       #:markup? #f))))
+        (define (measure-list mods)
+          "Measure list of modules, returns list of (mod . (width . height))."
+          (map (lambda (mod)
+                 (let-values (((mw mh) (measure-module mod)))
+                   (cons mod (cons mw mh))))
+               mods))
 
-                ;; record hit box for clicks
-                (record-hit-box! x pill-y (+ x mod-w) (+ pill-y pill-h) mod #f))))))
+        ;; render a sequence of measured modules starting from start-x
+        (define (render-section-modules! items start-x)
+          (let loop ((rem items) (cur-x start-x))
+            (when (pair? rem)
+              (match (car rem)
+                ((mod mw . mh)
+                 (when (> mw 0)
+                   (render-module mod cur-x bar-y mw mh))
+                 (loop (cdr rem) (if (> mw 0) (+ cur-x mw spacing) cur-x)))))))
 
-    (define (filter-visible mods)
-	  "Filter active visible modules."
-      (filter (lambda (mod)
-                (let ((visible? (statusbar-module-visible? mod)))
-                  (if (procedure? visible?)
-					  ;; visible? maybe a lambda procedure (module output) => bool
-					  (visible? mod output)
-					  visible?)))
-              mods))
+        ;; transparent surface
+        (cairo-set-operator cr 'clear)
+        (cairo-paint cr)
+        (cairo-set-operator cr 'over)
 
-    (let* ((left-mods (filter-visible (statusbar-resolve-modules *statusbar-modules-left*)))
-           (center-mods (filter-visible (statusbar-resolve-modules *statusbar-modules-center*)))
-           (right-mods (filter-visible (statusbar-resolve-modules *statusbar-modules-right*)))
-           (spacing *statusbar-spacing*))
+        ;; draw background
+        (when (and bg-color (> (string-length bg-color) 0))
+          (let ((bg-rgba (parse-hex-color-rgba bg-color)))
+            (when bg-rgba
+              (apply (lambda (r g b a) (cairo-set-source-rgba cr r g b a)) bg-rgba)
+              (statusbar-cairo-rounded-rectangle cr bar-x bar-y bar-w bar-h border-radius)
+              (cairo-fill cr))))
 
-      (define (measure-list mods)
-		"Measure list of modules, returns list of (mod . (width . height))."
-        (map (lambda (mod)
-               (let-values (((mw mh) (measure-module mod)))
-                 (cons mod (cons mw mh))))
-             mods))
+        ;; draw border
+        (when (and (> border-width 0)
+                   border-color
+                   (> (string-length border-color) 0))
+          (let ((border-rgba (parse-hex-color-rgba border-color)))
+            (when border-rgba
+              (apply (lambda (r g b a) (cairo-set-source-rgba cr r g b a)) border-rgba)
+              (cairo-set-line-width cr border-width)
+              (statusbar-cairo-rounded-rectangle cr bar-x bar-y bar-w bar-h border-radius)
+              (cairo-stroke cr))))
 
-      (let* ((left-measured (measure-list left-mods))
-             (center-measured (measure-list center-mods))
-             (right-measured (measure-list right-mods))
-             (sum-widths (lambda (measured)
-                           (if (null? measured)
-                               0
-                               (+ (apply + (map cadr measured))
-                                  (* (max 0 (- (length measured) 1)) spacing))))))
+        (let* ((left-raw (if bar (statusbar-modules-left bar) *statusbar-modules-left*))
+               (center-raw (if bar (statusbar-modules-center bar) *statusbar-modules-center*))
+               (right-raw (if bar (statusbar-modules-right bar) *statusbar-modules-right*))
+               (left-mods (filter-visible (statusbar-resolve-modules left-raw)))
+               (center-mods (filter-visible (statusbar-resolve-modules center-raw)))
+               (right-mods (filter-visible (statusbar-resolve-modules right-raw)))
+               (left-measured (measure-list left-mods))
+               (center-measured (measure-list center-mods))
+               (right-measured (measure-list right-mods))
+               (sum-widths (lambda (measured)
+                             (if (null? measured)
+                                 0
+                                 (+ (apply + (map cadr measured))
+                                    (* (max 0 (- (length measured) 1)) spacing)))))
+               (right-total-w (sum-widths right-measured))
+               (right-start-x (- (+ bar-x bar-w) padding-x right-total-w))
+               (center-total-w (sum-widths center-measured))
+               (center-start-x (+ bar-x (/ (- bar-w center-total-w) 2.0))))
 
-		;; render a sequence of measured modules starting from start-x
-		(define (render-section-modules! items start-x)
-		  (let loop ((rem items) (cur-x start-x))
-			(when (pair? rem)
-			  (match (car rem)
-				((mod mw . mh)
-				 (when (> mw 0)
-				   (render-module mod cur-x bar-y mw mh))
-				 (loop (cdr rem) (if (> mw 0) (+ cur-x mw spacing) cur-x)))))))
+          ;; render left section
+          (render-section-modules! left-measured (+ bar-x padding-x))
 
-		;; render left section
-		(render-section-modules! left-measured (+ bar-x *statusbar-padding-x*))
+          ;; render right section
+          (render-section-modules! right-measured right-start-x)
 
-		;; render right section
-		(let* ((right-total-w (sum-widths right-measured))
-			   (right-start-x (- (+ bar-x bar-w) *statusbar-padding-x* right-total-w)))
-		  (render-section-modules! right-measured right-start-x))
+          ;; render center section
+          (render-section-modules! center-measured center-start-x))
 
-		;; render center section
-		(let* ((center-total-w (sum-widths center-measured))
-			   (center-start-x (+ bar-x (/ (- bar-w center-total-w) 2.0))))
-		  (render-section-modules! center-measured center-start-x))))
-
-    ;; store updated hit-boxes in output state
-    (%statusbar-output-state-hit-boxes-set! state (reverse new-hit-boxes))))
+        ;; store updated hit-boxes in output state
+        (%statusbar-output-state-hit-boxes-set! state (reverse new-hit-boxes))))))
 
 (define (statusbar-render-and-commit! output state)
   "Render statusbar surface for OUTPUT and commit to Wayland compositor."
@@ -352,88 +373,90 @@ Example: (list 'window (make-module-mpd))"
             (if (valid-pointer? bound) bound %null-pointer))
           %null-pointer)))
 
-  (define (calculate-anchor)
-    (if (eq? *statusbar-position* 'bottom)
-        (+ ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM
-           ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT
-           ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT)
-        (+ ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP
-           ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT
-           ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT)))
+  (define (calculate-anchor position)
+	(if (eq? position 'bottom)
+		(+ ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM
+		   ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT
+		   ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT)
+		(+ ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP
+		   ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT
+		   ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT)))
 
-  (define (calculate-initial-width)
-    (max 100 (- (output-width output) *statusbar-margin-left* *statusbar-margin-right*)))
+  (let ((bar (output-statusbar output)))
+    (when (and bar
+               (statusbar? bar)
+               (globals-ready?)
+               (not (hash-table-ref/default *statusbar-output-table* (output-id output) #f)))
+      (log-info "Statusbar: Initializing statusbar on output ~a..." (output-name output))
 
-  (define (configure-layer-surface! layer-surf anchor total-height)
-    ;; width 0 asks the compositor to allocate full width according to anchor
-    (zwlr-layer-surface-v1-set-size layer-surf 0 *statusbar-height*)
-    (zwlr-layer-surface-v1-set-anchor layer-surf anchor)
-    (zwlr-layer-surface-v1-set-margin
-     layer-surf
-     *statusbar-margin-top*
-     *statusbar-margin-right*
-     *statusbar-margin-bottom*
-     *statusbar-margin-left*)
-    (zwlr-layer-surface-v1-set-exclusive-zone layer-surf total-height)
-    (zwlr-layer-surface-v1-set-keyboard-interactivity
-     layer-surf
-     ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_NONE))
+      (let* ((bar-pos       (statusbar-position bar))
+             (bar-height    (statusbar-height bar))
+             (margin-top    (statusbar-margin-top bar))
+             (margin-bottom (statusbar-margin-bottom bar))
+             (margin-left   (statusbar-margin-left bar))
+             (margin-right  (statusbar-margin-right bar))
+             (total-height  (+ bar-height margin-top margin-bottom))
+             (anchor        (calculate-anchor bar-pos))
+             (init-width    (max 100 (- (output-width output) margin-left margin-right)))
+             (target-wl-out (resolve-target-wl-output))
+             (surface       (wl-compositor-create-surface *wl-compositor*))
+             (layer-surf    (zwlr-layer-shell-v1-get-layer-surface
+                             *zwlr-layer-shell*
+                             surface
+                             target-wl-out
+                             ZWLR_LAYER_SHELL_V1_LAYER_TOP
+                             "gliver-statusbar"))
+             (state         (%make-statusbar-output-state
+                             output surface layer-surf %null-pointer
+                             init-width bar-height #f #f #f #f '() bar)))
 
-  (define (update-usable-area! total-height)
-    (let* ((cur-x  (output-x output))
-           (cur-y  (output-y output))
-           (cur-w  (output-width output))
-           (cur-h  (output-height output))
-           (new-uy (+ cur-y (if (eq? *statusbar-position* 'bottom) 0 total-height)))
-           (new-uh (max 0 (- cur-h total-height))))
-      (output-usable-area-set! output cur-x new-uy cur-w new-uh)
-      (gliver-hook-run! *output-change-hook* output)))
+        (define (configure-layer-surface! layer-surf anchor th)
+          ;; width 0 asks the compositor to allocate full width according to anchor
+          (zwlr-layer-surface-v1-set-size layer-surf 0 bar-height)
+          (zwlr-layer-surface-v1-set-anchor layer-surf anchor)
+          (zwlr-layer-surface-v1-set-margin
+           layer-surf margin-top margin-right margin-bottom margin-left)
+          (zwlr-layer-surface-v1-set-exclusive-zone layer-surf th)
+          (zwlr-layer-surface-v1-set-keyboard-interactivity
+           layer-surf
+           ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_NONE))
 
-  (define (make-output-listener state)
-    (define (handle-configure data proxy serial width height)
-      (zwlr-layer-surface-v1-ack-configure proxy serial)
-      (let ((w (if (> width 0) width (calculate-initial-width)))
-            (h (if (> height 0) height *statusbar-height*)))
-        (%statusbar-output-state-rendered-width-set! state w)
-        (%statusbar-output-state-rendered-height-set! state h)
-        (%statusbar-output-state-configured?-set! state #t)
-        (statusbar-update-all-modules! output)
-        (statusbar-render-and-commit! output state)))
+        (define (update-usable-area! th)
+          (let* ((cur-x  (output-x output))
+                 (cur-y  (output-y output))
+                 (cur-w  (output-width output))
+                 (cur-h  (output-height output))
+                 (new-uy (+ cur-y (if (eq? bar-pos 'bottom) 0 th)))
+                 (new-uh (max 0 (- cur-h th))))
+            (output-usable-area-set! output cur-x new-uy cur-w new-uh)
+            (gliver-hook-run! *output-change-hook* output)))
 
-    (define (handle-close data proxy)
-      (log-info "Statusbar layer surface closed for output ~a" (output-name output))
-      (statusbar-cleanup-output! output))
+        (define (make-output-listener state)
+          (define (handle-configure data proxy serial width height)
+            (zwlr-layer-surface-v1-ack-configure proxy serial)
+            (let ((w (if (> width 0) width init-width))
+                  (h (if (> height 0) height bar-height)))
+              (%statusbar-output-state-rendered-width-set! state w)
+              (%statusbar-output-state-rendered-height-set! state h)
+              (%statusbar-output-state-configured?-set! state #t)
+              (statusbar-update-all-modules! output)
+              (statusbar-render-and-commit! output state)))
 
-    (make-zwlr-layer-surface-v1-listener handle-configure handle-close))
+          (define (handle-close data proxy)
+            (log-info "Statusbar layer surface closed for output ~a" (output-name output))
+            (statusbar-cleanup-output! output))
 
-  (when (and (globals-ready?)
-             (not (hash-table-ref/default *statusbar-output-table* (output-id output) #f)))
-    (log-info "Statusbar: Initializing statusbar on output ~a..." (output-name output))
+          (make-zwlr-layer-surface-v1-listener handle-configure handle-close))
 
-    (let* ((target-wl-out (resolve-target-wl-output))
-           (surface (wl-compositor-create-surface *wl-compositor*))
-           (layer-surf (zwlr-layer-shell-v1-get-layer-surface
-                        *zwlr-layer-shell*
-                        surface
-                        target-wl-out
-                        ZWLR_LAYER_SHELL_V1_LAYER_TOP
-                        "gliver-statusbar"))
-           (anchor (calculate-anchor))
-           (total-height (+ *statusbar-height* *statusbar-margin-top* *statusbar-margin-bottom*))
-           (init-width (calculate-initial-width))
-           (state (%make-statusbar-output-state
-                   output surface layer-surf %null-pointer
-                   init-width *statusbar-height* #f #f #f #f '()))
-           (listener (make-output-listener state)))
-
-      (configure-layer-surface! layer-surf anchor total-height)
-      (%statusbar-output-state-listener-set! state listener)
-      (wl-proxy-add-listener layer-surf listener %null-pointer)
-      (update-usable-area! total-height)
-      (wl-surface-commit surface)
-      (when *wl-display*
-        (wl-display-flush *wl-display*))
-      (hash-table-set! *statusbar-output-table* (output-id output) state))))
+        (let ((listener (make-output-listener state)))
+          (configure-layer-surface! layer-surf anchor total-height)
+          (%statusbar-output-state-listener-set! state listener)
+          (wl-proxy-add-listener layer-surf listener %null-pointer)
+          (update-usable-area! total-height)
+          (wl-surface-commit surface)
+          (when *wl-display*
+            (wl-display-flush *wl-display*))
+          (hash-table-set! *statusbar-output-table* (output-id output) state))))))
 
 (define (statusbar-cleanup-output! output)
   "Destroy statusbar layer surface and clean up resources for OUTPUT."
@@ -452,7 +475,9 @@ Example: (list 'window (make-module-mpd))"
             (catch #t (lambda () (wl-buffer-destroy buffer)) (lambda _ #f))))
         ;; restore usable area to full output dimensions
         (output-usable-area-set! output (output-x output) (output-y output) (output-width output) (output-height output))
-        (gliver-hook-run! *output-change-hook* output)))))
+        (gliver-hook-run! *output-change-hook* output)
+        (when *wl-display*
+          (wl-display-flush *wl-display*))))))
 
 (define (statusbar-cleanup-all!)
   "Clean up all statusbar resources across all outputs."
@@ -519,14 +544,17 @@ Example: (list 'window (make-module-mpd))"
       (let ((match (find-focused-output-and-hit)))
         (when match
           (let* ((state (car match))
-                 (hit (cdr match))
-                 (mod (vector-ref hit 4))
-                 (custom-data (vector-ref hit 5))
-                 (click-fn (statusbar-module-on-click mod))
-                 (out (statusbar-output-state-output state)))
-            (when (procedure? click-fn)
-              (click-fn button *pointer-x* *pointer-y* mod out custom-data)
-              (statusbar-render-output! out)))))))
+                 (bar (statusbar-output-state-statusbar state))
+                 (click-enabled? (statusbar-click-enabled? bar)))
+            (when click-enabled?
+              (let* ((hit (cdr match))
+                     (mod (vector-ref hit 4))
+                     (custom-data (vector-ref hit 5))
+                     (click-fn (statusbar-module-on-click mod))
+                     (out (statusbar-output-state-output state)))
+                (when (procedure? click-fn)
+                  (click-fn button *pointer-x* *pointer-y* mod out custom-data)
+                  (statusbar-render-output! out)))))))))
 
   (define (handle-axis data proxy time axis value)
     ;; axis = 0 means vertical scroll
@@ -534,13 +562,16 @@ Example: (list 'window (make-module-mpd))"
       (let ((match (find-focused-output-and-hit)))
         (when match
           (let* ((state (car match))
-                 (hit (cdr match))
-                 (mod (vector-ref hit 4))
-                 (scroll-fn (statusbar-module-on-scroll mod))
-                 (out (statusbar-output-state-output state)))
-            (when (procedure? scroll-fn)
-              (scroll-fn axis (/ value 256.0) mod out)
-              (statusbar-render-output! out)))))))
+                 (bar (statusbar-output-state-statusbar state))
+                 (click-enabled? (statusbar-click-enabled? bar)))
+            (when click-enabled?
+              (let* ((hit (cdr match))
+                     (mod (vector-ref hit 4))
+                     (scroll-fn (statusbar-module-on-scroll mod))
+                     (out (statusbar-output-state-output state)))
+                (when (procedure? scroll-fn)
+                  (scroll-fn axis (/ value 256.0) mod out)
+                  (statusbar-render-output! out)))))))))
 
   (define (noop-handler . _args) #t)
 
@@ -569,13 +600,15 @@ Example: (list 'window (make-module-mpd))"
 
 (define (statusbar-update-all-modules! output)
   "Update all modules for OUTPUT."
-  (let ((all-mods (delete-duplicates
-                   (append (statusbar-resolve-modules *statusbar-modules-left*)
-                           (statusbar-resolve-modules *statusbar-modules-center*)
-                           (statusbar-resolve-modules *statusbar-modules-right*)))))
-    (for-each (lambda (mod)
-                (statusbar-module-update! mod output))
-              all-mods)))
+  (let ((bar (output-statusbar output)))
+    (when (statusbar? bar)
+      (let ((mods (delete-duplicates
+                   (append (statusbar-resolve-modules (statusbar-modules-left bar))
+                           (statusbar-resolve-modules (statusbar-modules-center bar))
+                           (statusbar-resolve-modules (statusbar-modules-right bar))))))
+        (for-each (lambda (mod)
+                    (statusbar-module-update! mod output))
+                  mods)))))
 
 (define *statusbar-last-tick-time* 0)
 
@@ -587,30 +620,35 @@ Runs at most once per second and only re-renders when module contents change."
       ;; only check intervals once per second even if called every frame
       (when (> now *statusbar-last-tick-time*)
         (set! *statusbar-last-tick-time* now)
-        (let ((dirty? #f)
-              (all-mods (delete-duplicates
-                         (append (statusbar-resolve-modules *statusbar-modules-left*)
-                                 (statusbar-resolve-modules *statusbar-modules-center*)
-                                 (statusbar-resolve-modules *statusbar-modules-right*)))))
+        (when *manager*
           (for-each
-           (lambda (mod)
-             (let ((iv (statusbar-module-interval mod)))
-               (when (and (number? iv) (> iv 0))
-                 (let ((last (statusbar-module-last-poll mod)))
-                   (when (>= (- now last) iv)
-                     (let ((old-text (statusbar-module-text mod))
-                           (old-fg (statusbar-module-fg-color mod))
-                           (old-bg (statusbar-module-bg-color mod))
-                           (cur-out (output-current)))
-                       (statusbar-module-update! mod cur-out)
-                       (when (or (not (equal? old-text (statusbar-module-text mod)))
-                                 (not (equal? old-fg (statusbar-module-fg-color mod)))
-                                 (not (equal? old-bg (statusbar-module-bg-color mod))))
-                         (set! dirty? #t))))))))
-           all-mods)
-
-          (when dirty?
-            (statusbar-render-all!)))))))
+           (lambda (output)
+             (let ((state (hash-table-ref/default *statusbar-output-table* (output-id output) #f))
+                   (bar (output-statusbar output)))
+               (when (and state (statusbar-output-state-configured? state) (statusbar? bar))
+                 (let ((dirty? #f)
+                       (mods (delete-duplicates
+                              (append (statusbar-resolve-modules (statusbar-modules-left bar))
+                                      (statusbar-resolve-modules (statusbar-modules-center bar))
+                                      (statusbar-resolve-modules (statusbar-modules-right bar))))))
+                   (for-each
+                    (lambda (mod)
+                      (let ((iv (statusbar-module-interval mod)))
+                        (when (and (number? iv) (> iv 0))
+                          (let ((last (statusbar-module-last-poll mod)))
+                            (when (>= (- now last) iv)
+                              (let ((old-text (statusbar-module-text mod))
+                                    (old-fg (statusbar-module-fg-color mod))
+                                    (old-bg (statusbar-module-bg-color mod)))
+                                (statusbar-module-update! mod output)
+                                (when (or (not (equal? old-text (statusbar-module-text mod)))
+                                          (not (equal? old-fg (statusbar-module-fg-color mod)))
+                                          (not (equal? old-bg (statusbar-module-bg-color mod))))
+                                  (set! dirty? #t))))))))
+                    mods)
+                   (when dirty?
+                     (statusbar-render-and-commit! output state))))))
+           (manager-outputs *manager*)))))))
 
 (define (statusbar-render-output! output)
   "Re-render statusbar on a specific OUTPUT."
@@ -618,7 +656,9 @@ Runs at most once per second and only re-renders when module contents change."
     (let ((state (hash-table-ref/default *statusbar-output-table* (output-id output) #f)))
       (if (and state (statusbar-output-state-configured? state))
           (statusbar-render-and-commit! output state)
-          (statusbar-init-output! output)))))
+          (let ((bar (output-statusbar output)))
+            (when (statusbar? bar)
+              (statusbar-init-output! output)))))))
 
 (define (statusbar-render-all!)
   "Re-render statusbars across all active outputs."
@@ -630,11 +670,20 @@ Runs at most once per second and only re-renders when module contents change."
               (manager-outputs *manager*))))
 
 (define (statusbar-active-modules)
-  "Return list of all configured module instances across all sections."
-  (delete-duplicates
-   (append (statusbar-resolve-modules *statusbar-modules-left*)
-           (statusbar-resolve-modules *statusbar-modules-center*)
-           (statusbar-resolve-modules *statusbar-modules-right*))))
+  "Return list of all configured module instances across all active output statusbars."
+  (let* ((states (hash-table-values *statusbar-output-table*))
+         (bars (filter statusbar?
+                       (delete-duplicates
+                        (append
+                         (map (lambda (s) (statusbar-output-state-statusbar s)) states)
+                         (if *manager*
+                             (map output-statusbar (manager-outputs *manager*))
+                             '()))))))
+    (delete-duplicates
+     (append-map
+      (lambda (bar)
+        (statusbar-resolve-modules (statusbar-modules bar)))
+      bars))))
 
 (define (statusbar-attach-active-module-hooks!)
   "Attach event hooks for all active statusbar modules."
@@ -670,35 +719,66 @@ Runs at most once per second and only re-renders when module contents change."
 
 (define (statusbar-on-output-created output)
   (when *statusbar-enabled*
-    (statusbar-init-output! output)))
+    (let ((bar (output-statusbar output)))
+      (when (and bar (statusbar? bar))
+        (statusbar-init-output! output)))))
 
 (define (statusbar-on-output-dimensions output prev-w prev-h)
   (when *statusbar-enabled*
-    (let ((state (hash-table-ref/default *statusbar-output-table* (output-id output) #f)))
-      (when state
-        (let ((layer-surf (statusbar-output-state-layer-surface state))
-              (surface (statusbar-output-state-surface state))
-              (total-h (+ *statusbar-height* *statusbar-margin-top* *statusbar-margin-bottom*)))
+    (let ((state (hash-table-ref/default *statusbar-output-table* (output-id output) #f))
+          (bar (output-statusbar output)))
+      (when (and state bar (statusbar? bar))
+        (let* ((layer-surf (statusbar-output-state-layer-surface state))
+               (surface (statusbar-output-state-surface state))
+               (bar-h (statusbar-height bar))
+               (margin-top (statusbar-margin-top bar))
+               (margin-bottom (statusbar-margin-bottom bar))
+               (total-h (+ bar-h margin-top margin-bottom))
+               (bar-pos (statusbar-position bar))
+               (cur-x  (output-x output))
+               (cur-y  (output-y output))
+               (cur-w  (output-width output))
+               (cur-h  (output-height output))
+               (new-uy (+ cur-y (if (eq? bar-pos 'bottom) 0 total-h)))
+               (new-uh (max 0 (- cur-h total-h))))
           (unless (null-pointer? layer-surf)
-            (zwlr-layer-surface-v1-set-size layer-surf 0 *statusbar-height*)
+            (zwlr-layer-surface-v1-set-size layer-surf 0 bar-h)
             (zwlr-layer-surface-v1-set-exclusive-zone layer-surf total-h)
+            (output-usable-area-set! output cur-x new-uy cur-w new-uh)
+            (gliver-hook-run! *output-change-hook* output)
             (when (and (pointer? surface) (not (null-pointer? surface)))
               (wl-surface-commit surface))))))))
+
+(define (statusbar-on-output-statusbar-changed output bar)
+  (when *statusbar-enabled*
+    (when (and output (output? output))
+      (if (and bar (statusbar? bar))
+          (begin
+            (statusbar-cleanup-output! output)
+            (statusbar-init-output! output)
+            (statusbar-attach-active-module-hooks!)
+            (statusbar-render-output! output))
+          (statusbar-cleanup-output! output)))))
 
 (gliver-hook-add! *statusbar-render-request-hook* 'statusbar-render-all!)
 (gliver-hook-add! *output-created-hook* 'statusbar-on-output-created)
 (gliver-hook-add! *output-dimensions-changed-hook* 'statusbar-on-output-dimensions)
 (gliver-hook-add! *output-destroy-hook* 'statusbar-cleanup-output!)
 (gliver-hook-add! *output-removed-hook* 'statusbar-cleanup-output!)
+(gliver-hook-add! *output-statusbar-changed-hook* 'statusbar-on-output-statusbar-changed)
 (gliver-hook-add! *gliver-globals-unbind-hook* 'statusbar-cleanup-all!)
 (gliver-hook-add! *manager-tick-hook* 'statusbar-on-tick)
 
 (define-command (statusbar-enable!)
-  "Enable and show the statusbar across all outputs."
+  "Enable and show the statusbar across configured outputs."
   (var-set! *statusbar-enabled* #t)
   (log-info "Statusbar: enabling...")
   (when *manager*
-    (for-each statusbar-init-output! (manager-outputs *manager*)))
+    (for-each (lambda (output)
+                (let ((bar (output-statusbar output)))
+                  (when (and bar (statusbar? bar))
+                    (statusbar-init-output! output))))
+              (manager-outputs *manager*)))
   (statusbar-seat-setup!)
   (statusbar-start-timer-thread!)
   (statusbar-attach-active-module-hooks!)
@@ -724,3 +804,54 @@ Runs at most once per second and only re-renders when module contents change."
   (statusbar-clear-module-cache!)
   (set! *statusbar-last-tick-time* 0)
   (statusbar-update-all!))
+
+(define (statusbar-output-set! bar . rest)
+  "Attach statusbar BAR to OUTPUT (defaults is current output)."
+  (let ((output (cond
+                 ((and (pair? rest) (eq? (car rest) #:output))
+                  (cadr rest))
+                 ((pair? rest)
+                  (car rest))
+                 (else (output-current)))))
+    (when output
+      (output-statusbar-set! output bar))))
+(command-register! 'statusbar-output-set! statusbar-output-set! '() "Attach statusbar BAR to OUTPUT.")
+
+(define (statusbar-output-remove! . rest)
+  "Remove statusbar from OUTPUT (defaults is current output)."
+  (let ((output (cond
+                 ((and (pair? rest) (eq? (car rest) #:output))
+                  (cadr rest))
+                 ((pair? rest)
+                  (car rest))
+                 (else (output-current)))))
+    (when output
+      (output-statusbar-set! output #f))))
+(command-register! 'statusbar-output-remove! statusbar-output-remove! '() "Remove statusbar from OUTPUT.")
+
+(define (statusbar-output-toggle! . rest)
+  "Toggle statusbar on OUTPUT (defaults is current output)."
+  (let* ((output (cond
+                  ((and (pair? rest) (eq? (car rest) #:output))
+                   (cadr rest))
+                  ((pair? rest)
+                   (car rest))
+                  (else (output-current))))
+         (out (cond
+               ((output? output) output)
+               ((string? output) (output-find-by-name output))
+               ((number? output) (output-find-by-id output))
+               (else #f))))
+    (when (and out (output? out))
+      (if (hash-table-ref/default *statusbar-output-table* (output-id out) #f)
+          (statusbar-cleanup-output! out)
+          (let ((bar (output-statusbar out)))
+            (when (and bar (statusbar? bar))
+              (statusbar-init-output! out)))))))
+(command-register! 'statusbar-output-toggle! statusbar-output-toggle! '() "Toggle statusbar on OUTPUT.")
+
+(define-command (statusbar-assign-all! bar)
+  "Assign statusbar BAR to all currently known outputs."
+  (when *manager*
+    (for-each (lambda (out) (output-statusbar-set! out bar))
+              (manager-outputs *manager*))))

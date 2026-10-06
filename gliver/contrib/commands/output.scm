@@ -9,6 +9,7 @@
   #:export (
 			output-focus-next
 			output-focus-prev
+			output-statusbar-remove
 ))
 
 ;;; output commands
@@ -23,3 +24,9 @@
   (let ((ps (output-prev)))
     (when ps
       (output-focus! ps))))
+
+(define-command (output-statusbar-remove)
+  "Remove statusbar from the current output."
+  (let ((out (output-current)))
+    (when out
+      (output-statusbar-set! out #f))))

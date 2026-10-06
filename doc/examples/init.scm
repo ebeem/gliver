@@ -50,10 +50,12 @@
 (which-key-enable!)
 
 ;; statusbar, optional and can be replaced by other tools like waybar
-(set! *statusbar-modules-left* '())
-(set! *statusbar-modules-center*
-	  (list
-	   (make-module-date
-		#:formats '(" %a %b %d   %H:%M:%S"))))
-(set! *statusbar-modules-right* '())
+(define main-statusbar
+  (make-statusbar
+   #:modules-center
+   (list
+    (make-module-date
+     #:formats '(" %a %b %d   %H:%M:%S")))))
+(statusbar-assign-all! main-statusbar)
 (statusbar-enable!)
+

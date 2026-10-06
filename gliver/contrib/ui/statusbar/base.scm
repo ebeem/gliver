@@ -10,10 +10,62 @@
   #:use-module (ice-9 rdelim)
   #:use-module (srfi srfi-1)
   #:use-module (srfi srfi-9)
+  #:use-module (srfi srfi-9 gnu)
   #:use-module (srfi srfi-69)
   #:use-module (gliver core)
   #:declarative? #f
   #:export (
+			<statusbar>
+			make-statusbar
+			statusbar?
+			statusbar-modules
+			statusbar-id
+			statusbar-position
+			statusbar-position-set!
+			statusbar-height
+			statusbar-height-set!
+			statusbar-margin-top
+			statusbar-margin-top-set!
+			statusbar-margin-bottom
+			statusbar-margin-bottom-set!
+			statusbar-margin-left
+			statusbar-margin-left-set!
+			statusbar-margin-right
+			statusbar-margin-right-set!
+			statusbar-padding-x
+			statusbar-padding-x-set!
+			statusbar-padding-y
+			statusbar-padding-y-set!
+			statusbar-spacing
+			statusbar-spacing-set!
+			statusbar-bg-color
+			statusbar-bg-color-set!
+			statusbar-fg-color
+			statusbar-fg-color-set!
+			statusbar-border-color
+			statusbar-border-color-set!
+			statusbar-border-width
+			statusbar-border-width-set!
+			statusbar-border-radius
+			statusbar-border-radius-set!
+			statusbar-pill-radius
+			statusbar-pill-radius-set!
+			statusbar-pill-padding-x
+			statusbar-pill-padding-x-set!
+			statusbar-pill-padding-y
+			statusbar-pill-padding-y-set!
+			statusbar-font
+			statusbar-font-set!
+			statusbar-font-size
+			statusbar-font-size-set!
+			statusbar-modules-left
+			statusbar-modules-left-set!
+			statusbar-modules-center
+			statusbar-modules-center-set!
+			statusbar-modules-right
+			statusbar-modules-right-set!
+			statusbar-click-enabled?
+			statusbar-click-enabled?-set!
 			statusbar-cairo-rounded-rectangle
 			statusbar-execute-shell-command
 			statusbar-module-event-hooks-set!
@@ -95,6 +147,98 @@ This is usually a common pattern used in many statusbar modules."
              (zero? (status:exit-val status))
              (string-trim-both output))))
     (lambda _ #f)))
+
+(define-record-type <statusbar>
+  (%make-statusbar id position height
+                   margin-top margin-bottom margin-left margin-right
+                   padding-x padding-y spacing
+                   bg-color fg-color border-color border-width border-radius
+                   pill-radius pill-padding-x pill-padding-y
+                   font font-size
+                   modules-left modules-center modules-right
+                   click-enabled?)
+  statusbar?
+  (id               statusbar-id)
+  (position         statusbar-position         statusbar-position-set!)
+  (height           statusbar-height           statusbar-height-set!)
+  (margin-top       statusbar-margin-top       statusbar-margin-top-set!)
+  (margin-bottom    statusbar-margin-bottom    statusbar-margin-bottom-set!)
+  (margin-left      statusbar-margin-left      statusbar-margin-left-set!)
+  (margin-right     statusbar-margin-right     statusbar-margin-right-set!)
+  (padding-x        statusbar-padding-x        statusbar-padding-x-set!)
+  (padding-y        statusbar-padding-y        statusbar-padding-y-set!)
+  (spacing          statusbar-spacing          statusbar-spacing-set!)
+  (bg-color         statusbar-bg-color         statusbar-bg-color-set!)
+  (fg-color         statusbar-fg-color         statusbar-fg-color-set!)
+  (border-color     statusbar-border-color     statusbar-border-color-set!)
+  (border-width     statusbar-border-width     statusbar-border-width-set!)
+  (border-radius    statusbar-border-radius    statusbar-border-radius-set!)
+  (pill-radius      statusbar-pill-radius      statusbar-pill-radius-set!)
+  (pill-padding-x   statusbar-pill-padding-x   statusbar-pill-padding-x-set!)
+  (pill-padding-y   statusbar-pill-padding-y   statusbar-pill-padding-y-set!)
+  (font             statusbar-font             statusbar-font-set!)
+  (font-size        statusbar-font-size        statusbar-font-size-set!)
+  (modules-left     statusbar-modules-left     statusbar-modules-left-set!)
+  (modules-center   statusbar-modules-center   statusbar-modules-center-set!)
+  (modules-right    statusbar-modules-right    statusbar-modules-right-set!)
+  (click-enabled?   statusbar-click-enabled?   statusbar-click-enabled?-set!))
+
+(set-record-type-printer! <statusbar>
+  (lambda (bar port)
+    (format port "#<statusbar id=~a pos=~a height=~a left=~a center=~a right=~a>"
+            (statusbar-id bar)
+            (statusbar-position bar)
+            (statusbar-height bar)
+            (length (statusbar-modules-left bar))
+            (length (statusbar-modules-center bar))
+            (length (statusbar-modules-right bar)))))
+
+(define (statusbar-modules bar)
+  "Return a flat list of all modules in statusbar BAR."
+  (if (statusbar? bar)
+      (append (statusbar-modules-left bar)
+              (statusbar-modules-center bar)
+              (statusbar-modules-right bar))
+      '()))
+
+(define* (make-statusbar #:key
+                         (id (gensym "statusbar-"))
+                         (position *statusbar-position*)
+                         (height *statusbar-height*)
+                         (margin-top *statusbar-margin-top*)
+                         (margin-bottom *statusbar-margin-bottom*)
+                         (margin-left *statusbar-margin-left*)
+                         (margin-right *statusbar-margin-right*)
+                         (padding-x *statusbar-padding-x*)
+                         (padding-y *statusbar-padding-y*)
+                         (spacing *statusbar-spacing*)
+                         (bg-color *statusbar-bg-color*)
+                         (fg-color *statusbar-fg-color*)
+                         (border-color *statusbar-border-color*)
+                         (border-width *statusbar-border-width*)
+                         (border-radius *statusbar-border-radius*)
+                         (pill-radius *statusbar-pill-radius*)
+                         (pill-padding-x *statusbar-pill-padding-x*)
+                         (pill-padding-y *statusbar-pill-padding-y*)
+                         (font *statusbar-font*)
+                         (font-size *statusbar-font-size*)
+                         (modules-left *statusbar-modules-left*)
+                         (modules-center *statusbar-modules-center*)
+                         (modules-right *statusbar-modules-right*)
+                         (click-enabled? *statusbar-click-enabled*)
+                         (output #f))
+  "Construct a new <statusbar> record instance."
+  (let ((bar (%make-statusbar id position height
+                              margin-top margin-bottom margin-left margin-right
+                              padding-x padding-y spacing
+                              bg-color fg-color border-color border-width border-radius
+                              pill-radius pill-padding-x pill-padding-y
+                              font font-size
+                              modules-left modules-center modules-right
+                              click-enabled?)))
+    (when (and output (output? output))
+      (output-statusbar-set! output bar))
+    bar))
 
 (define-record-type <statusbar-module>
   (%make-statusbar-module id name section interval last-poll

@@ -96,6 +96,9 @@
 			output-wallpaper-set!
 			output-wallpaper
 			output-effective-wallpaper
+			output-statusbar-set!
+			output-statusbar
+
 			output?
 			%make-output
 			make-output
@@ -439,7 +442,8 @@
 (define-record-type <output>
   (%make-output id name x y width height workspaces workspace-current
                 workspace-previous wl-proxy wl-output wallpaper
-                usable-x usable-y usable-width usable-height)
+                usable-x usable-y usable-width usable-height
+                statusbar)
   output?
   (id                 output-id                 %output-id-set!)
   (name               output-name               output-name-set!)
@@ -456,7 +460,8 @@
   (usable-x           output-usable-x           %output-usable-x-set!)
   (usable-y           output-usable-y           %output-usable-y-set!)
   (usable-width       output-usable-width       %output-usable-width-set!)
-  (usable-height      output-usable-height      %output-usable-height-set!))
+  (usable-height      output-usable-height      %output-usable-height-set!)
+  (statusbar          output-statusbar          %output-statusbar-set!))
 
 (define (output-usable-area-set! output x y width height)
   "Set the usable area coordinates and dimensions for OUTPUT."
@@ -468,7 +473,8 @@
 (define* (make-output name
                       #:key (id (manager-output-number-next!)) (wl-proxy #f) (x 0) (y 0) (width 1920) (height 1080)
 					  (workspaces '()) (workspace-current #f) (workspace-previous #f) (wl-output #f) (wallpaper #f)
-                      (usable-x #f) (usable-y #f) (usable-width #f) (usable-height #f))
+                      (usable-x #f) (usable-y #f) (usable-width #f) (usable-height #f)
+                      (statusbar #f))
   "Create a new <output> record with the given NAME.
 Other parameters (x, y, width, height, wl-proxy) can be provided as keyword arguments."
   (%make-output id name
@@ -479,7 +485,8 @@ Other parameters (x, y, width, height, wl-proxy) can be provided as keyword argu
                 (or usable-x x)
                 (or usable-y y)
                 (or usable-width width)
-                (or usable-height height)))
+                (or usable-height height)
+                statusbar))
 
 ;;; Seat: A single seat bundles together the different ways
 ;;; a user can provide input e.g. (mouse, keyboard, touch input)
@@ -796,6 +803,11 @@ Priority: workspace -> output -> global *wallpaper* -> #f."
          (out-wp (output-wallpaper output))
          (global-wp (catch #t (lambda () (var-get '*wallpaper*)) (lambda _ #f))))
     (or ws-wp out-wp global-wp #f)))
+
+(define (output-statusbar-set! output statusbar)
+  "Set the statusbar for OUTPUT and run *output-statusbar-changed-hook*."
+  (%output-statusbar-set! output statusbar)
+  (gliver-hook-run! *output-statusbar-changed-hook* output statusbar))
 
 (define* (manager-print-tree #:optional (manager *manager*))
   "Return the manager's state tree as a string."
