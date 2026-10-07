@@ -67,66 +67,60 @@
 (define (container-center-y f)
   (+ (container-y f) (quotient (container-height f) 2)))
 
-(define* (container-in-direction dir #:key (current (container-current))
-								 (workspace (workspace-current)))
-  "Find the closest container in direction DIR from CURRENT ('left, 'right, 'up, 'down)."
-  (if (and current workspace)
-	  (let* ((dir-sym (if (string? dir) (string->symbol dir) dir))
-			 (containers (filter (lambda (f) (not (eq? f current)))
-								 (workspace-containers workspace)))
-			 (cx (container-center-x current))
-			 (cy (container-center-y current))
-			 (curr-x (container-x current))
-			 (curr-y (container-y current))
-			 (curr-w (container-width current))
-			 (curr-h (container-height current))
-			 (curr-x-max (+ curr-x curr-w))
-			 (curr-y-max (+ curr-y curr-h))
-			 (pick-closest
-			  (lambda (cands)
-				(car (sort cands
-						   (lambda (a b)
-							 (let* ((dx-a (- (container-center-x a) cx))
-									(dy-a (- (container-center-y a) cy))
-									(dist-a (+ (* dx-a dx-a) (* dy-a dy-a)))
-									(dx-b (- (container-center-x b) cx))
-									(dy-b (- (container-center-y b) cy))
-									(dist-b (+ (* dx-b dx-b) (* dy-b dy-b))))
-							   (< dist-a dist-b)))))))
-			 (primary-candidates
-			  (filter
-			   (lambda (f)
-				 (let* ((tx (container-x f))
-						(ty (container-y f))
-						(tw (container-width f))
-						(th (container-height f))
-						(tx-max (+ tx tw))
-						(ty-max (+ ty th)))
-				   (case dir-sym
-					 ((up)    (and (< (container-center-y f) cy) (<= ty-max (+ curr-y 1))))
-					 ((down)  (and (> (container-center-y f) cy) (>= ty (- curr-y-max 1))))
-					 ((right) (and (> (container-center-x f) cx) (>= tx (- curr-x-max 1))))
-					 ((left)  (< (container-center-x f) cx) (<= tx-max (+ curr-x 1)))
-					 (else #f))))
-			   containers)))
-		(cond
-		 ((pair? primary-candidates)
-		  (pick-closest primary-candidates))
-		 (else
-		  (let ((fallback-candidates
-				 (filter
-				  (lambda (f)
-					(case dir-sym
-					  ((up)    (< (container-center-y f) cy))
-					  ((down)  (> (container-center-y f) cy))
-					  ((right) (> (container-center-x f) cx))
-					  ((left)  (< (container-center-x f) cx))
-					  (else #f)))
-				  containers)))
-			(if (pair? fallback-candidates)
-				(pick-closest fallback-candidates)
-				#f)))))
-	  #f))
+(define (%container-active-global)
+  "Collect all active containers mapped to global screen coordinates."
+  (append-map
+   (lambda (out)
+     (let ((ox (output-x out))
+           (oy (output-y out))
+           (ws (output-workspace-current out)))
+       (if ws
+           (map (lambda (con)
+                  (let* ((x (+ ox (container-x con)))
+                         (y (+ oy (container-y con)))
+                         (w (container-width con))
+                         (h (container-height con)))
+                    (list con x y
+						  (+ x w)
+						  (+ y h)
+						  (+ x (/ w 2.0))
+						  (+ y (/ h 2.0)))))
+                (workspace-containers ws))
+           '())))
+   (manager-outputs *manager*)))
+
+(define* (container-in-direction dir #:key (current (container-current)))
+  "Find the closest container in direction DIR in unified screen space."
+  (let* ((all (%container-active-global))
+         (cur (find (lambda (e) (eq? (car e) current)) all)))
+    (and cur
+         (let* ((dir-sym (if (string? dir) (string->symbol dir) dir))
+                (cx0 (list-ref cur 1))  ;; start x coordinate
+				(cy0 (list-ref cur 2))  ;; start y coordinate
+                (cx1 (list-ref cur 3))  ;; end x coordinate
+				(cy1 (list-ref cur 4))  ;; end y coordinate
+                (ccx (list-ref cur 5))  ;; center of x
+				(ccy (list-ref cur 6))  ;; center of y
+                (cands (filter (lambda (e) (not (eq? (car e) current))) all))
+                (dist-sq (lambda (e)
+                           (let ((dx (- (list-ref e 5) ccx))
+                                 (dy (- (list-ref e 6) ccy)))
+                             (+ (* dx dx) (* dy dy)))))
+                (pick (lambda (lst)
+                        (and (pair? lst)
+                             (caar (sort lst (lambda (a b) (< (dist-sq a) (dist-sq b))))))))
+                (match? (lambda (e primary?)
+                          (let ((tx0 (list-ref e 1)) (ty0 (list-ref e 2))
+                                (tx1 (list-ref e 3)) (ty1 (list-ref e 4))
+                                (tcx (list-ref e 5)) (tcy (list-ref e 6)))
+                            (case dir-sym
+                              ((right) (and (> tcx ccx) (or (not primary?) (>= tx0 (- cx1 1)))))
+                              ((left)  (and (< tcx ccx) (or (not primary?) (<= tx1 (+ cx0 1)))))
+                              ((down)  (and (> tcy ccy) (or (not primary?) (>= ty0 (- cy1 1)))))
+                              ((up)    (and (< tcy ccy) (or (not primary?) (<= ty1 (+ cy0 1)))))
+                              (else #f))))))
+           (or (pick (filter (lambda (e) (match? e #t)) cands))
+               (pick (filter (lambda (e) (match? e #f)) cands)))))))
 
 (define* (container-add! container #:key (focus #t))
   "Add a new window to the display, placing it in the current container."
