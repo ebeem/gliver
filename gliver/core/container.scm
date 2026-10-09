@@ -18,6 +18,7 @@
 								   window-position-set!
 								   window-dimensions-propose!
 								   window-move-to-container!)
+  #:autoload (gliver core seat) (seat-wm-window-focus-clear)
   #:autoload (gliver core workspace) (workspace-focus!
 									  workspace-focused?)
   #:export (
@@ -181,20 +182,35 @@
 			 (window (or (container-window-current container)
 						 (and (pair? windows) (car windows))))
 			 (workspace (container-workspace container))
-			 (prev-container (and workspace (workspace-container-current workspace))))
+			 (prev-container (and workspace (workspace-container-current workspace)))
+			 (focused-container (container-current))
+			 (prev-window (window-current)))
 	    (when (and workspace (workspace? workspace))
 		  (%workspace-container-previous-set! workspace prev-container)
 		  (%workspace-container-current-set! workspace container)
 		  (when focus-parent
 		    (workspace-focus! workspace #:focus-child #f)))
 
-        ;; unfocus previous container and focus new one
-        (when (and prev-container (not (eq? prev-container container)))
+        ;; unfocus previously focused container
+        (when (and focused-container (not (eq? focused-container container)))
+          (gliver-hook-run! *container-unfocused-hook* focused-container))
+        (when (and prev-container
+                   (not (eq? prev-container container))
+                   (not (eq? prev-container focused-container)))
           (gliver-hook-run! *container-unfocused-hook* prev-container))
         (gliver-hook-run! *container-focused-hook* container)
 
-	    (when (and focus-child window)
-		  (window-focus! window #:focus-parent #f))))))
+	    (if (and focus-child window)
+		    (begin
+		      (when (and prev-window (not (eq? prev-window window)))
+		        (gliver-hook-run! *window-unfocused-hook* prev-window))
+		      (window-focus! window #:focus-parent #f))
+		    (when (and focus-child (not window))
+		      (when (and prev-window (window? prev-window) (not (window-destroyed? prev-window)))
+		        (gliver-hook-run! *window-unfocused-hook* prev-window))
+		      (let ((seat (seat-current)))
+		        (when (and seat (seat? seat) (seat-window-focused seat))
+		          (seat-wm-window-focus-clear seat)))))))))
 
 (define* (container-size-set! container width height #:key (animate #t))
   "Resize the container to the provided width and height."

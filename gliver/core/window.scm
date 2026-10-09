@@ -22,6 +22,7 @@
   ;; maybe using hooks is a better idea
   #:autoload (gliver core seat) (seat-wm-window-focus)
   #:autoload (gliver core container) (container-focus!
+									  container-focused?
 									  container-prev
 									  container-next
 									  container-add!)
@@ -212,8 +213,10 @@ does have a container ~%window-container-remove!~ will be called."
 		  (current (window-current)))
 	  ;; focus if it's currently not the current window
 	  ;; or the seat is not set to focus it
+	  ;; or if its container is not currently focused
 	  (unless (and (eq? (seat-window-focused seat) window)
 				   (eq? current window)
+				   (container-focused? container)
 				   (not force))
 	    (when (and container (container? container) (not (container-destroyed? container)))
 		  (%container-window-current-set! container window)
@@ -582,6 +585,14 @@ Must be called in a ~render_sequence~."
 
 (define (window-on-window-focused window)
   "Handle window focused event."
+
+  ;; ensure that window's container is focused
+  (let ((container (window-container window)))
+    (when (and container (container? container)
+			   (not (container-destroyed? container))
+               (not (container-focused? container)))
+      (container-focus! container #:focus-child #f)))
+
   ;; colorize the window border with active window border color
   (window-borders-set! window *wm-behavior-default-border-edges*
 					   *window-border-width*
@@ -658,8 +669,10 @@ Must be called in a ~render_sequence~."
 (define (window-on-seat-window-focused seat window)
   (log-debug "window seat has focused ~a" window)
   (if (and window (window? window) (not (window-destroyed? window)))
-	  (unless (eq? (window-current) window)
-		(window-focus! window #:seat #f))
+	  (let ((container (window-container window)))
+	    (unless (and (eq? (window-current) window)
+	                 (container-focused? container))
+		  (window-focus! window #:seat (or seat (seat-current)))))
 	  (let ((current (window-current)))
 		(when (and current (window? current) (not (window-destroyed? current)))
 		  (gliver-hook-run! *window-unfocused-hook* current)))))

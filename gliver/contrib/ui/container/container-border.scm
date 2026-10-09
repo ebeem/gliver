@@ -36,8 +36,11 @@
 			get-container-border-state
 			ensure-container-border-state!
 			container-wl-surface
+			%container-wl-surface-set!
 			container-wl-shell-surface
+			%container-wl-shell-surface-set!
 			container-wl-buffer
+			%container-wl-buffer-set!
 			container-border-color
 			container-shm-buffer-create
 			container-border-buffer-create
@@ -56,6 +59,9 @@
 			container-border-on-listeners-attach
 			container-border-on-window-container-removed
 			container-border-on-window-container-added
+			container-find-by-shell-surface
+			container-border-on-shell-interaction
+			container-border-update-input-region!
 			container-border-enable!
 			container-border-disable!
 			container-border-enabled?
@@ -108,6 +114,22 @@
   "Set the Wayland shell surface foreign pointer associated with CONTAINER."
   (let ((state (ensure-container-border-state! container)))
     (%cbs-wl-shell-surface-set! state val)))
+
+(define (container-find-by-shell-surface shell-surf)
+  "Find the container associated with SHELL-SURF pointer."
+  (if (or (not (pointer? shell-surf)) (null-pointer? shell-surf))
+      #f
+      (let ((addr (pointer-address shell-surf))
+            (found #f))
+        (hash-for-each
+         (lambda (c state)
+           (let ((surf (%cbs-wl-shell-surface state)))
+             (when (and (pointer? surf)
+                        (not (null-pointer? surf))
+                        (= (pointer-address surf) addr))
+               (set! found c))))
+         *container-border-table*)
+        found)))
 
 (define (container-wl-buffer container)
   "Get the Wayland buffer foreign pointer associated with CONTAINER."
@@ -240,6 +262,30 @@ Returns a Wayland buffer foreign pointer."
        (cairo-destroy cr)
        (cairo-surface-destroy dst-surface)))))
 
+(define (container-border-update-input-region! container surface w h border-w border-edges)
+  "Update the input region of CONTAINER's surface based on whether it has windows."
+  (when (and surface
+             (pointer? surface)
+             (not (null-pointer? surface))
+             (> w 0) (> h 0))
+    (let ((region (wl-compositor-create-region *wl-compositor*)))
+      (if (null? (container-windows container))
+          ;; empty container, this should be clickable
+          (wl-region-add region 0 0 w h)
+          ;; has windows, only borders should be clickable
+		  ;; too much work and probably useless, clicking window is enough?
+          (when (and (number? border-w) (> border-w 0))
+            (when (not (zero? (logand border-edges 1)))
+              (wl-region-add region 0 0 w (min h border-w)))
+            (when (not (zero? (logand border-edges 2)))
+              (wl-region-add region 0 (max 0 (- h border-w)) w (min h border-w)))
+            (when (not (zero? (logand border-edges 4)))
+              (wl-region-add region 0 0 (min w border-w) h))
+            (when (not (zero? (logand border-edges 8)))
+              (wl-region-add region (max 0 (- w border-w)) 0 (min w border-w) h))))
+      (wl-surface-set-input-region surface region)
+      (wl-region-destroy region))))
+
 (define (container-border-init! container)
   "Initialize Wayland surface, shell surface, and node for container border."
   (when (and (container? container)
@@ -250,17 +296,13 @@ Returns a Wayland buffer foreign pointer."
              (pointer? (manager-wl-proxy *manager*))
              (not (null-pointer? (manager-wl-proxy *manager*))))
     (unless (container-wl-surface container)
-      (let* ((surface (wl-compositor-create-surface *wl-compositor*)))
-        ;; empty input region so all mouse clicks pass through
-        (let ((region (wl-compositor-create-region *wl-compositor*)))
-          (wl-surface-set-input-region surface region)
-          (wl-region-destroy region))
-        (let* ((shell-surf (wm-manager-shell-surface-get (manager-wl-proxy *manager*) surface))
-               (node (wm-shell-surface-node-get! shell-surf)))
-          (%container-wl-surface-set! container surface)
-          (%container-wl-shell-surface-set! container shell-surf)
-          (%container-wl-node-proxy-set! container node)
-          (log-debug "Initialized border surface for container ~a" (container-id container)))))))
+      (let* ((surface (wl-compositor-create-surface *wl-compositor*))
+             (shell-surf (wm-manager-shell-surface-get (manager-wl-proxy *manager*) surface))
+             (node (wm-shell-surface-node-get! shell-surf)))
+        (%container-wl-surface-set! container surface)
+        (%container-wl-shell-surface-set! container shell-surf)
+        (%container-wl-node-proxy-set! container node)
+        (log-debug "Initialized border surface for container ~a" (container-id container))))))
 
 (define (container-border-cleanup! container)
   "Clean up Wayland surface, shell surface, node, and buffer for container."
@@ -340,6 +382,7 @@ Returns a Wayland buffer foreign pointer."
 		 (with-render-sequence
 		  (wm-node-position-set! node x y)
           (wm-node-place-top! node))
+         (container-border-update-input-region! container surface w h border-w border-edges)
          (if reusable?
              (begin
                (wm-shell-surface-sync-next-commit! shell-surf)
@@ -379,8 +422,25 @@ Returns a Wayland buffer foreign pointer."
   (container-border-cleanup! container))
 
 (define (container-border-on-container-focused container)
-  "Handle container focus, update border color."
-  (container-border-render! container))
+  "Handle container focus, update border color and unfocus other containers across all outputs."
+  (container-border-render! container)
+  ;; ensure all other visible containers across all outputs are re-rendered with unfocused color
+  (for-each
+   (lambda (output)
+     (let ((ws (output-workspace-current output)))
+       (when ws
+         (for-each
+          (lambda (c)
+            (when (and (container? c)
+                       (not (eq? c container))
+                       (not (container-destroyed? c)))
+              (let ((state (get-container-border-state c)))
+                (when (and state
+                           (not (equal? (%cbs-color state)
+                                        (container-border-color c))))
+                  (container-border-render! c)))))
+          (workspace-containers ws)))))
+   (manager-outputs *manager*)))
 
 (define (container-border-on-container-unfocused container)
   "Handle container unfocus, update border color."
@@ -438,6 +498,17 @@ Returns a Wayland buffer foreign pointer."
   (when (and (container? container) (not (container-destroyed? container)))
     (container-border-render! container)))
 
+(define (container-border-on-shell-interaction seat proxy-shell)
+  "Handle shell surface interaction (mouse click)."
+  (when (and *wm-behavior-focus-mouse-click*
+             proxy-shell
+             (pointer? proxy-shell)
+             (not (null-pointer? proxy-shell)))
+    (let ((container (container-find-by-shell-surface proxy-shell)))
+      (when (and container (container? container) (not (container-destroyed? container)))
+        (log-debug "Container ~a clicked via mouse shell surface" (container-id container))
+        (container-focus! container)))))
+
 (define (container-border-enable!)
   "Enable container borders, hook into container events and render borders."
   (unless *%container-border-enabled*
@@ -451,6 +522,7 @@ Returns a Wayland buffer foreign pointer."
     (gliver-hook-add! *gliver-listeners-attach-hook* 'container-border-on-listeners-attach)
     (gliver-hook-add! %window-container-removed-hook* 'container-border-on-window-container-removed)
     (gliver-hook-add! %window-container-added-hook* 'container-border-on-window-container-added)
+    (gliver-hook-add! *seat-shell-interacted-hook* 'container-border-on-shell-interaction)
     (set! *%container-border-enabled* #t)
     (container-borders-update-all!)
     (log-info "container-border enabled.")))
@@ -468,6 +540,7 @@ Returns a Wayland buffer foreign pointer."
     (gliver-hook-remove! *gliver-listeners-attach-hook* 'container-border-on-listeners-attach)
     (gliver-hook-remove! %window-container-removed-hook* 'container-border-on-window-container-removed)
     (gliver-hook-remove! %window-container-added-hook* 'container-border-on-window-container-added)
+    (gliver-hook-remove! *seat-shell-interacted-hook* 'container-border-on-shell-interaction)
     (container-border-on-globals-unbind)
     (set! *%container-border-enabled* #f)
     (log-info "container-border disabled.")))

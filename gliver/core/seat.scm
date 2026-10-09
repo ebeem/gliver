@@ -196,12 +196,10 @@ Hook: *seat-destroy-hook*"
 
 (define (seat-on-shell-interaction data proxy-seat proxy-shell)
   "Surface is clicked or input is sent to it"
-  ;; TODO: need to figure this hook out and test it
-  ;; I don't thing it's of any use at the moment honestly
   (log-debug "Seat ~a is interacting with surface: ~a" proxy-seat proxy-shell)
   (let ((seat (seat-find-by-proxy proxy-seat)))
-	;; TODO: shell should be resolved here
-	(gliver-hook-run! *seat-shell-interacted-hook* seat #f)))
+    (when seat
+	  (gliver-hook-run! *seat-shell-interacted-hook* seat proxy-shell))))
 
 (define (seat-on-op-delta data proxy-seat dx dy)
   "This event indicates the total change in position since the
