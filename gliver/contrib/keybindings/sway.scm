@@ -5,29 +5,7 @@
 			keybindings-sway-install-default!
 ))
 
-;; custom helper to ensure a workspace exists when switching/focusing
-(define (workspace-ensure-and-focus! name)
-  (let ((ws (workspace-find-by-name name)))
-    (if ws
-        (workspace-focus! ws)
-        (let* ((output (output-current))
-               (new-ws (make-workspace name #:output output)))
-          (workspace-add! new-ws)
-          (workspace-focus! new-ws)))))
-
-;; custom helper to ensure a workspace exists when moving a window
-(define (window-move-to-workspace-ensure! name)
-  (let ((win (window-current)))
-    (if (not win)
-        (let ((target (workspace-find-by-name name)))
-          (if target
-              (begin
-                (window-move-to-workspace! win target)
-                (let* ((output (output-current))
-                       (new-ws (make-workspace name #:output output)))
-                  (workspace-add! new-ws)
-                  (window-move-to-workspace! win new-ws))))))))
-
+;;; sway keybindings
 (define (keybindings-sway-install-default!)
   "Install the default Sway-compatible keybindings."
   ;; basics
@@ -63,9 +41,9 @@
     (let* ((ws-str (number->string i))
            (key-str (if (= i 10) "0" ws-str)))
       (define-key *top-map* (string-append "s-" key-str)
-        (lambda () (workspace-ensure-and-focus! ws-str)))
+        (lambda () (workspace-focus-by-name ws-str)))
       (define-key *top-map* (string-append "s-S-" key-str)
-        (lambda () (window-move-to-workspace-ensure! ws-str)))))
+        (lambda () (window-workspace-move ws-str)))))
   '(1 2 3 4 5 6 7 8 9 10))
 
   ;; TODO: split horizontal / vertical
