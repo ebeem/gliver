@@ -138,7 +138,7 @@
 			 (container (window-container win))
 			 (workspace (container-workspace container))
 			 (dir-sym (if (string? dir) (string->symbol dir) dir))
-			 (target (container-in-direction dir-sym #:current container #:workspace workspace)))
+			 (target (container-in-direction dir-sym #:current container)))
     (window-move-to-container! win target #:focus #t)
     (log-debug "Moved window to container ~a" target)))
 
