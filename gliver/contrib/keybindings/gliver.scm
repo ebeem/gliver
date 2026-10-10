@@ -25,7 +25,7 @@
 	"s-o"       'launcher-run
 	"s-S-r"     'config-reload!
 	"s-S-q"     'gliver-quit
-	"s-f"       'window-fullscreen
+	"s-f"       'window-fullscreen-toggle
 
 	;; move focus to direction
 	"s-h"       'container-focus-left
