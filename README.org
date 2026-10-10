@@ -90,14 +90,14 @@ make && make run
 
 *** Basic Operations
 
-| Key Combination | Command           | Description                            |
-|-----------------+-------------------+----------------------------------------|
-| =s-Return=        | =terminal-spawn=    | Spawn terminal emulator                |
-| =s-q=             | =window-kill=       | Close/kill focused window              |
-| =s-o=             | =launcher-run=      | Open application via launcher launcher |
-| =s-f=             | =window-fullscreen= | Toggle fullscreen for focused window   |
-| =s-S-r=           | =config-reload!=    | Reload configuration                   |
-| =s-S-q=           | =gliver-quit=       | Quit Gliver session                    |
+| Key Combination | Command                  | Description                            |
+|-----------------+--------------------------+----------------------------------------|
+| =s-Return=        | =terminal-spawn=           | Spawn terminal emulator                |
+| =s-q=             | =window-kill=              | Close/kill focused window              |
+| =s-o=             | =launcher-run=             | Open application via launcher launcher |
+| =s-f=             | =window-fullscreen-toggle= | Toggle fullscreen for focused window   |
+| =s-S-r=           | =config-reload!=           | Reload configuration                   |
+| =s-S-q=           | =gliver-quit=              | Quit Gliver session                    |
 
 *** Focus Navigation
 
