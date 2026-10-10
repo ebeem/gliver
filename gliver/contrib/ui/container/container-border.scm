@@ -36,14 +36,13 @@
 			get-container-border-state
 			ensure-container-border-state!
 			container-wl-surface
-			%container-wl-surface-set!
 			container-wl-shell-surface
-			%container-wl-shell-surface-set!
+			container-find-by-shell-surface
 			container-wl-buffer
-			%container-wl-buffer-set!
 			container-border-color
 			container-shm-buffer-create
 			container-border-buffer-create
+			container-border-update-input-region!
 			container-border-init!
 			container-border-cleanup!
 			container-border-hide!
@@ -59,9 +58,9 @@
 			container-border-on-listeners-attach
 			container-border-on-window-container-removed
 			container-border-on-window-container-added
-			container-find-by-shell-surface
 			container-border-on-shell-interaction
-			container-border-update-input-region!
+			container-border-on-window-fullscreen-entered
+			container-border-on-window-fullscreen-exited
 			container-border-enable!
 			container-border-disable!
 			container-border-enabled?
