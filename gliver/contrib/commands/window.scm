@@ -21,6 +21,11 @@
 			window-swap
 			window-mark
 			window-workspace-move
+			window-workspace-move-direction
+			window-workspace-move-left
+			window-workspace-move-right
+			window-workspace-move-up
+			window-workspace-move-down
 			window-container-move-direction
 			window-container-move-left
 			window-container-move-right
@@ -130,6 +135,41 @@
      (else
       (window-move-to-workspace! win target)
       (log-debug "Moved window ~a to ~a." win name)))))
+
+(define-command (window-workspace-move-direction dir)
+  #:interactive (string)
+  "Move the current window to the workspace in direction DIR ('left, 'right, 'up, 'down)."
+  (let* ((window (window-current))
+         (workspace (window-workspace window))
+         (dir-sym (if (string? dir) (string->symbol dir) dir))
+         (target (case dir-sym
+                   ((left prev) (workspace-prev workspace))
+                   ((right next) (workspace-next workspace))
+
+				   ;; TODO: implement up and down by implementing workspace
+				   ;; grid like behavior if rows > 1 is provided
+                   ((up) (workspace-prev workspace))
+                   ((down) (workspace-next workspace))
+                   (else #f))))
+	(when (and window target (not (eq? target workspace)))
+      (window-move-to-workspace! window target)
+      (log-debug "Moved window ~a to workspace ~a." window (workspace-name target)))))
+
+(define-command (window-workspace-move-left)
+  "Move the current window to the workspace to the left."
+  (window-workspace-move-direction 'left))
+
+(define-command (window-workspace-move-right)
+  "Move the current window to the workspace to the right."
+  (window-workspace-move-direction 'right))
+
+(define-command (window-workspace-move-up)
+  "Move the current window to the workspace above."
+  (window-workspace-move-direction 'up))
+
+(define-command (window-workspace-move-down)
+  "Move the current window to the workspace below."
+  (window-workspace-move-direction 'down))
 
 (define-command (window-container-move-direction dir)
   #:interactive (string)

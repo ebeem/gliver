@@ -52,7 +52,7 @@
 	"s-M-l"     'window-container-move-right
 
 	;; move workspace focus to direction
-	"s-C-Left"  'workspace-focus-right
+	"s-C-Left"  'workspace-focus-left
 	"s-C-Down"  'workspace-focus-down
 	"s-C-Up"    'workspace-focus-up
 	"s-C-Right" 'workspace-focus-right
