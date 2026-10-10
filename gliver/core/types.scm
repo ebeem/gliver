@@ -80,6 +80,7 @@
 			%output-usable-x-set!
 			output-usable-x
 			output-usable-area-set!
+			output-usable-area
 			%output-height-set!
 			output-height
 			%output-width-set!
@@ -147,6 +148,16 @@
 			container-y
 			%container-x-set!
 			container-x
+			%container-usable-height-set!
+			container-usable-height
+			%container-usable-width-set!
+			container-usable-width
+			%container-usable-y-set!
+			container-usable-y
+			%container-usable-x-set!
+			container-usable-x
+			container-usable-area-set!
+			container-usable-area
 			%container-window-previous-set!
 			container-window-previous
 			%container-window-current-set!
@@ -238,6 +249,7 @@
 			%make-window
 			make-window
 			output-find-by-proxy
+			output-find-by-wl-output
 			output-find-by-name
 			output-find-by-id
 			output-current
@@ -470,6 +482,13 @@
   (%output-usable-width-set! output width)
   (%output-usable-height-set! output height))
 
+(define (output-usable-area output)
+  "Return (values x y width height) of the usable area for OUTPUT."
+  (values (output-usable-x output)
+          (output-usable-y output)
+          (output-usable-width output)
+          (output-usable-height output)))
+
 (define* (make-output name
                       #:key (id (manager-output-number-next!)) (wl-proxy #f) (x 0) (y 0) (width 1920) (height 1080)
 					  (workspaces '()) (workspace-current #f) (workspace-previous #f) (wl-output #f) (wallpaper #f)
@@ -537,7 +556,8 @@ Other parameters (x, y, width, height, wl-proxy) can be provided as keyword argu
   (%make-container id workspace windows window-current window-previous
                    x y width height
                    urgent? destroyed?
-                   wl-node-proxy)
+                   wl-node-proxy
+                   usable-x usable-y usable-width usable-height)
   container?
   (id                 container-id                 %container-id-set!)
   (workspace          container-workspace          %container-workspace-set!)
@@ -550,10 +570,29 @@ Other parameters (x, y, width, height, wl-proxy) can be provided as keyword argu
   (height             container-height             %container-height-set!)
   (urgent?            container-urgent?            %container-urgent-set!)
   (destroyed?         container-destroyed?         %container-destroyed-set!)
-  (wl-node-proxy      container-wl-node-proxy      %container-wl-node-proxy-set!))
+  (wl-node-proxy      container-wl-node-proxy      %container-wl-node-proxy-set!)
+  (usable-x           container-usable-x           %container-usable-x-set!)
+  (usable-y           container-usable-y           %container-usable-y-set!)
+  (usable-width       container-usable-width       %container-usable-width-set!)
+  (usable-height      container-usable-height      %container-usable-height-set!))
+
+(define (container-usable-area-set! container x y width height)
+  "Set the usable area coordinates and dimensions for CONTAINER."
+  (%container-usable-x-set! container (inexact->exact (floor x)))
+  (%container-usable-y-set! container (inexact->exact (floor y)))
+  (%container-usable-width-set! container (max 0 (inexact->exact (floor width))))
+  (%container-usable-height-set! container (max 0 (inexact->exact (floor height)))))
+
+(define (container-usable-area container)
+  "Return (values x y width height) of the usable area for CONTAINER."
+  (values (container-usable-x container)
+          (container-usable-y container)
+          (container-usable-width container)
+          (container-usable-height container)))
 
 (define* (make-container #:key (workspace #f) (x 0) (y 0) (width 0) (height 0)
-                               (urgent? #f) (destroyed? #f) (wl-node-proxy #f))
+                         (urgent? #f) (destroyed? #f) (wl-node-proxy #f)
+                         (usable-x #f) (usable-y #f) (usable-width #f) (usable-height #f))
   "Create a new flat container."
   (%make-container (container-id-next!) workspace '() #f #f
                    (inexact->exact (floor x))
@@ -561,7 +600,11 @@ Other parameters (x, y, width, height, wl-proxy) can be provided as keyword argu
 				   (inexact->exact (floor width))
 				   (inexact->exact (floor height))
                    urgent? destroyed?
-                   wl-node-proxy))
+                   wl-node-proxy
+				   (or usable-x x)
+				   (or usable-y y)
+				   (or usable-width width)
+				   (or usable-height height)))
 
 ;;; window: similar to an emacs buffer and stumpwm window
 ;;; a single application (like a terminal, a browser, or an editor)
@@ -667,10 +710,12 @@ Other parameters (x, y, width, height, wl-proxy) can be provided as keyword argu
 
 (set-record-type-printer! <container>
   (lambda (f port)
-    (format port "#<container id=~a pos=~ax~a+~a+~a wins=~a current-win=~a prev-win=~a>"
+    (format port "#<container id=~a pos=~ax~a+~a+~a usable=~ax~a+~a+~a wins=~a current-win=~a prev-win=~a>"
             (container-id f)
             (container-width f) (container-height f)
             (container-x f) (container-y f)
+            (container-usable-width f) (container-usable-height f)
+            (container-usable-x f) (container-usable-y f)
             (length (container-windows f))
 			(if (container-window-current f) (window-id (container-window-current f)) #f)
 			(if (container-window-previous f) (window-id (container-window-previous f)) #f))))
@@ -698,6 +743,18 @@ Other parameters (x, y, width, height, wl-proxy) can be provided as keyword argu
             (outputs (manager-outputs *manager*)))
         (find (lambda (output)
                 (let ((output-proxy (output-wl-proxy output)))
+                  (and (pointer? output-proxy)
+                       (= (pointer-address output-proxy) addr))))
+              outputs))))
+
+(define (output-find-by-wl-output proxy)
+  "Look up the <output> record by wl_output proxy or object id."
+  (if (not (pointer? proxy))
+      #f ;; early exit
+      (let ((addr (pointer-address proxy))
+            (outputs (manager-outputs *manager*)))
+        (find (lambda (output)
+                (let ((output-proxy (output-wl-output output)))
                   (and (pointer? output-proxy)
                        (= (pointer-address output-proxy) addr))))
               outputs))))
