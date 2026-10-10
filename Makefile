@@ -10,6 +10,7 @@
 PREFIX     ?= /usr
 BINDIR     ?= $(PREFIX)/bin
 GUILEDIR   ?= $(PREFIX)/share/guile/site/3.0
+GUILECCDIR ?= $(PREFIX)/lib/guile/3.0/site-ccache
 SESSIONDIR ?= $(PREFIX)/share/wayland-sessions
 GUILE      ?= guile
 GUILD      ?= guild
@@ -165,7 +166,7 @@ install: compile
 	# compiled modules
 	@for g in $(COMPILED); do \
 		if [ -f $$g ]; then \
-			install -Dm644 $$g $(DESTDIR)$(GUILEDIR)/$${g#build/}; \
+			install -Dm644 $$g $(DESTDIR)$(GUILECCDIR)/$${g#build/}; \
 		fi; \
 	done
 
@@ -182,13 +183,15 @@ install: compile
 	# wayland session desktop file
 	install -Dm644 gliver.desktop \
 		$(DESTDIR)$(SESSIONDIR)/gliver.desktop
-	@echo "Done. You may need to add $(GUILEDIR) to GUILE_LOAD_PATH."
+	@echo "Done. You may need to add $(GUILEDIR) to GUILE_LOAD_PATH, as well\
+as $(GUILECCDIR) to GUILE_LOAD_COMPILED_PATH."
 
 uninstall:
 	rm -f $(DESTDIR)$(BINDIR)/gliver
 	rm -f $(DESTDIR)$(BINDIR)/gliver-repl
 	rm -f $(DESTDIR)$(SESSIONDIR)/gliver.desktop
 	rm -rf $(DESTDIR)$(GUILEDIR)/gliver
+	rm -rf $(DESTDIR)$(GUILECCDIR)/gliver
 	rm -rf $(DESTDIR)$(PREFIX)/share/gliver
 
 clean:
