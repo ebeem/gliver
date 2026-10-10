@@ -34,6 +34,7 @@
 			container-focus!
 			container-size-set!
 			container-position-set!
+			container-usable-area-update-windows!
 ))
 
 (define* (container-next current #:key (recursive #t))
@@ -212,6 +213,20 @@
 		        (when (and seat (seat? seat) (seat-window-focused seat))
 		          (seat-wm-window-focus-clear seat)))))))))
 
+(define* (container-usable-area-update-windows! container #:key (animate #t))
+  "Apply the container's usable area to all non-fullscreen windows inside CONTAINER."
+  (when (and (container? container) (not (container-destroyed? container)))
+    (let ((ux (container-usable-x container))
+          (uy (container-usable-y container))
+          (uw (container-usable-width container))
+          (uh (container-usable-height container)))
+      (for-each
+       (lambda (window)
+         (unless (window-fullscreen? window)
+           (window-position-set! window ux uy #:animate animate)
+           (window-dimensions-propose! window uw uh #:animate animate)))
+       (container-windows container)))))
+
 (define* (container-size-set! container width height #:key (animate #t))
   "Resize the container to the provided width and height."
   (let* ((windows (container-windows container))
@@ -220,13 +235,21 @@
 		 (w-changed? (not (= (container-width container) int-width)))
 		 (h-changed? (not (= (container-height container) int-height))))
 	(when (or w-changed? h-changed?)
-	  (%container-width-set! container int-width)
-	  (%container-height-set! container int-height)
-	  (for-each
-	   (lambda (window)
-		 (window-dimensions-propose! window int-width int-height #:animate animate))
-	   windows)
-	  (gliver-hook-run! *container-resize-hook* container))))
+      (let ((dw (- int-width (container-width container)))
+            (dh (- int-height (container-height container))))
+	    (%container-width-set! container int-width)
+	    (%container-height-set! container int-height)
+        (%container-usable-width-set! container (max 0 (+ (container-usable-width container) dw)))
+        (%container-usable-height-set! container (max 0 (+ (container-usable-height container) dh)))
+	    (for-each
+	     (lambda (window)
+           (unless (window-fullscreen? window)
+		     (window-dimensions-propose! window
+                                         (container-usable-width container)
+                                         (container-usable-height container)
+                                         #:animate animate)))
+	     windows)
+	    (gliver-hook-run! *container-resize-hook* container)))))
 
 (define* (container-position-set! container x y #:key (animate #t))
   "Move the container position to the provided x and y."
@@ -236,10 +259,18 @@
 		 (x-changed? (not (= (container-x container) int-x)))
 		 (y-changed? (not (= (container-y container) int-y))))
 	(when (or x-changed? y-changed?)
-	  (%container-x-set! container int-x)
-	  (%container-y-set! container int-y)
-	  (for-each
-	   (lambda (window)
-		 (window-position-set! window int-x int-y #:animate animate))
-	   windows)
-	  (gliver-hook-run! *container-resize-hook* container))))
+      (let ((dx (- int-x (container-x container)))
+            (dy (- int-y (container-y container))))
+	    (%container-x-set! container int-x)
+	    (%container-y-set! container int-y)
+        (%container-usable-x-set! container (+ (container-usable-x container) dx))
+        (%container-usable-y-set! container (+ (container-usable-y container) dy))
+	    (for-each
+	     (lambda (window)
+           (unless (window-fullscreen? window)
+		     (window-position-set! window
+                                   (container-usable-x container)
+                                   (container-usable-y container)
+                                   #:animate animate)))
+	     windows)
+	    (gliver-hook-run! *container-resize-hook* container)))))
