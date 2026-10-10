@@ -174,6 +174,16 @@ Here's a wishlist of features for the ~Gliver~ project:
 - Implementing animations driven by Guile timers over the =set_dimensions= Wayland request.
 - Tab-list showing the contents of the current container.
 
+
+** Known Issues
+*** Some clients will propose their own sizes and not respect the tiling system.
+This was observed so far in ~vlc~ where it will resize itself based on video resolution. While it's possible to disable this behavior from ~vlc~ itself, I am looking for a solution that will work on all clients.
+NOTE: this issue doesn't seem to be easy to resolve, clients in this case violate the wayland protocol and it doesn't seem to me that there is a way to stop them from doing so.
+
+*** Some clients include their own decorations
+This was observered so far in ~Emacs~ and ~librewolf~ where they will include a titlebar, I believe all ~gtk~ applications will do so. While it's possible to have a workaround from ~gtk~ css, I again want to have a solution that will work on other clients as well.
+NOTE: this issue doesn't seem to be easy to resolve, clients in this case violate the wayland protocol and it doesn't seem to me that there is a way to stop them from doing so.
+
 ** GUI Components & Daemons
 
 | Name                 | Gliver Component            | Good Alternatives |
