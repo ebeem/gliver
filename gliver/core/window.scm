@@ -132,7 +132,7 @@
 	  (window-decoration-server! window))
 	(when (eq? *wm-behavior-default-decoration* 'client)
 	  (window-decoration-client! window))
-	(window-capabilities-inform! window *wm-behavior-default-capabilties*)	
+	(window-capabilities-inform! window *wm-behavior-default-capabilties*)
 	(window-unmaximized-inform! window)
     (window-fullscreen-exit-inform! window)
     (window-tiled-set! window *wm-behavior-default-edges*)
@@ -241,16 +241,16 @@ does have a container ~%window-container-remove!~ will be called."
 	  (%window-container-add! window container #:focus focus))
 	(log-debug "set window=~a geometry to ~ax~a+~a+~a"
 			   window
-			   (container-width container)
-			   (container-height container)
-			   (container-x container)
-			   (container-y container))
+			   (container-usable-width container)
+			   (container-usable-height container)
+			   (container-usable-x container)
+			   (container-usable-y container))
 	(window-position-set! window
-						  (container-x container)
-						  (container-y container))
+						  (container-usable-x container)
+						  (container-usable-y container))
 	(window-dimensions-propose! window
-								(container-width container)
-								(container-height container))
+								(container-usable-width container)
+								(container-usable-height container))
 	(gliver-hook-run! *window-container-moved-hook* window container container-current)))
 
 (define* (window-move-to-workspace! window workspace #:key (focus #t))
@@ -383,8 +383,8 @@ Must be called in a ~render_sequence~."
   (when window
     (let ((proxy-window (window-wl-proxy window)))
       (with-render-sequence
-	   (apply wm-window-borders-set 
-              proxy-window edges width 
+	   (apply wm-window-borders-set
+              proxy-window edges width
               (color-hex->rgba-32 color-hex))))))
 
 (define (window-tiled-set! window edges)
@@ -514,8 +514,14 @@ Must be called in a ~manage_sequence~."
            (prev-status (window-fullscreen? window)))
 	  (with-manage-sequence
 	   (wm-window-fullscreen proxy-window proxy-output)
-	   (%window-fullscreen-set! window #t)
-	   (gliver-hook-run! *window-fullscreen-entered-hook* window prev-status)))))
+	   (wm-window-fullscreen-inform proxy-window))
+	  (gliver-hook-run! *window-fullscreen-entered-hook* window prev-status)
+      (gliver-hook-run! *window-fullscreen-entered-informed-hook* window prev-status)
+	  (%window-fullscreen-set! window #t)
+      (let ((node (window-node-get! window)))
+        (when node
+          (with-render-sequence
+           ((@ (gliver river wm-node-manager) wm-node-place-top!) node)))))))
 
 (define (window-fullscreen-exit! window)
   "Make the window not fullscreen.
@@ -523,11 +529,21 @@ This request automatically informs the window that it has exited fullscreen.
 Must be called in a ~manage_sequence~."
   (when window
 	(let* ((proxy-window (window-wl-proxy window))
+           (container (window-container window))
            (prev-status (window-fullscreen? window)))
 	  (with-manage-sequence
 	   (wm-window-fullscreen-exit proxy-window)
+       (wm-window-fullscreen-exit-inform proxy-window)
 	   (%window-fullscreen-set! window #f)
-	   (gliver-hook-run! *window-fullscreen-exited-hook* window prev-status)))))
+       (when container
+         (wm-window-dimensions-propose proxy-window
+                                       (container-usable-width container)
+                                       (container-usable-height container))
+		 (window-position-set! window
+                               (container-usable-x container)
+                               (container-usable-y container))))
+      (gliver-hook-run! *window-fullscreen-exited-hook* window prev-status)
+      (gliver-hook-run! *window-fullscreen-exited-informed-hook* window prev-status))))
 
 (define (window-clip-box-set! window x y width height)
   "Clip the window, including borders and decoration surfaces.
@@ -685,3 +701,25 @@ Must be called in a ~render_sequence~."
   (when (and workspace (workspace? workspace))
     (for-each window-show! (workspace-windows workspace))))
 (gliver-hook-add! *workspace-switch-hook* 'window-on-workspace-switch)
+
+(define (window-on-fullscreen-requested proxy-window proxy-output)
+  "Handle when a client request to enter fullscreen."
+  (and-let* ((window (window-find-by-proxy proxy-window))
+			 ;; NOTE: sometimes no proxy is passed when requesting fullscreen
+			 ;; noticed this in librewolf so far, I am not sure why
+			 ;; getting current output of window in case output wasn't passed
+			 ;; this is a fallback as sometimes clients want to be fullscren on an output
+			 (output (or (window-find-by-proxy proxy-output)
+						 (window-output window))))
+    (when (and window output)
+      (window-fullscreen! window output)
+      (gliver-hook-run! *window-fullscreen-requested-hook* window))))
+(gliver-hook-add! %window-fullscreen-requested-hook 'window-on-fullscreen-requested)
+
+(define (window-on-fullscreen-exit-requested proxy-window)
+  "Handle when a client request to exit fullscreen."
+  (let ((window (window-find-by-proxy proxy-window)))
+    (when window
+      (window-fullscreen-exit! window)
+      (gliver-hook-run! *window-fullscreen-exit-requested-hook* window))))
+(gliver-hook-add! %window-fullscreen-exit-requested-hook 'window-on-fullscreen-exit-requested)
