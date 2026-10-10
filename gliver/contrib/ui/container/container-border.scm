@@ -342,66 +342,72 @@ Returns a Wayland buffer foreign pointer."
              (not (null-pointer? *wl-shm*))
              (pointer? (manager-wl-proxy *manager*))
              (not (null-pointer? (manager-wl-proxy *manager*))))
-    (with-render-sequence
-     (unless (container-wl-surface container)
-       (container-border-init! container))
-     (let* ((state (ensure-container-border-state! container))
-            (surface (container-wl-surface container))
-            (shell-surf (container-wl-shell-surface container))
-            (node (container-wl-node-proxy container))
-            (color (container-border-color container))
-            (border-w *container-border-width*)
-            (border-r *container-border-radius*)
-            (border-edges *container-border-edges*)
-			;; border is outer, not inner
-			;; so width and height will be increased by 2 * border width
-			;; while x and y will be padded by border width
-            (w (+ (container-width container) (* 2 border-w)))
-            (h (+ (container-height container) (* 2 border-w)))
-            (x (- (container-x container) border-w))
-            (y (- (container-y container) border-w))
-			;; background color will be false/transparent if container has windows
-            (bg-color (and (null? (container-windows container)) *container-border-bg-color*))
-            (curr-buf (container-wl-buffer container))
-            (prev-w (%cbs-width state))
-            (prev-h (%cbs-height state))
-            (prev-color (%cbs-color state))
-            (prev-bg (%cbs-bg-color state))
-            (reusable? (and (not force)
-                            curr-buf
-                            (pointer? curr-buf)
-                            (not (null-pointer? curr-buf))
-                            (= prev-w w)
-                            (= prev-h h)
-                            (equal? prev-color color)
-                            (equal? prev-bg bg-color))))
-       (when (and surface (pointer? surface) (not (null-pointer? surface))
-                  node (pointer? node) (not (null-pointer? node))
-                  shell-surf (pointer? shell-surf) (not (null-pointer? shell-surf))
-                  (> w 0) (> h 0))
-		 (with-render-sequence
-		  (wm-node-position-set! node x y)
-          (wm-node-place-top! node))
-         (container-border-update-input-region! container surface w h border-w border-edges)
-         (if reusable?
-             (begin
-               (wm-shell-surface-sync-next-commit! shell-surf)
-               (wl-surface-commit surface))
-             (let ((new-buffer (container-border-buffer-create w h border-w color border-r border-edges bg-color))
-                   (old-buffer curr-buf))
-               (when (and (pointer? new-buffer) (not (null-pointer? new-buffer)))
-                 (%container-wl-buffer-set! container new-buffer)
-                 (%container-border-color-set! container color)
-                 (%cbs-width-set! state w)
-                 (%cbs-height-set! state h)
-                 (%cbs-bg-color-set! state bg-color)
-                 (wm-shell-surface-sync-next-commit! shell-surf)
-                 (wl-surface-attach surface new-buffer 0 0)
-                 (wl-surface-damage surface 0 0 w h)
-                 (wl-surface-commit surface)
-                 (when (and old-buffer (pointer? old-buffer) (not (null-pointer? old-buffer))
-                            (not (equal? old-buffer new-buffer)))
-                   (catch #t (lambda () (wl-buffer-destroy old-buffer)) (lambda _ #f)))))))))))
+	;; disable border if fullscreen mode is on
+    (if (any window-fullscreen? (container-windows container))
+        (container-border-hide! container)
+		(let* ((state (ensure-container-border-state! container))
+			   (surface (container-wl-surface container))
+			   (shell-surf (container-wl-shell-surface container))
+			   (node (container-wl-node-proxy container))
+			   (color (container-border-color container))
+			   (border-w *container-border-width*)
+			   (border-r *container-border-radius*)
+			   (border-edges *container-border-edges*)
+			   ;; border is outer, not inner
+			   ;; so width and height will be increased by 2 * border width
+			   ;; while x and y will be padded by border width
+			   (w (+ (container-width container) (* 2 border-w)))
+			   (h (+ (container-height container) (* 2 border-w)))
+			   (x (- (container-x container) border-w))
+			   (y (- (container-y container) border-w))
+			   ;; background color will be false/transparent if container has windows
+			   (bg-color (and (null? (container-windows container)) *container-border-bg-color*))
+			   (curr-buf (container-wl-buffer container))
+			   (prev-w (%cbs-width state))
+			   (prev-h (%cbs-height state))
+			   (prev-color (%cbs-color state))
+			   (prev-bg (%cbs-bg-color state))
+			   (reusable? (and (not force)
+							   curr-buf
+							   (pointer? curr-buf)
+							   (not (null-pointer? curr-buf))
+							   (= prev-w w)
+							   (= prev-h h)
+							   (equal? prev-color color)
+							   (equal? prev-bg bg-color))))
+
+		  ;; init border if it's not created yet
+          (with-render-sequence
+		   (unless (container-wl-surface container)
+			 (container-border-init! container)))
+
+		  (when (and surface (pointer? surface) (not (null-pointer? surface))
+					 node (pointer? node) (not (null-pointer? node))
+					 shell-surf (pointer? shell-surf) (not (null-pointer? shell-surf))
+					 (> w 0) (> h 0))
+			(with-render-sequence
+			 (wm-node-position-set! node x y)
+			 (wm-node-place-top! node))
+			(container-border-update-input-region! container surface w h border-w border-edges)
+			(if reusable?
+				(begin
+				  (wm-shell-surface-sync-next-commit! shell-surf)
+				  (wl-surface-commit surface))
+				(let ((new-buffer (container-border-buffer-create w h border-w color border-r border-edges bg-color))
+					  (old-buffer curr-buf))
+				  (when (and (pointer? new-buffer) (not (null-pointer? new-buffer)))
+					(%container-wl-buffer-set! container new-buffer)
+					(%container-border-color-set! container color)
+					(%cbs-width-set! state w)
+					(%cbs-height-set! state h)
+					(%cbs-bg-color-set! state bg-color)
+					(wm-shell-surface-sync-next-commit! shell-surf)
+					(wl-surface-attach surface new-buffer 0 0)
+					(wl-surface-damage surface 0 0 w h)
+					(wl-surface-commit surface)
+					(when (and old-buffer (pointer? old-buffer) (not (null-pointer? old-buffer))
+							   (not (equal? old-buffer new-buffer)))
+					  (catch #t (lambda () (wl-buffer-destroy old-buffer)) (lambda _ #f)))))))))))
 
 (define (container-borders-update-all!)
   "Update borders for all containers in the display."
@@ -509,6 +515,18 @@ Returns a Wayland buffer foreign pointer."
         (log-debug "Container ~a clicked via mouse shell surface" (container-id container))
         (container-focus! container)))))
 
+(define (container-border-on-window-fullscreen-entered window prev-status)
+  "Hide border when a window enters fullscreen."
+  (let ((container (window-container window)))
+    (when (and container (container? container))
+      (container-border-hide! container))))
+
+(define (container-border-on-window-fullscreen-exited window prev-status)
+  "Restore border when a window exits fullscreen."
+  (let ((container (window-container window)))
+    (when (and container (container? container))
+      (container-border-render! container))))
+
 (define (container-border-enable!)
   "Enable container borders, hook into container events and render borders."
   (unless *%container-border-enabled*
@@ -523,6 +541,8 @@ Returns a Wayland buffer foreign pointer."
     (gliver-hook-add! %window-container-removed-hook* 'container-border-on-window-container-removed)
     (gliver-hook-add! %window-container-added-hook* 'container-border-on-window-container-added)
     (gliver-hook-add! *seat-shell-interacted-hook* 'container-border-on-shell-interaction)
+    (gliver-hook-add! *window-fullscreen-entered-hook* 'container-border-on-window-fullscreen-entered)
+    (gliver-hook-add! *window-fullscreen-exited-hook* 'container-border-on-window-fullscreen-exited)
     (set! *%container-border-enabled* #t)
     (container-borders-update-all!)
     (log-info "container-border enabled.")))
@@ -541,6 +561,8 @@ Returns a Wayland buffer foreign pointer."
     (gliver-hook-remove! %window-container-removed-hook* 'container-border-on-window-container-removed)
     (gliver-hook-remove! %window-container-added-hook* 'container-border-on-window-container-added)
     (gliver-hook-remove! *seat-shell-interacted-hook* 'container-border-on-shell-interaction)
+    (gliver-hook-remove! *window-fullscreen-entered-hook* 'container-border-on-window-fullscreen-entered)
+    (gliver-hook-remove! *window-fullscreen-exited-hook* 'container-border-on-window-fullscreen-exited)
     (container-border-on-globals-unbind)
     (set! *%container-border-enabled* #f)
     (log-info "container-border disabled.")))
