@@ -77,6 +77,10 @@
 ;;; connection
 (define (river-connect!)
   "Connect to River's Wayland display and bind required protocols."
+  ;; ensure DISPLAY is set for Xwayland applications
+  (unless (getenv "DISPLAY")
+	(setenv "DISPLAY" ":0"))
+
   (log-info "Connecting to Wayland display...")
   (catch #t
     (lambda ()
