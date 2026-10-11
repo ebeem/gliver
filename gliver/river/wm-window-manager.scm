@@ -319,22 +319,29 @@ Hook: *window-size-changed-hook*"
 (define (on-window-app-id data proxy-window app-id-ptr)
   "Window updated its app_id.
 Hook: *window-app-id-changed-hook*"
-  (let ((app-id (pointer->string app-id-ptr)))
+  (let ((app-id (if (or (not (pointer? app-id-ptr)) (null-pointer? app-id-ptr))
+                    ""
+                    (pointer->string app-id-ptr))))
     (log-debug "Window ~a updated its app_id to ~a" proxy-window app-id)
     (gliver-hook-run! %window-app-id-changed-hook proxy-window app-id)))
 
 (define (on-window-title data proxy-window title-ptr)
   "Window updated its title.
 Hook: *window-title-changed-hook*"
-  (let ((title (pointer->string title-ptr)))
+  (let ((title (if (or (not (pointer? title-ptr)) (null-pointer? title-ptr))
+                   ""
+                   (pointer->string title-ptr))))
 	(log-debug "Window ~a updated its title to ~a" proxy-window title)
 	(gliver-hook-run! %window-title-changed-hook proxy-window title)))
 
 (define (on-window-parent data proxy-window parent-proxy)
   "Window updated its parent.
 Hook: *window-parent-changed-hook*"
-  (log-debug "Window ~a updated its parent to ~a" proxy-window parent-proxy)
-  (gliver-hook-run! %window-parent-changed-hook proxy-window parent-proxy))
+  (let ((parent (if (or (not (pointer? parent-proxy)) (null-pointer? parent-proxy))
+                    ""
+                    parent-proxy)))
+    (log-debug "Window ~a updated its parent to ~a" proxy-window parent)
+    (gliver-hook-run! %window-parent-changed-hook proxy-window parent)))
 
 (define (on-window-decoration-hint data proxy-window hint)
   "Window updated its preferred client side/server side decoration options.
@@ -413,7 +420,9 @@ hint: enum value `RIVER_OUTPUT_V1_PRESENTATION_MODE_VSYNC`,
   "The identifier is a string that contains up to 32 printable ASCII bytes.
 The identifier will always be unique and will not be reused.
 Only called once when the window is created."
-  (let ((identifier (pointer->string id-ptr)))
+  (let ((identifier (if (or (not (pointer? id-ptr)) (null-pointer? id-ptr))
+                        ""
+                        (pointer->string id-ptr))))
     (log-debug "Window identifier: ~a = ~a" proxy-window identifier)
     (gliver-hook-run! %window-identifier-changed-hook proxy-window identifier)))
 
