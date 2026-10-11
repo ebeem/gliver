@@ -218,7 +218,7 @@
 (define-var *wm-behavior-workspace-remove-to* 'focus)    ;; 'focus | 'index
 (define-var *wm-behavior-workspace-destroyable* #f)      ;; whether workspaces can be destroyed
 (define-var *wm-behavior-default-decoration* 'server)    ;; 'server | 'client
-(define-var *wm-behavior-default-capabilties* 0)
+(define-var *wm-behavior-default-capabilties* 4)         ;; fullscreen capability for clients
 (define-var *wm-behavior-default-edges* 15)
 (define-var *wm-behavior-default-border-edges* 15)
 
