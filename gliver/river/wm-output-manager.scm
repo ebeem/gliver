@@ -70,7 +70,7 @@ mode: enum value `RIVER_OUTPUT_V1_PRESENTATION_MODE_VSYNC`,
 Removing the output record and clearing up memory.
 Hook: *output-destroy-hook*"
   (log-debug "Output removed: ~a" proxy-output)
-  (gliver-hook-run! %output-removed-hook proxy-output))
+  (gliver-hook-run! %output-removed-hook data proxy-output))
 
 (define (wm-output-on-output-wl-output data proxy-output object-id)
   "The wl_output object corresponding to the river_output_v1."
