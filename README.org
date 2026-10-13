@@ -8,6 +8,21 @@
 #+ATTR_ORG: :width 900
 [[./.preview/screenshot.jpeg]]
 
+** Status
+
+~Gliver~ is considered almost complete feature-wise, it's possible to use it as a window manager if you are willing to tolerate some crashes and bugs. Please submit all the issues you face so we can make ~Gliver~ more stable.
+
+I have ~Gliver~ installed which allows me to select it as the window manager from my display manager, but once I am in, I open a terminal on my ~Gliver~ source code and use the below command.
+
+#+BEGIN_SRC sh
+while true; do (killall -q gliver || true) && make run || sleep 3; done
+#+END_SRC
+
+The above will keep running =make run= on the source so if ~Gliver~ crashes, it will simply be executed again. This way you don't lose your wayland session (~Gliver~ state like how windows are arranged is lost). You can also simply kill the ~Gliver~ process if you make changes to the code and want them to take effect immediately.
+
+You can find ~Gliver~'s logs in =${XDG_STATE_HOME}/state/gliver/gliver.log= (=~/.local/state/gliver/gliver.log= by default).
+You may also connect the ~REPL~ via socket if you use a tool like ~Emacs Geiser~ via =geiser-connect-local=. The socket path is =${XDG_STATE_HOME}/state/gliver/repl.sock= (=~/.local/state/gliver/repl.sock= by default)
+
 ** Philosophy
 
 ~Gliver~ is heavily inspired by ~Emacs~ and ~StumpWM~, tailored specifically for the modern Wayland stack. This project aims to be "The Emacs of Wayland WMs."
@@ -172,7 +187,8 @@ Pull requests are always welcome! Here are some guidelines to ensure your contri
 
 Here's a wishlist of features for the ~Gliver~ project:
 - Implementing animations driven by Guile timers over the =set_dimensions= Wayland request.
-- Tab-list showing the contents of the current container.
+- Implementing automated testing (most likely needs simulating river).
+- Add guard checks whenever needed, some clients will violate the defined protocol and send null-pointers or invalid parameters which always needs to be checked to avoid crashes.
 
 
 ** Known Issues

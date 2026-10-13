@@ -194,7 +194,6 @@
 			*statusbar-modules-right*
 			*statusbar-click-enabled*
 			*xdg-config-home*
-			*xdg-runtime-dir*
 			*xdg-state-home*
 			*xdg-data-home*
 			*gliver-config-dir*
@@ -601,10 +600,6 @@ following the same order in a keyboard numpad
   (or (getenv "XDG_CONFIG_HOME")
       (string-append (getenv "HOME") "/.config")))
 
-(define-var *xdg-runtime-dir*
-  (or (getenv "XDG_RUNTIME_DIR")
-      (string-append "/run/user/" (number->string (getuid)))))
-
 (define-var *xdg-state-home*
   (or (getenv "XDG_STATE_HOME")
       (string-append (getenv "HOME") "/.local/state")))
@@ -617,7 +612,7 @@ following the same order in a keyboard numpad
   (string-append *xdg-config-home* "/gliver"))
 
 (define-var *gliver-runtime-dir*
-  (string-append *xdg-runtime-dir* "/gliver"))
+  (string-append *xdg-state-home* "/gliver"))
 
 (define-var *gliver-state-dir*
   (string-append *xdg-state-home* "/gliver"))
