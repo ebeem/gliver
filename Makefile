@@ -82,6 +82,7 @@ MODULES =   gliver/core/logs.scm \
 			gliver/contrib/ui/components/toast.scm \
 			gliver/contrib/ui/overlay/which-key.scm \
 			gliver/contrib/ui/container/container-border.scm \
+			gliver/contrib/ui/container/container-tab-indicator.scm \
 			gliver/contrib/ui/statusbar.scm \
 			gliver/contrib/ui/statusbar/base.scm \
 			gliver/contrib/ui/statusbar/workspaces.scm \

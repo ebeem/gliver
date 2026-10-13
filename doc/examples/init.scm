@@ -9,6 +9,7 @@
 			 (gliver contrib layout manual)
 			 (gliver contrib keybindings gliver)
 			 (gliver contrib ui container container-border)
+			 (gliver contrib ui container container-tab-indicator)
 
 			 ;; optional deps (recommended)
 			 (gliver contrib ui overlay which-key)
@@ -41,6 +42,10 @@
 ;; enable container-border to add border to active container/window
 ;; highly recommended, considered a default in gliver
 (container-border-enable!)
+
+;; enable container tabs to show stacking windows in the container
+;; highly recommended, considered a default in gliver
+(container-tab-indicator-enable!)
 
 ;; install gleui ui components, also highly recommended
 ;; needed in order to be able to launch applications and view palette
