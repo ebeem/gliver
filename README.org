@@ -204,15 +204,15 @@ NOTE: this issue doesn't seem to be easy to resolve, clients in this case violat
 
 | Name                 | Gliver Component            | Good Alternatives |
 |----------------------+-----------------------------+-------------------|
-| output configuration | core built-in               | kanashi           |
-| input configuration  | core built-in               | channel, kwim     |
-| topbar / statusbar   | gleui statusbar             | waybar, swaybar   |
+| output configuration | core/output.scm             | kanashi           |
+| input configuration  | core/keybindings.scm        | channel, kwim     |
+| topbar / statusbar   | gleui/statusbar.scm         | waybar, swaybar   |
 | screen locker        | TODO                        | swaylock, waylock |
 | idle management      | TODO                        | swayidle          |
 | screen capture       | not planned                 | flameshot, grim   |
-| application launcher | gleui launcher              | fuzzel, rofi      |
+| application launcher | gleui/launcher.scm          | fuzzel, rofi      |
 | notification daemon  | TODO (based on gleui toast) | mako, dunst       |
-| wallpaper manager    | core built-in               | swaybg, awww      |
+| wallpaper manager    | river/wallpaper-manager.scm | swaybg, awww      |
 
 ** Help
 
