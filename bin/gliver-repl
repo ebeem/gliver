@@ -20,9 +20,8 @@
 (define repl-timeout (* 10 1000 1000))
 
 (define (repl-socket-path)
-  (let ((runtime-dir (or (getenv "XDG_RUNTIME_DIR")
-                         (string-append "/run/user/"
-                                        (number->string (getuid))))))
+  (let ((runtime-dir (or (getenv "XDG_STATE_HOME")
+						 (string-append (getenv "HOME") "/.local/state"))))
     (or (getenv "GLIVER_REPL_SOCKET")
         (string-append runtime-dir "/gliver/repl.sock"))))
 
