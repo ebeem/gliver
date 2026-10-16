@@ -596,6 +596,8 @@ Must be called in a ~render_sequence~."
 (define (window-on-window-closed data proxy-window)
   "Handle a new window event from the compositor."
   (let ((window (window-find-by-proxy proxy-window)))
+	;; TODO: cleanup wm-window-decoration-below-get and wm-window-decoration-above-get
+	(wm-window-destroy proxy-window)
     (window-remove! window)))
 (gliver-hook-add! %window-destroyed-hook 'window-on-window-closed)
 
@@ -627,7 +629,8 @@ Must be called in a ~render_sequence~."
 (define (window-on-window-title-changed proxy-window title)
   (let ((window (window-find-by-proxy proxy-window)))
     (when window
-      (%window-title-set! window title))))
+      (%window-title-set! window title)
+	  (gliver-hook-run! *window-title-changed-hook* window title))))
 (gliver-hook-add! %window-title-changed-hook 'window-on-window-title-changed)
 
 (define (window-on-window-parent-changed proxy-window parent)
