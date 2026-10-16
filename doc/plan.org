@@ -12,23 +12,11 @@ the current configuration file makes it harder to have an common place from whic
 ** DONE create a hash-table for all ~contrib~ and extra configuration variables
 gaps parameters, mode, message-timeout and all other manager state variables should move to the hash-table which is the only variable referenced by the ~manager~ other than the list of outputs, seats, and windows.
 
-** TODO document hooks
-currently it's not clear what the parameters are, should probably be documented in ~hooks.scm~
-
-** TODO add metadata to outputs, workspaces, containers, and windows
-this will allow modules to add their metadata to types so they can persist and be shared across other modules. Should be very similar to how manager handles configuration.
-
-** TODO plan animations
-no need for implementation now, but common functions should be used and expect animations to be introduced later. There should be no call changes to introduce animations.
-
-** TODO maybe improve automatic layout
-the implementation used to check for specific events like window creation and apply only needed changes to the layout. It's much easier to just reload the whole layout on some specific events needed by the layout. Check performance difference and change the logic accordingly. If there is no huge impact in performance keep current approach because it's much easier to read and maintain.
-
 ** DONE make default layout manual
 
 ** DONE check out dirty manager sequences and imperfect frames
 
-** TODO test multi monitor configuration
+** DONE test multi monitor configuration
 use ~WLR_WL_OUTPUTS=2~ in a nested setup
 
 ** DONE make a custom =define-command= macro
@@ -147,3 +135,42 @@ maybe wayland is also another library to consider moving to deps
 
 ** TODO fix and investigate fullscreen toggling window order and container border
 if fullscreen is toggled (exited), border isn't rendered and focusing another window in the same container doesn't bring it on top. Seems like window ordering issue of some sort.
+seems like container-window-indicator also disappears.
+
+** TODO keep windows settings when starting gliver
+after restarting, all windows will move to the default output and container.
+an error also is observed in logs
+ERROR hooks.scm - Hook %window-created: function raised wrong-type-arg: (struct-vtable Wrong type argument in position 1 (expecting struct): ~S (#f) (#f))
+
+** TODO add workspace grid feature
+this should be already possible with core, only introduce a variable to decide number of rows and fix the workspace navigation commands to respect it
+
+** TODO add workspace group module
+this should allow syncing workspace switching, like span workspaces across monitors. Should have easy to toggle default, maybe syncing based on index
+
+** TODO fix window-rules module
+was developed long time ago and I don't think it's working anymore
+
+** TODO investigate break on tty switching
+go to tty and back to gliver you will notice that layout isn't correct
+
+** TODO add variable to allow navigating containers to navigate window in container
+when navigating container right/left and there are windows in that direction under the current container, move to them first.
+This variable should also reflect on moving window to right/left container, or maybe introduce another variable for more flexibility
+
+** TODO weather module keeps loading for long time
+investigate, if service is slow maybe display last value until it's updated?
+
+** TODO document hooks
+currently it's not clear what the parameters are, should probably be documented in ~hooks.scm~
+
+** TODO add metadata to outputs, workspaces, containers, and windows
+this will allow modules to add their metadata to types so they can persist and be shared across other modules. Should be very similar to how manager handles configuration.
+
+** TODO plan animations
+no need for implementation now, but common functions should be used and expect animations to be introduced later. There should be no call changes to introduce animations.
+
+** TODO maybe improve automatic layout
+the implementation used to check for specific events like window creation and apply only needed changes to the layout. It's much easier to just reload the whole layout on some specific events needed by the layout. Check performance difference and change the logic accordingly. If there is no huge impact in performance keep current approach because it's much easier to read and maintain.
+
+** TODO allow switching keyboard layout
