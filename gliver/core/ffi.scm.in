@@ -1,9 +1,12 @@
 (define-module (gliver core ffi)
-  #:export (%libxkbcommon
-            %libwayland-client
-            %libpango
-            %libpangocairo
-            %libgobject))
+  #:export (
+			%libxkbcommon
+			%libwayland-client
+			%libpango
+			%libpangocairo
+			%libgobject
+			%librsvg
+))
 
 (define %libxkbcommon
   "@LIBXKBCOMMON_LIBDIR@/libxkbcommon")
@@ -19,3 +22,6 @@
 
 (define %libgobject
   "@LIBGOBJECT_LIBDIR@/libgobject-2.0")
+
+(define %librsvg
+  "@LIBRSVG_LIBDIR@/librsvg-2")

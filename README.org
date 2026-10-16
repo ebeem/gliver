@@ -20,8 +20,8 @@ while true; do (killall -q gliver || true) && make run || sleep 3; done
 
 The above will keep running =make run= on the source so if ~Gliver~ crashes, it will simply be executed again. This way you don't lose your wayland session (~Gliver~ state like how windows are arranged is lost). You can also simply kill the ~Gliver~ process if you make changes to the code and want them to take effect immediately.
 
-You can find ~Gliver~'s logs in =${XDG_STATE_HOME}/state/gliver/gliver.log= (=~/.local/state/gliver/gliver.log= by default).
-You may also connect the ~REPL~ via socket if you use a tool like ~Emacs Geiser~ via =geiser-connect-local=. The socket path is =${XDG_STATE_HOME}/state/gliver/repl.sock= (=~/.local/state/gliver/repl.sock= by default)
+You can find ~Gliver~'s logs in =${XDG_STATE_HOME}/gliver/gliver.log= (=~/.local/state/gliver/gliver.log= by default).
+You may also connect the ~REPL~ via socket if you use a tool like ~Emacs Geiser~ via =geiser-connect-local=. The socket path is =${XDG_STATE_HOME}/gliver/repl.sock= (=~/.local/state/gliver/repl.sock= by default)
 
 ** Philosophy
 
@@ -54,6 +54,7 @@ Because ~River~ relies on a non-monolithic architecture, it separates the compos
 - River (v0.4+)
 - libwayland
 - libxkbcommon
+- librsvg
 - GNU Guile (3.0+)
 - Guile-Cairo
 - Pango

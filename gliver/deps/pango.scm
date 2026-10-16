@@ -16,6 +16,8 @@
 			*libpango*
 			*libpangocairo*
 			*libgobject*
+			pango-cairo-context->raw-pointer
+			pango-g-object-unref
 			pango-escape-markup
 			pango-escape-ampersands
 			pango-measure-text
@@ -61,7 +63,7 @@
           (lambda _ (error (format #f "Pango symbol ~a not found in library" name)))))
       (lambda _ (error (format #f "Pango library not loaded, cannot call ~a" name)))))
 
-(define (%cairo-context->raw-pointer cr)
+(define (pango-cairo-context->raw-pointer cr)
   "Extract the raw C (cairo_t *) pointer from a Guile cairo context SMOB or pointer."
   (cond
    ((not cr) #f)
@@ -107,12 +109,12 @@
 (define %pango-layout-get-pixel-size
   (%pango-func *libpango* "pango_layout_get_pixel_size" void (list '* '* '*)))
 
-(define %g-object-unref
+(define pango-g-object-unref
   (%pango-func *libgobject* "g_object_unref" void (list '*)))
 
 ;; layout lifecycle helper
 (define-syntax-rule (%with-pango-layout (layout cr) body ...)
-  (let* ((raw (%cairo-context->raw-pointer cr))
+  (let* ((raw (pango-cairo-context->raw-pointer cr))
          (layout (if (and raw (not (null-pointer? raw)))
                      (%pango-cairo-create-layout raw)
                      #f)))
@@ -121,7 +123,7 @@
       (lambda () body ...)
       (lambda ()
         (when (and layout (not (null-pointer? layout)))
-          (%g-object-unref layout))))))
+          (pango-g-object-unref layout))))))
 
 (define (pango-escape-markup str)
   "Escape XML/Pango markup special characters in STR."
@@ -157,10 +159,10 @@
             (if ent-len
                 ;; valid entity, keep it
                 (%step (+ amp-pos ent-len)
-                      (cons (substring str amp-pos (+ amp-pos ent-len)) acc))
+                       (cons (substring str amp-pos (+ amp-pos ent-len)) acc))
                 ;; bare ampersand, escape it
                 (%step (+ amp-pos 1)
-                      (cons "&amp;" acc)))))
+                       (cons "&amp;" acc)))))
 
         ;; scan text up to the next '&'
         (define (%step pos acc)
@@ -218,17 +220,17 @@
   "Measure text or markup size in pixels on Cairo context CR.
 Returns (values width height)."
   (%with-pango-layout (layout cr)
-					 (if (or (not layout) (null-pointer? layout))
-						 (values 0 0)
-						 (begin
-						   (%setup-layout! layout text-or-markup font font-size markup? width ellipsize #f)
-						   (let ((w-bv (make-bytevector (sizeof int) 0))
-								 (h-bv (make-bytevector (sizeof int) 0)))
-							 (%pango-layout-get-pixel-size layout
-														   (bytevector->pointer w-bv)
-														   (bytevector->pointer h-bv))
-							 (values (bytevector-s32-native-ref w-bv 0)
-									 (bytevector-s32-native-ref h-bv 0)))))))
+					  (if (or (not layout) (null-pointer? layout))
+						  (values 0 0)
+						  (begin
+							(%setup-layout! layout text-or-markup font font-size markup? width ellipsize #f)
+							(let ((w-bv (make-bytevector (sizeof int) 0))
+								  (h-bv (make-bytevector (sizeof int) 0)))
+							  (%pango-layout-get-pixel-size layout
+															(bytevector->pointer w-bv)
+															(bytevector->pointer h-bv))
+							  (values (bytevector-s32-native-ref w-bv 0)
+									  (bytevector-s32-native-ref h-bv 0)))))))
 
 (define* (pango-draw-text cr text-or-markup
                           #:key (x #f) (y #f) (font #f) (font-size #f)
@@ -240,9 +242,9 @@ Returns (values width height)."
           (py (if y (exact->inexact y) 0.0)))
       (when (not (pointer? cr))
         (cairo-move-to cr px py))))
-  (let ((raw-cr (%cairo-context->raw-pointer cr)))
+  (let ((raw-cr (pango-cairo-context->raw-pointer cr)))
     (when (and raw-cr (not (null-pointer? raw-cr)))
       (%with-pango-layout (layout raw-cr)
-						 (when (and layout (not (null-pointer? layout)))
-						   (%setup-layout! layout text-or-markup font font-size markup? width ellipsize align)
-						   (%pango-cairo-show-layout raw-cr layout))))))
+						  (when (and layout (not (null-pointer? layout)))
+							(%setup-layout! layout text-or-markup font font-size markup? width ellipsize align)
+							(%pango-cairo-show-layout raw-cr layout))))))

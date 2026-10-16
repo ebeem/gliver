@@ -26,6 +26,7 @@ LIBWAYLAND_CLIENT_LIBDIR = $(shell $(PKG_CONFIG) --variable libdir wayland-clien
 LIBPANGO_LIBDIR = $(shell $(PKG_CONFIG) --variable libdir pango)
 LIBPANGOCAIRO_LIBDIR = $(shell $(PKG_CONFIG) --variable libdir pangocairo)
 LIBGOBJECT_LIBDIR = $(shell $(PKG_CONFIG) --variable libdir gobject-2.0)
+LIBRSVG_LIBDIR = $(shell $(PKG_CONFIG) --variable libdir librsvg-2.0)
 
 MODULES =   gliver/core/logs.scm \
 			gliver/core/types.scm \
@@ -41,6 +42,7 @@ MODULES =   gliver/core/logs.scm \
 			gliver/core.scm \
 			gliver/deps/libc.scm \
 			gliver/deps/color.scm \
+			gliver/deps/librsvg.scm \
 			gliver/deps/libxkbcommon.scm \
 			gliver/deps/pango.scm \
 			gliver/wayland/client.scm \
@@ -132,7 +134,8 @@ gliver/core/ffi.scm: gliver/core/ffi.scm.in
 		-e "s|@LIBWAYLAND_CLIENT_LIBDIR@|$(LIBWAYLAND_CLIENT_LIBDIR)|" \
 		-e "s|@LIBPANGO_LIBDIR@|$(LIBPANGO_LIBDIR)|" \
 		-e "s|@LIBPANGOCAIRO_LIBDIR@|$(LIBPANGOCAIRO_LIBDIR)|" \
-		-e "s|@LIBGOBJECT_LIBDIR@|$(LIBGOBJECT_LIBDIR)|" < $< > $@
+		-e "s|@LIBGOBJECT_LIBDIR@|$(LIBGOBJECT_LIBDIR)|" \
+		-e "s|@LIBRSVG_LIBDIR@|$(LIBRSVG_LIBDIR)|" < $< > $@
 
 # build each .scm file specified in modules into .go
 # file in the build directory
