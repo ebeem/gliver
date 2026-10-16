@@ -185,6 +185,8 @@ last had focus."
     (when seat-proxy
       (let ((seat (seat-find-by-proxy seat-proxy)))
         (when seat
+		  ;; reset seat-window-focused
+		  (%seat-window-focused-set! seat #f)
           ;; re-focus the previously focused window if available
           (let ((window (seat-window-focused seat)))
             (cond
@@ -194,7 +196,6 @@ last had focus."
               (let ((cur (window-current)))
                 (when (and cur (window? cur) (not (window-destroyed? cur)))
                   (gliver-hook-run! *seat-window-focused-hook* seat cur)))))))))))
-
 
 ;;; synchronization
 (define (sync-layer-shell!)

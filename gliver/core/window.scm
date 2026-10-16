@@ -214,7 +214,8 @@ does have a container ~%window-container-remove!~ will be called."
 	  ;; focus if it's currently not the current window
 	  ;; or the seat is not set to focus it
 	  ;; or if its container is not currently focused
-	  (unless (and (eq? (seat-window-focused seat) window)
+	  (unless (and seat (seat? seat)
+                   (eq? (seat-window-focused seat) window)
 				   (eq? current window)
 				   (container-focused? container)
 				   (not force))
@@ -690,7 +691,8 @@ Must be called in a ~render_sequence~."
   (if (and window (window? window) (not (window-destroyed? window)))
 	  (let ((container (window-container window)))
 	    (unless (and (eq? (window-current) window)
-	                 (container-focused? container))
+	                 (container-focused? container)
+					 (eq? (seat-window-focused seat) window))
 		  (window-focus! window #:seat (or seat (seat-current)))))
 	  (let ((current (window-current)))
 		(when (and current (window? current) (not (window-destroyed? current)))
