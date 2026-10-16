@@ -11,6 +11,8 @@
   #:export (
 			window-focus-next
 			window-focus-prev
+			window-swap-next
+			window-swap-prev
 			window-focus-last
 			window-all-list
 			window-workspace-list
@@ -52,6 +54,22 @@
 			 (prev (window-prev win)))
     (when prev
       (window-focus! prev))))
+
+(define-command (window-swap-next)
+  "Swap with next window in the current container."
+  (and-let* ((win (window-current))
+			 (container (window-container win))
+			 (next (window-next win #:recursive #f)))
+    (when next
+      (container-swap-windows! container win next))))
+
+(define-command (window-swap-prev)
+  "Swap with previous window in the current container."
+  (and-let* ((win (window-current))
+			 (container (window-container win))
+			 (prev (window-prev win #:recursive #f)))
+    (when prev
+      (container-swap-windows! container win prev))))
 
 (define-command (window-focus-last)
   "Switch to the previously focused window within the current container."

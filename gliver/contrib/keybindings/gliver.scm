@@ -36,6 +36,10 @@
 	"s-p"       'window-focus-prev
 	"s-Tab"     'window-focus-next
 	"s-S-Tab"   'window-focus-prev
+	"s-C-n"     'window-swap-next
+	"s-C-p"     'window-swap-prev
+	"s-C-Tab"   'window-swap-next
+	"s-C-S-Tab" 'window-swap-prev
 	"s-Left"    'container-focus-left
 	"s-Down"    'container-focus-down
 	"s-Up"      'container-focus-up

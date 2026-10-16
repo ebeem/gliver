@@ -117,14 +117,16 @@ make && make run
 
 *** Focus Navigation
 
-| Key Combination | Command               | Description                              |
-|-----------------+-----------------------+------------------------------------------|
-| =s-h=, =s-Left=     | =container-focus-left=  | Focus container to the left              |
-| =s-j=, =s-Down=     | =container-focus-down=  | Focus container below                    |
-| =s-k=, =s-Up=       | =container-focus-up=    | Focus container above                    |
-| =s-l=, =s-Right=    | =container-focus-right= | Focus container to the right             |
-| =s-n=, =s-Tab=      | =window-focus-next=     | Focus next window in container stack     |
-| =s-p=, =s-S-Tab=    | =window-focus-prev=     | Focus previous window in container stack |
+| Key Combination  | Command               | Description                                            |
+|------------------+-----------------------+--------------------------------------------------------|
+| =s-h=, =s-Left=      | =container-focus-left=  | Focus container to the left                            |
+| =s-j=, =s-Down=      | =container-focus-down=  | Focus container below                                  |
+| =s-k=, =s-Up=        | =container-focus-up=    | Focus container above                                  |
+| =s-l=, =s-Right=     | =container-focus-right= | Focus container to the right                           |
+| =s-n=, =s-Tab=       | =window-focus-next=     | Focus next window in container stack                   |
+| =s-p=, =s-S-Tab=     | =window-focus-prev=     | Focus previous window in container stack               |
+| =s-C-n=, =s-C-Tab=   | =window-swap-next=      | Swap current window with next window in container      |
+| =s-C-p=, =s-C-S-Tab= | =window-swap-prev=      | Swap current window with  previous window in container |
 
 *** Moving Windows Between Containers
 

@@ -29,6 +29,7 @@
 			container-in-direction
 			container-add!
 			container-move-windows-to-container!
+			container-swap-windows!
 			container-remove!
 			container-focused?
 			container-focus!
@@ -146,6 +147,32 @@
   (for-each (lambda (window)
             (window-move-to-container! window target-container #:focus #f))
           (container-windows source-container)))
+
+(define (container-swap-windows! container win1 win2)
+  "Swap the positions of WIN1 and WIN2 in CONTAINER's window list.
+Returns #t on success, #f if windows cannot be swapped."
+  (if (and (container? container)
+           (not (container-destroyed? container))
+           (window? win1)
+           (window? win2)
+           (not (eq? win1 win2)))
+      (let* ((windows (container-windows container))
+             (idx1 (list-index (lambda (w) (eq? w win1)) windows))
+             (idx2 (list-index (lambda (w) (eq? w win2)) windows)))
+        (if (and idx1 idx2 (not (= idx1 idx2)))
+            (let ((new-windows (map (lambda (w)
+                                      (cond
+                                       ((eq? w win1) win2)
+                                       ((eq? w win2) win1)
+                                       (else w)))
+                                    windows)))
+              (%container-windows-set! container new-windows)
+              (let ((cur (or (container-window-current container) win1)))
+                (when (and cur (window? cur) (not (window-destroyed? cur)))
+                  (gliver-hook-run! *window-focused-hook* cur)))
+              #t)
+            #f))
+      #f))
 
 (define* (container-remove! container #:key (target-container #f) (focus #t))
   "Remove CONTAINER from its workspace."
