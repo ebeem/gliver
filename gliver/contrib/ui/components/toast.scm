@@ -26,12 +26,12 @@ toast is called. This should be any function that will call
 make-toast-backend.")
 
 (define* (toast-show message #:key (timeout 0)
-					 (name "") (backend #f))
+					 (name "default") (theme-overrides '()) (backend #f) (icon #f) (output #f))
   "Display the user a dialog with MESSAGE.
 BACKEND defaults to the globally configured `*toast-backend*`."
   (let ((toast (or backend *toast-backend*)))
     (if (procedure? toast)
-        (toast message #:timeout timeout #:name name)
+        (toast message #:timeout timeout #:name name #:icon icon #:theme-overrides theme-overrides #:output output)
         (log-debug "toast: No toast backend configured for toast-show"))))
 
 (define* (toast-make-span text #:key color weight)
@@ -53,7 +53,7 @@ BACKEND defaults to the globally configured `*toast-backend*`."
   "A row is a list of columns."
   columns)
 
-(define* (toast-kill #:key (name #f)
+(define* (toast-kill #:key (name "default")
 					 (backend-kill #f))
   "Kill the user active toast dialog.
 BACKEND defaults to the globally configured `*toast-backend-kill*`."

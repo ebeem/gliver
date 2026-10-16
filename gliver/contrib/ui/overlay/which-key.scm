@@ -17,6 +17,7 @@
   #:use-module (srfi srfi-1)
   #:use-module (gliver core)
   #:use-module (gliver contrib ui components toast)
+  #:use-module (gliver contrib ui gleui toast)
   #:use-module (gliver contrib commands)
   #:declarative? #f
   #:export (
@@ -32,6 +33,17 @@
 			*which-key-keymap-remove-asterisks*
 			*%which-key-enabled*
 			*which-key-identifier-name*
+			*which-key-font*
+			*which-key-font-size*
+			*which-key-bg-color*
+			*which-key-fg-color*
+			*which-key-border-color*
+			*which-key-border-width*
+			*which-key-border-radius*
+			*which-key-location*
+			*which-key-margin*
+			*which-key-padding-x*
+			*which-key-padding-y*
 			describe-action
 			format-bindings
 			which-key-on-keymap-change
@@ -63,6 +75,44 @@
 			"Internal state that indicates which-key is enabled")
 (define-var *which-key-identifier-name* "which-key-identifier-name"
             "Identifier name passed to toast and used to detect it later in order to kill it for instance.")
+
+(define-var *which-key-font* *gleui-toast-font*
+			"Font family used for which-key toast.")
+(define-var *which-key-font-size* *gleui-toast-font-size*
+			"Font size used for which-key toast.")
+(define-var *which-key-bg-color* *gleui-toast-bg-color*
+			"Background color for which-key toast.")
+(define-var *which-key-fg-color* *gleui-toast-fg-color*
+			"Text color for which-key toast.")
+(define-var *which-key-border-color* *gleui-toast-border-color*
+			"Border color for which-key toast.")
+(define-var *which-key-border-width* *gleui-toast-border-width*
+			"Border width in pixels for which-key toast.")
+(define-var *which-key-border-radius* *gleui-toast-border-radius*
+			"Corner border radius in pixels for which-key toast.")
+(define-var *which-key-location* 8
+			"Gliver position (1-9) for which-key toast.")
+(define-var *which-key-margin* *gleui-toast-margin*
+			"Margin in pixels from the screen edge for which-key toast.")
+(define-var *which-key-padding-x* *gleui-toast-padding-x*
+			"Padding horizontal content in pixels for which-key toast.")
+(define-var *which-key-padding-y* *gleui-toast-padding-y*
+			"Padding vertical content in pixels for which-key toast.")
+
+(define (%which-key-theme-overrides)
+  `((font . ,*which-key-font*)
+    (font-size . ,*which-key-font-size*)
+    (background . ,*which-key-bg-color*)
+    (bg-color . ,*which-key-bg-color*)
+    (foreground . ,*which-key-fg-color*)
+    (fg-color . ,*which-key-fg-color*)
+    (border-color . ,*which-key-border-color*)
+    (border-width . ,*which-key-border-width*)
+    (border-radius . ,*which-key-border-radius*)
+    (location . ,*which-key-location*)
+    (margin . ,*which-key-margin*)
+    (padding-x . ,*which-key-padding-x*)
+    (padding-y . ,*which-key-padding-y*)))
 
 (define (describe-action action)
   "Return a short description toast span for a binding action."
@@ -139,9 +189,13 @@
     (let ((keymap (var-get mode-name)))
       (if keymap
           (let ((text (format-bindings keymap)))
-			(toast-show text #:name *which-key-identifier-name*))
-          (log-debug "which-key: no keymap found for mode ~a"
-                     mode-name))))))
+			(toast-show text
+                        #:name *which-key-identifier-name*
+                        #:theme-overrides (%which-key-theme-overrides)))
+          (begin
+            (log-debug "which-key: no keymap found for mode ~a"
+                       mode-name)
+            (toast-kill #:name *which-key-identifier-name*)))))))
 
 (define (which-key-enable!)
   "Enable which-key: show available keys when entering submaps."
@@ -154,5 +208,6 @@
   "Disable which-key."
   (when *%which-key-enabled*
     (gliver-hook-remove! *keymap-change-hook* 'which-key-on-keymap-change)
+    (toast-kill #:name *which-key-identifier-name*)
     (set! *%which-key-enabled* #f)
     (log-info "which-key disabled.")))

@@ -212,7 +212,7 @@ NOTE: this issue doesn't seem to be easy to resolve, clients in this case violat
 | idle management      | TODO                        | swayidle          |
 | screen capture       | not planned                 | flameshot, grim   |
 | application launcher | gleui/launcher.scm          | fuzzel, rofi      |
-| notification daemon  | TODO (based on gleui toast) | mako, dunst       |
+| notification daemon  | gleui/notifications.scm     | mako, dunst       |
 | wallpaper manager    | river/wallpaper-manager.scm | swaybg, awww      |
 
 ** Help

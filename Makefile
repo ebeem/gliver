@@ -105,6 +105,7 @@ MODULES =   gliver/core/logs.scm \
 			gliver/contrib/ui/gleui/palette.scm \
 			gliver/contrib/ui/gleui/launcher.scm \
 			gliver/contrib/ui/gleui/toast.scm \
+			gliver/contrib/ui/gleui/notifications.scm \
 			gliver/contrib/ui/gleui/statusbar.scm \
 			gliver/contrib/ui/gleui.scm \
 			gliver/contrib/ui/integrations/rofi.scm \
