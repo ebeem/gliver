@@ -18,6 +18,8 @@
   #:use-module (gliver deps color)
   #:use-module (gliver river window-manager)
   #:use-module (gliver river wm-window-manager)
+  #:use-module (gliver river wm-node-manager)
+  #:use-module (gliver river wm-decoration-manager)
   ;; lazy loaded, core type functions shouldn't be imported here
   ;; maybe using hooks is a better idea
   #:autoload (gliver core seat) (seat-wm-window-focus)
@@ -144,10 +146,22 @@
   "Remove a window from the display."
   (let* ((remaining-windows (delq window (manager-windows *manager*)))
 		 (container (window-container window))
-		 (workspace (container-workspace container)))
+		 (workspace (if container (container-workspace container) #f))
+		 (node (window-wl-node-proxy window))
+		 (dec-above (window-wl-decoration-above-proxy window))
+		 (dec-below (window-wl-decoration-below-proxy window)))
     (%manager-windows-set! *manager* remaining-windows)
 	(%window-container-remove! window)
 	(%window-destroyed-set! window #t)
+	(when (and node (pointer? node) (not (null-pointer? node)))
+	  (catch #t (lambda () (wm-node-destroy! node)) (lambda _ #f))
+	  (%window-wl-node-proxy-set! window #f))
+	(when (and dec-above (pointer? dec-above) (not (null-pointer? dec-above)))
+	  (catch #t (lambda () (wm-decoration-destroy! dec-above)) (lambda _ #f))
+	  (%window-wl-decoration-above-proxy-set! window #f))
+	(when (and dec-below (pointer? dec-below) (not (null-pointer? dec-below)))
+	  (catch #t (lambda () (wm-decoration-destroy! dec-below)) (lambda _ #f))
+	  (%window-wl-decoration-below-proxy-set! window #f))
     (gliver-hook-run! *window-destroyed-hook* window container workspace)))
 
 (define* (%window-container-remove! window #:key (focus #t))

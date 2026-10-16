@@ -36,6 +36,7 @@
   #:use-module (gliver wayland gen wlr-layer-shell-unstable-v1)
   #:use-module (gliver river connector)
   #:use-module (gliver contrib commands)
+  #:use-module (gliver contrib ui gleui base)
   #:use-module (gliver contrib ui statusbar base)
   #:use-module (gliver contrib ui statusbar)
   #:declarative? #f
@@ -48,6 +49,8 @@
 			statusbar-output-state-rendered-height
 			statusbar-output-state-rendered-width
 			statusbar-output-state-buffer
+			statusbar-output-state-shm-slots
+			statusbar-output-state-shm-active-idx
 			statusbar-output-state-layer-surface
 			statusbar-output-state-surface
 			statusbar-output-state-output
@@ -59,6 +62,8 @@
 			*pointer-y*
 			*timer-thread-running?*
 			*statusbar-timer-thread*
+			*statusbar-seat-proxies*
+			statusbar-seat-cleanup!
 			statusbar-shm-buffer-create
 			statusbar-resolve-modules
 			statusbar-render-surface!
@@ -82,6 +87,7 @@
 			statusbar-update-all!
 			statusbar-start-timer-thread!
 			statusbar-on-output-created
+			statusbar-on-output-id-changed
 			statusbar-on-output-dimensions
 			statusbar-on-output-statusbar-changed
 			statusbar-enable!
@@ -98,7 +104,7 @@
   (%make-statusbar-output-state output surface layer-surface buffer
                                 rendered-width rendered-height configured?
                                 listener pointer pointer-listener hit-boxes
-                                statusbar)
+                                statusbar shm-slots shm-active-idx)
   statusbar-output-state?
   (output           statusbar-output-state-output)
   (surface          statusbar-output-state-surface          %statusbar-output-state-surface-set!)
@@ -111,7 +117,9 @@
   (pointer          statusbar-output-state-pointer          %statusbar-output-state-pointer-set!)
   (pointer-listener statusbar-output-state-pointer-listener %statusbar-output-state-pointer-listener-set!)
   (hit-boxes        statusbar-output-state-hit-boxes        %statusbar-output-state-hit-boxes-set!)
-  (statusbar        statusbar-output-state-statusbar        %statusbar-output-state-statusbar-set!))
+  (statusbar        statusbar-output-state-statusbar        %statusbar-output-state-statusbar-set!)
+  (shm-slots        statusbar-output-state-shm-slots        %statusbar-output-state-shm-slots-set!)
+  (shm-active-idx   statusbar-output-state-shm-active-idx   %statusbar-output-state-shm-active-idx-set!))
 
 ;; each output has its own statusbar instance
 (define *statusbar-output-table* (make-hash-table))
@@ -122,6 +130,7 @@
 (define *pointer-y* 0.0)
 (define *timer-thread-running?* #f)
 (define *statusbar-timer-thread* #f)
+(define *statusbar-seat-proxies* '())
 
 (define (statusbar-shm-buffer-create width height render-fn)
   "Allocate a shared memory wl_buffer of size WxH and populate it using RENDER-FN.
@@ -130,15 +139,24 @@ RENDER-FN receives (cr width height). Returns the new wl_buffer foreign pointer.
     (lambda ()
       (let* ((stride (* width 4))     ;; width * 4 bytes per pixel ARGB32
              (size (* stride height)) ;; stride * height
-             (fd (memfd-create "gliver-statusbar-shm" *mfd-cloexec*))
-             (ptr (begin
+             (fd (memfd-create "gliver-statusbar-shm" *mfd-cloexec*)))
+        (if (< fd 0)
+            %null-pointer
+            (let ((ptr (begin
                     (ftruncate fd size)
-                    (mmap %null-pointer size *prot-read-write* *map-shared* fd 0)))
-             (bv (pointer->bytevector ptr size))
+                         (mmap %null-pointer size *prot-read-write* *map-shared* fd 0))))
+              (if (null-pointer? ptr)
+                  (begin (close-fd fd) %null-pointer)
+                  (catch #t
+                    (lambda ()
+                      (let* ((bv (pointer->bytevector ptr size))
              (surf (cairo-image-surface-create-for-data bv 'argb32 width height stride))
              (cr (cairo-create surf)))
         ;; render into mmap memory
         (render-fn cr width height)
+                        (cairo-surface-flush surf)
+                        (cairo-destroy cr)
+                        (cairo-surface-destroy surf)
         (munmap ptr size)
         ;; create wayland buffer and clean up
         (let* ((pool   (wl-shm-create-pool *wl-shm* fd size))
@@ -146,7 +164,11 @@ RENDER-FN receives (cr width height). Returns the new wl_buffer foreign pointer.
           (wl-shm-pool-destroy pool)
           (close-fd fd)
           buffer)))
-
+                    (lambda (k . args)
+                      (catch #t (lambda () (munmap ptr size)) (lambda _ #f))
+                      (close-fd fd)
+                      (log-error "Statusbar: SHM buffer creation failed: ~a ~a" k args)
+                      %null-pointer)))))))
     (lambda (key . args)
       (log-error "Statusbar: SHM buffer creation failed: ~a ~a" key args)
       %null-pointer)))
@@ -338,21 +360,32 @@ Example: (list 'window (make-module-mpd))"
          (height (statusbar-output-state-rendered-height state))
          (surface (statusbar-output-state-surface state)))
     (when (and (> width 0) (> height 0) (pointer? surface) (not (null-pointer? surface)))
-      (let ((new-buffer (statusbar-shm-buffer-create
-                         width height
-                         (lambda (cr w h)
-                           (statusbar-render-surface! output state cr w h))))
-            (old-buffer (statusbar-output-state-buffer state)))
-        (when (and (pointer? new-buffer) (not (null-pointer? new-buffer)))
-          (%statusbar-output-state-buffer-set! state new-buffer)
-          (wl-surface-attach surface new-buffer 0 0)
+      (catch #t
+        (lambda ()
+          (let* ((slots (gleui-shm-slots-ensure! (statusbar-output-state-shm-slots state) width height))
+                 (active-idx (if (= (or (statusbar-output-state-shm-active-idx state) 0) 0) 1 0))
+                 (slot (if (= active-idx 0) (car slots) (cdr slots))))
+            (when (and slot (gleui-shm-slot? slot))
+              (let* ((stride (gleui-shm-slot-stride slot))
+                     (bv (gleui-shm-slot-bv slot))
+                     (dst-surf (cairo-image-surface-create-for-data bv 'argb32 width height stride))
+                     (cr (cairo-create dst-surf)))
+                (statusbar-render-surface! output state cr width height)
+                (cairo-surface-flush dst-surf)
+                (cairo-destroy cr)
+                (cairo-surface-destroy dst-surf)
+                (%statusbar-output-state-shm-slots-set! state slots)
+                (%statusbar-output-state-shm-active-idx-set! state active-idx)
+                (let ((buf (gleui-shm-slot-buffer slot)))
+                  (when (and (pointer? buf) (not (null-pointer? buf)))
+                    (%statusbar-output-state-buffer-set! state buf)
+                    (wl-surface-attach surface buf 0 0)
           (wl-surface-damage surface 0 0 width height)
           (wl-surface-commit surface)
           (when *wl-display*
-            (wl-display-flush *wl-display*))
-          (when (and (pointer? old-buffer) (not (null-pointer? old-buffer))
-                     (not (equal? old-buffer new-buffer)))
-            (wl-buffer-destroy old-buffer)))))))
+                      (wl-display-flush *wl-display*))))))))
+        (lambda (key . args)
+          (log-error "Statusbar: Render and commit failed: ~a ~a" key args))))))
 
 (define (statusbar-init-output! output)
   "Initialize the statusbar layer surface on OUTPUT."
@@ -366,12 +399,8 @@ Example: (list 'window (make-module-mpd))"
          (valid-pointer? *wl-shm*)))
 
   (define (resolve-target-wl-output)
-    (let ((obj-id (output-wl-output output)))
-      (if (and (number? obj-id)
-               (valid-pointer? *wl-registry*))
-          (let ((bound (gliver-wl-registry-bind *wl-registry* obj-id *wl-output-interface* 4)))
-            (if (valid-pointer? bound) bound %null-pointer))
-          %null-pointer)))
+    (let ((proxy (output-wl-output-proxy output)))
+      (if (valid-pointer? proxy) proxy %null-pointer)))
 
   (define (calculate-anchor position)
 	(if (eq? position 'bottom)
@@ -387,6 +416,8 @@ Example: (list 'window (make-module-mpd))"
                (statusbar? bar)
                (globals-ready?)
                (not (hash-table-ref/default *statusbar-output-table* (output-id output) #f)))
+      (let ((target-wl-out (resolve-target-wl-output)))
+        (when (valid-pointer? target-wl-out)
       (log-info "Statusbar: Initializing statusbar on output ~a..." (output-name output))
 
       (let* ((bar-pos       (statusbar-position bar))
@@ -398,7 +429,6 @@ Example: (list 'window (make-module-mpd))"
              (total-height  (+ bar-height margin-top margin-bottom))
              (anchor        (calculate-anchor bar-pos))
              (init-width    (max 100 (- (output-width output) margin-left margin-right)))
-             (target-wl-out (resolve-target-wl-output))
              (surface       (wl-compositor-create-surface *wl-compositor*))
              (layer-surf    (zwlr-layer-shell-v1-get-layer-surface
                              *zwlr-layer-shell*
@@ -408,7 +438,7 @@ Example: (list 'window (make-module-mpd))"
                              "gliver-statusbar"))
              (state         (%make-statusbar-output-state
                              output surface layer-surf %null-pointer
-                             init-width bar-height #f #f #f #f '() bar)))
+                                 init-width bar-height #f #f #f #f '() bar #f 0)))
 
         (define (configure-layer-surface! layer-surf anchor th)
           ;; width 0 asks the compositor to allocate full width according to anchor
@@ -456,7 +486,7 @@ Example: (list 'window (make-module-mpd))"
           (wl-surface-commit surface)
           (when *wl-display*
             (wl-display-flush *wl-display*))
-          (hash-table-set! *statusbar-output-table* (output-id output) state))))))
+          (hash-table-set! *statusbar-output-table* (output-id output) state))))))))
 
 (define (statusbar-cleanup-output! output)
   "Destroy statusbar layer surface and clean up resources for OUTPUT."
@@ -466,18 +496,37 @@ Example: (list 'window (make-module-mpd))"
         (hash-table-delete! *statusbar-output-table* (output-id output))
         (let ((layer-surf (statusbar-output-state-layer-surface state))
               (surface (statusbar-output-state-surface state))
-              (buffer (statusbar-output-state-buffer state)))
+              (buffer (statusbar-output-state-buffer state))
+              (slots (statusbar-output-state-shm-slots state)))
+          (when slots
+            (when (car slots) (gleui-shm-slot-destroy (car slots)))
+            (when (cdr slots) (gleui-shm-slot-destroy (cdr slots)))
+            (%statusbar-output-state-shm-slots-set! state #f))
           (when (and (pointer? layer-surf) (not (null-pointer? layer-surf)))
             (catch #t (lambda () (zwlr-layer-surface-v1-destroy layer-surf)) (lambda _ #f)))
           (when (and (pointer? surface) (not (null-pointer? surface)))
             (catch #t (lambda () (wl-surface-destroy surface)) (lambda _ #f)))
-          (when (and (pointer? buffer) (not (null-pointer? buffer)))
+          (when (and (not slots) (pointer? buffer) (not (null-pointer? buffer)))
             (catch #t (lambda () (wl-buffer-destroy buffer)) (lambda _ #f))))
         ;; restore usable area to full output dimensions
         (output-usable-area-set! output (output-x output) (output-y output) (output-width output) (output-height output))
         (gliver-hook-run! *output-change-hook* output)
         (when *wl-display*
           (wl-display-flush *wl-display*))))))
+
+(define (statusbar-seat-cleanup!)
+  "Release Wayland seat and pointer proxies created for statusbar interaction."
+  (for-each
+   (lambda (entry)
+     (match entry
+       ((wl-seat ptr listener)
+        (when (and (pointer? ptr) (not (null-pointer? ptr)))
+          (catch #t (lambda () (wl-pointer-release ptr)) (lambda _ #f)))
+        (when (and (pointer? wl-seat) (not (null-pointer? wl-seat)))
+          (catch #t (lambda () (wl-seat-release wl-seat)) (lambda _ #f))))))
+   *statusbar-seat-proxies*)
+  (set! *statusbar-seat-proxies* '())
+  (set! *pointer-surface* %null-pointer))
 
 (define (statusbar-cleanup-all!)
   "Clean up all statusbar resources across all outputs."
@@ -492,7 +541,8 @@ Example: (list 'window (make-module-mpd))"
      (lambda (state)
        (let ((output (statusbar-output-state-output state)))
          (statusbar-cleanup-output! output)))
-     states)))
+     states))
+  (statusbar-seat-cleanup!))
 
 (define (statusbar-find-hit-box state px py)
   "Find a module hit-box matching point (PX, PY) in STATE."
@@ -575,6 +625,7 @@ Example: (list 'window (make-module-mpd))"
 
   (define (noop-handler . _args) #t)
 
+  (statusbar-seat-cleanup!)
   (when (and *statusbar-click-enabled*
              (valid-pointer? *wl-registry*))
     (let* ((seat        (seat-current))
@@ -596,7 +647,8 @@ Example: (list 'window (make-module-mpd))"
                              noop-handler   ; axis-discrete
                              noop-handler   ; axis-v120
                              noop-handler))) ; axis-dir
-              (wl-proxy-add-listener ptr listener %null-pointer))))))))
+              (wl-proxy-add-listener ptr listener %null-pointer)
+              (set! *statusbar-seat-proxies* (cons (list wl-seat ptr listener) *statusbar-seat-proxies*)))))))))
 
 (define (statusbar-update-all-modules! output)
   "Update all modules for OUTPUT."
@@ -723,6 +775,15 @@ Runs at most once per second and only re-renders when module contents change."
       (when (and bar (statusbar? bar))
         (statusbar-init-output! output)))))
 
+(define (statusbar-on-output-id-changed output prev-id)
+  (when *statusbar-enabled*
+    (let ((bar (output-statusbar output))
+          (existing (hash-table-ref/default *statusbar-output-table* (output-id output) #f)))
+      (when (and bar (statusbar? bar) (not existing))
+        (statusbar-init-output! output)
+        (statusbar-attach-active-module-hooks!)
+        (statusbar-render-output! output)))))
+
 (define (statusbar-on-output-dimensions output prev-w prev-h)
   (when *statusbar-enabled*
     (let ((state (hash-table-ref/default *statusbar-output-table* (output-id output) #f))
@@ -762,6 +823,7 @@ Runs at most once per second and only re-renders when module contents change."
 
 (gliver-hook-add! *statusbar-render-request-hook* 'statusbar-render-all!)
 (gliver-hook-add! *output-created-hook* 'statusbar-on-output-created)
+(gliver-hook-add! *output-object-id-changed-hook* 'statusbar-on-output-id-changed)
 (gliver-hook-add! *output-dimensions-changed-hook* 'statusbar-on-output-dimensions)
 (gliver-hook-add! *output-destroy-hook* 'statusbar-cleanup-output!)
 (gliver-hook-add! *output-removed-hook* 'statusbar-cleanup-output!)

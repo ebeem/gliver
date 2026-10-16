@@ -947,8 +947,11 @@ PATTERN can be a string, a <gliver-key>, or a list of either."
              (not (null-pointer? *zwlr-layer-shell*)))
     (let* ((w (%gps-width state))
            (h (gleui-palette-calc-height state))
-           (anchor (gleui-numpad->anchor (or *palette-location* 8))))
+           (anchor (gleui-numpad->anchor (or *palette-location* 8)))
+           (target-output (or *palette-output*
+                              (output-current))))
       (gleui-layer-surface-create
+       #:output target-output
        #:namespace "gliver-palette"
        #:layer ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY
        #:anchor anchor
@@ -1200,3 +1203,5 @@ Otherwise, runs a synchronous event loop until selection or cancellation."
              (pointer? *zwlr-layer-shell*) (not (null-pointer? *zwlr-layer-shell*)))
     (catch #t gleui-palette-init! (lambda _ #f)))
   (log-info "gleui-palette installed as dmenu/palette backend."))
+
+(gliver-hook-add! *gliver-globals-unbind-hook* 'gleui-palette-cleanup!)

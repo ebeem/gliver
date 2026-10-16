@@ -168,12 +168,10 @@ This reimplements the inline C function using wl_proxy_marshal_flags."
 (define (gliver-wl-registry-bind registry name interface version)
   "Bind a registry object.  INTERFACE is a pointer to a wl_interface struct.
 NAME is the global name (uint32).  VERSION is the desired version."
-  ;; the wl_interface struct starts with a const char* name field.
-  ;; we dereference it once to get the char* pointer, then convert to string.
-  (let ((interface-name-str (pointer->string (dereference-pointer interface))))
+  (let ((name-ptr (dereference-pointer interface)))
     (wl-marshal-constructor registry 0 interface version
                             (list (cons 'uint name)
-                                  (cons 'string interface-name-str)
+                                  (cons 'string name-ptr)
                                   (cons 'uint version)
                                   (cons 'new-id 0)))))
 
@@ -304,10 +302,12 @@ Each element is one of:
   ('int . value)     int32
   ('object . ptr)    object reference (pointer)
   ('string . str)    C string pointer
-  ('new-id . 0)      placeholder for new_id (filled by marshal)"
+  ('new-id . 0)      placeholder for new_id (filled by marshal)
+Returns (values bv roots)."
   (let* ((n (length args))
          (arg-size (sizeof '*))  ;; sizeof(wl_argument) = pointer size
-         (bv (wl-gc-protect! (make-bytevector (* n arg-size) 0))))
+         (bv (make-bytevector (* n arg-size) 0))
+         (roots '()))
     (let loop ((i 0) (rest args))
       (when (pair? rest)
         (let ((offset (* i arg-size)))
@@ -317,10 +317,12 @@ Each element is one of:
             (('int . val)
              (bytevector-sint-set! bv offset val (native-endianness) 4))
             (('object . ptr)
-             (bytevector-uint-set! bv offset (pointer-address ptr)
-                                   (native-endianness) (sizeof '*)))
-            (('string . str)
-             (let ((str-ptr (wl-gc-protect! (string->pointer str))))
+             (let ((p (or ptr %null-pointer)))
+               (bytevector-uint-set! bv offset (pointer-address p)
+                                     (native-endianness) (sizeof '*))))
+            (('string . val)
+             (let ((str-ptr (if (pointer? val) val (string->pointer val))))
+               (set! roots (cons str-ptr roots))
                (bytevector-uint-set! bv offset (pointer-address str-ptr)
                                      (native-endianness) (sizeof '*))))
             (('fixed . val)
@@ -328,22 +330,25 @@ Each element is one of:
             (('fd . val)
              (bytevector-sint-set! bv offset val (native-endianness) 4))
             (('array . ptr)
-             (bytevector-uint-set! bv offset (pointer-address ptr)
-                                   (native-endianness) (sizeof '*)))
+             (let ((p (or ptr %null-pointer)))
+               (bytevector-uint-set! bv offset (pointer-address p)
+                                     (native-endianness) (sizeof '*))))
             (('new-id . _)
              #t)  ;; leave as zero, filled by marshal
             (_ (error "Unknown wl_argument type" (car rest)))))
         (loop (1+ i) (cdr rest))))
-    bv))
+    (values bv roots)))
 
 (define (wl-marshal-request proxy opcode args-list)
   "Send a Wayland request that returns no new object.
 OPCODE: the request opcode.
 ARGS-LIST: list of tagged arguments for make-wl-args."
-  (let ((args-bv (make-wl-args args-list)))
+  (call-with-values (lambda () (make-wl-args args-list))
+    (lambda (args-bv roots)
     (%wl-proxy-marshal-array-flags proxy opcode %null-pointer 0 0
                                     (bytevector->pointer args-bv))
-    *unspecified*))
+      (identity (cons args-bv roots))
+      *unspecified*)))
 
 (define WL_MARSHAL_FLAG_DESTROY 1)
 
@@ -362,9 +367,12 @@ Returns the new proxy.
 INTERFACE: wl_interface pointer for the new object.
 VERSION: protocol version for the new object.
 ARGS-LIST: list of tagged arguments for make-wl-args."
-  (let ((args-bv (make-wl-args args-list)))
-    (%wl-proxy-marshal-array-flags proxy opcode interface version 0
+  (call-with-values (lambda () (make-wl-args args-list))
+    (lambda (args-bv roots)
+      (let ((res (%wl-proxy-marshal-array-flags proxy opcode interface version 0
                                     (bytevector->pointer args-bv))))
+        (identity (cons args-bv roots))
+        res))))
 
 ;;; full interface construction
 ;;; a wl_message is { const char *name; const char *signature;

@@ -137,7 +137,7 @@
   (signature        %cwi-signature        %cwi-signature-set!))
 
 ;; hash-table to map each container to its window indicator state
-(define *container-tab-indicator-table* (make-weak-key-hash-table))
+(define *container-tab-indicator-table* (make-hash-table))
 
 (define (container-tab-indicator-state-get container)
   "Get the indicator state associated with CONTAINER."
@@ -869,13 +869,8 @@ Calls switch-window to go to target one."
 (define (container-tab-indicator-on-globals-unbind)
   "Clean up all container indicator surfaces on unbind/shutdown."
   (container-tab-indicator-seat-cleanup!)
-  (for-each
-   (lambda (output)
-     (for-each
-      (lambda (ws)
-        (for-each container-tab-indicator-cleanup! (workspace-containers ws)))
-      (output-workspaces output)))
-   (manager-outputs *manager*)))
+  (let ((containers (hash-map->list (lambda (k v) k) *container-tab-indicator-table*)))
+    (for-each container-tab-indicator-cleanup! containers)))
 
 (define (container-tab-indicator-on-listeners-attach)
   "Initialize indicators for any existing containers when listeners attach."

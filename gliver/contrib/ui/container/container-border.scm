@@ -82,7 +82,7 @@
   (height           %cbs-height           %cbs-height-set!)
   (bg-color         %cbs-bg-color         %cbs-bg-color-set!))
 
-(define *container-border-table* (make-weak-key-hash-table))
+(define *container-border-table* (make-hash-table))
 
 (define (get-container-border-state container)
   (and (container? container)
@@ -333,17 +333,15 @@ Returns a Wayland buffer foreign pointer."
   "Render the container border for CONTAINER and commit the surface within a render sequence."
   (when (and (container? container)
 			 (workspace-visible? (container-workspace container))
-             (not (container-destroyed? container))
-             *wl-display*
-             (pointer? *wl-compositor*)
-             (not (null-pointer? *wl-compositor*))
-             (pointer? *wl-shm*)
-             (not (null-pointer? *wl-shm*))
-             (pointer? (manager-wl-proxy *manager*))
-             (not (null-pointer? (manager-wl-proxy *manager*))))
+             (not (container-destroyed? container)))
 	;; disable border if fullscreen mode is on
     (if (any window-fullscreen? (container-windows container))
         (container-border-hide! container)
+        (begin
+          ;; init border if it's not created yet
+          (with-render-sequence
+           (unless (container-wl-surface container)
+             (container-border-init! container)))
 		(let* ((state (ensure-container-border-state! container))
 			   (surface (container-wl-surface container))
 			   (shell-surf (container-wl-shell-surface container))
@@ -375,11 +373,6 @@ Returns a Wayland buffer foreign pointer."
 							   (equal? prev-color color)
 							   (equal? prev-bg bg-color))))
 
-		  ;; init border if it's not created yet
-          (with-render-sequence
-		   (unless (container-wl-surface container)
-			 (container-border-init! container)))
-
 		  (when (and surface (pointer? surface) (not (null-pointer? surface))
 					 node (pointer? node) (not (null-pointer? node))
 					 shell-surf (pointer? shell-surf) (not (null-pointer? shell-surf))
@@ -406,7 +399,7 @@ Returns a Wayland buffer foreign pointer."
 					(wl-surface-commit surface)
 					(when (and old-buffer (pointer? old-buffer) (not (null-pointer? old-buffer))
 							   (not (equal? old-buffer new-buffer)))
-					  (catch #t (lambda () (wl-buffer-destroy old-buffer)) (lambda _ #f)))))))))))
+                        (catch #t (lambda () (wl-buffer-destroy old-buffer)) (lambda _ #f))))))))))))
 
 (define (container-borders-update-all!)
   "Update borders for all containers in the display."
@@ -464,13 +457,8 @@ Returns a Wayland buffer foreign pointer."
 
 (define (container-border-on-globals-unbind)
   "Clean up all container border surfaces on unbind/shutdown."
-  (for-each
-   (lambda (output)
-     (for-each
-      (lambda (ws)
-        (for-each container-border-cleanup! (workspace-containers ws)))
-      (output-workspaces output)))
-   (manager-outputs *manager*)))
+  (let ((containers (hash-map->list (lambda (k v) k) *container-border-table*)))
+    (for-each container-border-cleanup! containers)))
 
 (define (container-border-on-listeners-attach)
   "Initialize borders for any containers existing when listeners attach."

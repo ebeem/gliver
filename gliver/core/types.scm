@@ -65,6 +65,8 @@
 			output-wl-proxy
 			%output-wl-output-set!
 			output-wl-output
+			%output-wl-output-proxy-set!
+			output-wl-output-proxy
 			%output-workspace-previous-set!
 			output-workspace-previous
 			%output-workspace-current-set!
@@ -453,7 +455,7 @@
 ;;; modules to keep the state synced with river
 (define-record-type <output>
   (%make-output id name x y width height workspaces workspace-current
-                workspace-previous wl-proxy wl-output wallpaper
+                workspace-previous wl-proxy wl-output wl-output-proxy wallpaper
                 usable-x usable-y usable-width usable-height
                 statusbar)
   output?
@@ -467,6 +469,7 @@
   (workspace-current  output-workspace-current  %output-workspace-current-set!)
   (workspace-previous output-workspace-previous %output-workspace-previous-set!)
   (wl-output          output-wl-output          %output-wl-output-set!)
+  (wl-output-proxy    output-wl-output-proxy    %output-wl-output-proxy-set!)
   (wl-proxy           output-wl-proxy           %output-wl-proxy-set!)
   (wallpaper          output-wallpaper          %output-wallpaper-set!)
   (usable-x           output-usable-x           %output-usable-x-set!)
@@ -491,7 +494,7 @@
 
 (define* (make-output name
                       #:key (id (manager-output-number-next!)) (wl-proxy #f) (x 0) (y 0) (width 1920) (height 1080)
-					  (workspaces '()) (workspace-current #f) (workspace-previous #f) (wl-output #f) (wallpaper #f)
+					  (workspaces '()) (workspace-current #f) (workspace-previous #f) (wl-output #f) (wl-output-proxy #f) (wallpaper #f)
                       (usable-x #f) (usable-y #f) (usable-width #f) (usable-height #f)
                       (statusbar #f))
   "Create a new <output> record with the given NAME.
@@ -500,7 +503,7 @@ Other parameters (x, y, width, height, wl-proxy) can be provided as keyword argu
                 x y
                 width height
 				workspaces workspace-current workspace-previous
-                wl-proxy wl-output wallpaper
+                wl-proxy wl-output wl-output-proxy wallpaper
                 (or usable-x x)
                 (or usable-y y)
                 (or usable-width width)

@@ -27,6 +27,7 @@
   #:use-module (gliver wayland gen river-input-management-v1)
   #:use-module (gliver wayland gen river-layer-shell-v1)
   #:use-module (gliver wayland gen wlr-layer-shell-unstable-v1)
+  #:declarative? #f
   #:export (
 			WL_COMPOSITOR_NAME
 			WL_SHM_NAME

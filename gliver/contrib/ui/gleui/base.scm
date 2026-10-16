@@ -94,12 +94,19 @@
               (let ((ptr (mmap %null-pointer size *prot-read-write* *map-shared* fd 0)))
                 (if (null-pointer? ptr)
                     (begin (close-fd fd) #f)
+                    (catch #t
+                      (lambda ()
                     (let* ((bv (pointer->bytevector ptr size))
                            (pool (wl-shm-create-pool *wl-shm* fd size))
                            (buf (wl-shm-pool-create-buffer pool 0 width height stride WL_SHM_FORMAT_ARGB8888)))
                       (wl-shm-pool-destroy pool)
                       (close-fd fd)
-                      (%make-shm-slot buf ptr bv size width height stride)))))))))
+                          (%make-shm-slot buf ptr bv size width height stride)))
+                      (lambda (k . args)
+                        (log-error "gleui-shm-slot-create failed: ~a ~a" k args)
+                        (catch #t (lambda () (munmap ptr size)) (lambda _ #f))
+                        (close-fd fd)
+                        #f)))))))))
 
 (define (gleui-shm-slot-destroy slot)
   "Release and unmap a persistent SHM buffer slot."
@@ -144,6 +151,7 @@
     (else ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP)))
 
 (define* (gleui-layer-surface-create #:key
+                                     (output #f)
                                      (namespace "gleui")
                                      (layer ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY)
                                      (anchor 0)
@@ -162,22 +170,37 @@
 Returns (values surface layer-surface) or (values #f #f) on failure."
   (if (or (not *connected*)
           (not (pointer? *wl-compositor*))
-          (null-pointer? *wl-compositor*)
-          (not (pointer? *zwlr-layer-shell*))
-          (null-pointer? *zwlr-layer-shell*))
+          (null-pointer? *wl-compositor*))
       (values #f #f)
-      (let* ((output (output-current))
-             (output-wl (and output (output-wl-output output)))
-             (output-if (and output-wl
-							 (number? output-wl)
-							 (gliver-wl-registry-bind *wl-registry* output-wl *wl-output-interface* 4)))
-             (surface (wl-compositor-create-surface *wl-compositor*))
+      (let* ((surface (wl-compositor-create-surface *wl-compositor*)))
+        (if (or (not surface) (null-pointer? surface))
+      (values #f #f)
+            (if (or (not (pointer? *zwlr-layer-shell*))
+                    (null-pointer? *zwlr-layer-shell*))
+                (begin
+                  (catch #t (lambda () (wl-surface-destroy surface)) (lambda _ #f))
+                  (values #f #f))
+                (catch #t
+                  (lambda ()
+                    (let* ((target-output (cond
+                                           ((and output (output? output)) output)
+                                           ((string? output) (output-find-by-name output))
+                                           ((number? output) (output-find-by-id output))
+                                           (else (output-current))))
+                           (output-if (output-wl-output-proxy target-output))
              (layer-surface (zwlr-layer-shell-v1-get-layer-surface
 							 *zwlr-layer-shell*
 							 surface
-							 (if (and output-if (pointer? output-if)) output-if %null-pointer)
+                                           (if (and output-if (pointer? output-if) (not (null-pointer? output-if)))
+                                               output-if
+                                               %null-pointer)
 							 layer
 							 namespace)))
+                      (if (or (not layer-surface) (null-pointer? layer-surface))
+                          (begin
+                            (catch #t (lambda () (wl-surface-destroy surface)) (lambda _ #f))
+                            (values #f #f))
+                          (begin
         (zwlr-layer-surface-v1-set-size layer-surface width height)
         (zwlr-layer-surface-v1-set-anchor layer-surface anchor)
         (zwlr-layer-surface-v1-set-margin layer-surface margin-top margin-right margin-bottom margin-left)
@@ -194,15 +217,20 @@ Returns (values surface layer-surface) or (values #f #f) on failure."
                   (when (procedure? on-configure)
                     (on-configure w h)))
                 (lambda (data proxy)
-                  (when (procedure? on-close)
-                    (on-close))))))
+                                      (if (procedure? on-close)
+                                          (on-close)
+                                          (gleui-layer-surface-destroy! surface proxy))))))
           (wl-proxy-add-listener layer-surface listener %null-pointer))
         (wl-surface-commit surface)
         (when *wl-display*
           (catch #t
             (lambda () (wl-display-roundtrip *wl-display*))
             (lambda _ (wl-display-flush *wl-display*))))
-        (values surface layer-surface))))
+                            (values surface layer-surface)))))
+                  (lambda (k . args)
+                    (log-error "gleui-layer-surface-create failed: ~a ~a" k args)
+                    (catch #t (lambda () (wl-surface-destroy surface)) (lambda _ #f))
+                    (values #f #f))))))))
 
 (define (gleui-layer-surface-destroy! surface layer-surface)
   "Destroy a LAYER-SURFACE and SURFACE."

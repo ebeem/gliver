@@ -15,16 +15,21 @@
   #:use-module (gliver core logs)
   #:use-module (gliver core config)
   #:use-module (gliver river wm-output-manager)
+  #:use-module (gliver river connector)
+  #:use-module (gliver wayland client)
+  #:use-module (gliver wayland gen wayland)
   #:autoload (gliver core workspace) (workspace-add! workspace-focus!)
+  #:declarative? #f
   #:export (
 			output-add!
 			output-remove!
-			output-next
-			output-prev
 			output-focused?
 			output-focus!
+			output-next
+			output-prev
 			output-presentation-mode-set
 			output-on-output
+			output-release-wl-output-proxy!
 			output-on-output-removed
 			output-on-output-wl-output
 			output-on-output-position
@@ -118,13 +123,23 @@ mode: enum value `RIVER_OUTPUT_V1_PRESENTATION_MODE_VSYNC`,
 	(log-debug "Output created: ~a" output)
 	(output-add! output)))
 
+(define (output-release-wl-output-proxy! output)
+  "Release the wl_output Wayland proxy associated with OUTPUT if bound."
+  (when (and output (output? output))
+    (let ((proxy (output-wl-output-proxy output)))
+      (when (and proxy (pointer? proxy) (not (null-pointer? proxy)))
+        (catch #t (lambda () (wl-output-release proxy)) (lambda _ #f))
+        (%output-wl-output-proxy-set! output #f)))))
+
 (define (output-on-output-removed data proxy-output)
   "Output was removed. This will take care of
 Removing the output record and clearing up memory.
 Hook: *output-destroy-hook*"
   (log-debug "Output removed: ~a" proxy-output)
   (let ((output (output-find-by-proxy proxy-output)))
-    (when output (output-remove! output))
+    (when output
+      (output-remove! output)
+      (output-release-wl-output-proxy! output))
 	(wm-output-destroy proxy-output)
 	(gliver-hook-run! *output-destroy-hook* output)))
 
@@ -136,6 +151,15 @@ Hook: *output-destroy-hook*"
 	  (log-debug "setting output ~a object-id to ~a" output object-id)
 	  (let ((prev-object-id (output-wl-output output)))
 		(%output-wl-output-set! output object-id)
+		(when (and (number? object-id)
+				   *wl-registry*
+				   (pointer? *wl-registry*)
+				   (not (null-pointer? *wl-registry*)))
+		  (let ((old-proxy (output-wl-output-proxy output)))
+			(when (and old-proxy (pointer? old-proxy) (not (null-pointer? old-proxy)))
+			  (catch #t (lambda () (wl-output-release old-proxy)) (lambda _ #f))))
+		  (let ((proxy (gliver-wl-registry-bind *wl-registry* object-id *wl-output-interface* 4)))
+			(%output-wl-output-proxy-set! output proxy)))
 		(gliver-hook-run! *output-object-id-changed-hook* output prev-object-id)))))
 
 (define (output-on-output-position data proxy-output x y)

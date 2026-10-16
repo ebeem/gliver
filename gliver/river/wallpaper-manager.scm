@@ -112,22 +112,27 @@
     (let ((existing (hash-table-ref/default *wallpaper-output-table* (output-id output) #f)))
       (unless existing
 		;; create new wallpaper surface
-        (let* ((int-wl-out (output-wl-output output))
-			   ;; get pointer from object-id (int-32) using global registry
-			   ;; ensure int-wl-out is initialized (not #f nor invalid pointer)
-               (wl-out (and int-wl-out
-                            (number? int-wl-out)
-                            (gliver-wl-registry-bind *wl-registry* int-wl-out *wl-output-interface* 4))))
+        (let ((wl-out (output-wl-output-proxy output)))
           (when (and wl-out (pointer? wl-out) (not (null-pointer? wl-out)))
             (log-info "Initializing wallpaper surface for output ~a..." (output-name output))
-            (let* ((surface (wl-compositor-create-surface *wl-compositor*))
-                   (layer-surf (zwlr-layer-shell-v1-get-layer-surface
+            (let ((surface (wl-compositor-create-surface *wl-compositor*)))
+              (if (or (not surface) (null-pointer? surface))
+                  (log-error "Failed to create surface for wallpaper on ~a" (output-name output))
+                  (let ((layer-surf
+                         (catch #t
+                           (lambda ()
+                             (zwlr-layer-shell-v1-get-layer-surface
                                 *zwlr-layer-shell*
                                 surface
                                 wl-out
                                 ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND
                                 "gliver-wallpaper"))
-                   (anchor-all (+ ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP
+                           (lambda (k . args)
+                             (log-error "Failed to create layer surface for wallpaper: ~a ~a" k args)
+                             #f))))
+                    (if (or (not layer-surf) (null-pointer? layer-surf))
+                        (catch #t (lambda () (wl-surface-destroy surface)) (lambda _ #f))
+                        (let* ((anchor-all (+ ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP
                                   ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM
                                   ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT
                                   ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT))
@@ -181,7 +186,7 @@
               (wl-surface-commit surface)
               (when *wl-display*
                 (wl-display-flush *wl-display*))
-              (hash-table-set! *wallpaper-output-table* (output-id output) state))))))))
+                          (hash-table-set! *wallpaper-output-table* (output-id output) state))))))))))))
 
 (define (wallpaper-on-output-created output prev-obj-id)
   "Handle new output creation."
@@ -334,21 +339,34 @@ Returns a wayland buffer foreign pointer."
                       (close-fd fd)
                       (log-error "Failed to mmap wallpaper buffer")
                       %null-pointer)
-                    (begin
-                      (let ((bv (pointer->bytevector ptr size)))
+                    (let ((fill-ok?
                         (catch #t
+                             (lambda ()
+                               (let ((bv (pointer->bytevector ptr size)))
 						  ;; fill the bytevector of the pointer using cairo
-                          (lambda () (fill-proc! ptr bv stride size width height))
+                                 (fill-proc! ptr bv stride size width height)
+                                 #t))
                           (lambda (key . args)
-                            (log-error "Error filling wallpaper buffer with Cairo: ~a ~a" key args))))
+                               (log-error "Error filling wallpaper buffer with Cairo: ~a ~a" key args)
+                               #f))))
 					  ;; free the virtual memory (won't impact fd)
-                      (munmap ptr size)
+                      (catch #t (lambda () (munmap ptr size)) (lambda _ #f))
 					  ;; create wayland buffer and close file descriptor
+                      (if (not fill-ok?)
+                          (begin
+                            (close-fd fd)
+                            %null-pointer)
+                          (catch #t
+                            (lambda ()
                       (let* ((pool (wl-shm-create-pool *wl-shm* fd size))
                              (buffer (wl-shm-pool-create-buffer pool 0 width height stride WL_SHM_FORMAT_ARGB8888)))
                         (wl-shm-pool-destroy pool)
                         (close-fd fd)
-                        buffer)))))))))
+                                buffer))
+                            (lambda (k . args)
+                              (close-fd fd)
+                              (log-error "Error creating wl_buffer for wallpaper: ~a ~a" k args)
+                              %null-pointer)))))))))))
 
 (define (wallpaper-buffer-render wp width height)
   "Create and return a wl_buffer containing the rendered wallpaper WP for size WxH using Cairo."
