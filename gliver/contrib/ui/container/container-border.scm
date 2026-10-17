@@ -67,7 +67,7 @@
 ))
 
 (define-var *%container-border-enabled* #f
-  "Internal state that indicates whether container borders are enabled.")
+			"Internal state that indicates whether container borders are enabled.")
 
 ;;; per-container border state
 (define-record-type <container-border-state>
@@ -189,7 +189,7 @@ Returns a Wayland buffer foreign pointer."
                         buffer)))))))))
 
 (define* (container-border-buffer-create width height border-width border-color
-                                        #:optional (border-radius 0) (border-edges 15) (bg-color #f))
+                                         #:optional (border-radius 0) (border-edges 15) (bg-color #f))
   "Create and return a wl_buffer containing the rendered container border of size WxH."
   (container-shm-buffer-create
    width height
@@ -342,63 +342,63 @@ Returns a Wayland buffer foreign pointer."
           (with-render-sequence
            (unless (container-wl-surface container)
              (container-border-init! container)))
-		(let* ((state (ensure-container-border-state! container))
-			   (surface (container-wl-surface container))
-			   (shell-surf (container-wl-shell-surface container))
-			   (node (container-wl-node-proxy container))
-			   (color (container-border-color container))
-			   (border-w *container-border-width*)
-			   (border-r *container-border-radius*)
-			   (border-edges *container-border-edges*)
-			   ;; border is outer, not inner
-			   ;; so width and height will be increased by 2 * border width
-			   ;; while x and y will be padded by border width
-			   (w (+ (container-width container) (* 2 border-w)))
-			   (h (+ (container-height container) (* 2 border-w)))
-			   (x (- (container-x container) border-w))
-			   (y (- (container-y container) border-w))
-			   ;; background color will be false/transparent if container has windows
-			   (bg-color (and (null? (container-windows container)) *container-border-bg-color*))
-			   (curr-buf (container-wl-buffer container))
-			   (prev-w (%cbs-width state))
-			   (prev-h (%cbs-height state))
-			   (prev-color (%cbs-color state))
-			   (prev-bg (%cbs-bg-color state))
-			   (reusable? (and (not force)
-							   curr-buf
-							   (pointer? curr-buf)
-							   (not (null-pointer? curr-buf))
-							   (= prev-w w)
-							   (= prev-h h)
-							   (equal? prev-color color)
-							   (equal? prev-bg bg-color))))
+          (let* ((state (ensure-container-border-state! container))
+                 (surface (container-wl-surface container))
+                 (shell-surf (container-wl-shell-surface container))
+                 (node (container-wl-node-proxy container))
+                 (color (container-border-color container))
+                 (border-w *container-border-width*)
+                 (border-r *container-border-radius*)
+                 (border-edges *container-border-edges*)
+                 ;; border is outer, not inner
+                 ;; so width and height will be increased by 2 * border width
+                 ;; while x and y will be padded by border width
+                 (w (+ (container-width container) (* 2 border-w)))
+                 (h (+ (container-height container) (* 2 border-w)))
+                 (x (- (container-x container) border-w))
+                 (y (- (container-y container) border-w))
+                 ;; background color will be false/transparent if container has windows
+                 (bg-color (and (null? (container-windows container)) *container-border-bg-color*))
+                 (curr-buf (container-wl-buffer container))
+                 (prev-w (%cbs-width state))
+                 (prev-h (%cbs-height state))
+                 (prev-color (%cbs-color state))
+                 (prev-bg (%cbs-bg-color state))
+                 (reusable? (and (not force)
+                                 curr-buf
+                                 (pointer? curr-buf)
+                                 (not (null-pointer? curr-buf))
+                                 (= prev-w w)
+                                 (= prev-h h)
+                                 (equal? prev-color color)
+                                 (equal? prev-bg bg-color))))
 
-		  (when (and surface (pointer? surface) (not (null-pointer? surface))
-					 node (pointer? node) (not (null-pointer? node))
-					 shell-surf (pointer? shell-surf) (not (null-pointer? shell-surf))
-					 (> w 0) (> h 0))
-			(with-render-sequence
-			 (wm-node-position-set! node x y)
-			 (wm-node-place-top! node))
-			(container-border-update-input-region! container surface w h border-w border-edges)
-			(if reusable?
-				(begin
-				  (wm-shell-surface-sync-next-commit! shell-surf)
-				  (wl-surface-commit surface))
-				(let ((new-buffer (container-border-buffer-create w h border-w color border-r border-edges bg-color))
-					  (old-buffer curr-buf))
-				  (when (and (pointer? new-buffer) (not (null-pointer? new-buffer)))
-					(%container-wl-buffer-set! container new-buffer)
-					(%container-border-color-set! container color)
-					(%cbs-width-set! state w)
-					(%cbs-height-set! state h)
-					(%cbs-bg-color-set! state bg-color)
-					(wm-shell-surface-sync-next-commit! shell-surf)
-					(wl-surface-attach surface new-buffer 0 0)
-					(wl-surface-damage surface 0 0 w h)
-					(wl-surface-commit surface)
-					(when (and old-buffer (pointer? old-buffer) (not (null-pointer? old-buffer))
-							   (not (equal? old-buffer new-buffer)))
+            (when (and surface (pointer? surface) (not (null-pointer? surface))
+                       node (pointer? node) (not (null-pointer? node))
+                       shell-surf (pointer? shell-surf) (not (null-pointer? shell-surf))
+                       (> w 0) (> h 0))
+              (with-render-sequence
+               (wm-node-position-set! node x y)
+               (wm-node-place-top! node))
+              (container-border-update-input-region! container surface w h border-w border-edges)
+              (if reusable?
+                  (begin
+                    (wm-shell-surface-sync-next-commit! shell-surf)
+                    (wl-surface-commit surface))
+                  (let ((new-buffer (container-border-buffer-create w h border-w color border-r border-edges bg-color))
+                        (old-buffer curr-buf))
+                    (when (and (pointer? new-buffer) (not (null-pointer? new-buffer)))
+                      (%container-wl-buffer-set! container new-buffer)
+                      (%container-border-color-set! container color)
+                      (%cbs-width-set! state w)
+                      (%cbs-height-set! state h)
+                      (%cbs-bg-color-set! state bg-color)
+                      (wm-shell-surface-sync-next-commit! shell-surf)
+                      (wl-surface-attach surface new-buffer 0 0)
+                      (wl-surface-damage surface 0 0 w h)
+                      (wl-surface-commit surface)
+                      (when (and old-buffer (pointer? old-buffer) (not (null-pointer? old-buffer))
+                                 (not (equal? old-buffer new-buffer)))
                         (catch #t (lambda () (wl-buffer-destroy old-buffer)) (lambda _ #f))))))))))))
 
 (define (container-borders-update-all!)

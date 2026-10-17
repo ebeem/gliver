@@ -122,70 +122,70 @@
                          (catch #t
                            (lambda ()
                              (zwlr-layer-shell-v1-get-layer-surface
-                                *zwlr-layer-shell*
-                                surface
-                                wl-out
-                                ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND
-                                "gliver-wallpaper"))
+                              *zwlr-layer-shell*
+                              surface
+                              wl-out
+                              ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND
+                              "gliver-wallpaper"))
                            (lambda (k . args)
                              (log-error "Failed to create layer surface for wallpaper: ~a ~a" k args)
                              #f))))
                     (if (or (not layer-surf) (null-pointer? layer-surf))
                         (catch #t (lambda () (wl-surface-destroy surface)) (lambda _ #f))
                         (let* ((anchor-all (+ ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP
-                                  ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM
-                                  ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT
-                                  ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT))
-                   (init-width (output-width output))
-                   (init-height (output-height output))
-                   (state (%make-wallpaper-output-state
-                           output surface layer-surf %null-pointer
-                           #f init-width init-height #f #f)))
+                                              ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM
+                                              ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT
+                                              ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT))
+                               (init-width (output-width output))
+                               (init-height (output-height output))
+                               (state (%make-wallpaper-output-state
+                                       output surface layer-surf %null-pointer
+                                       #f init-width init-height #f #f)))
 
-			  ;; create a new wayland surface with the size of the output
-              (zwlr-layer-surface-v1-set-size layer-surf init-width init-height)
-			  ;; anchored to all 4 edges
-              (zwlr-layer-surface-v1-set-anchor layer-surf anchor-all)
-			  ;; doesn't reserve space (unlike top-bar)
-              (zwlr-layer-surface-v1-set-exclusive-zone layer-surf -1)
-			  ;; doesn't steal input/keyboard focus
-              (zwlr-layer-surface-v1-set-keyboard-interactivity
-               layer-surf ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_NONE)
+                          ;; create a new wayland surface with the size of the output
+                          (zwlr-layer-surface-v1-set-size layer-surf init-width init-height)
+                          ;; anchored to all 4 edges
+                          (zwlr-layer-surface-v1-set-anchor layer-surf anchor-all)
+                          ;; doesn't reserve space (unlike top-bar)
+                          (zwlr-layer-surface-v1-set-exclusive-zone layer-surf -1)
+                          ;; doesn't steal input/keyboard focus
+                          (zwlr-layer-surface-v1-set-keyboard-interactivity
+                           layer-surf ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_NONE)
 
-              (let ((listener
-                     (make-zwlr-layer-surface-v1-listener
-					  ;; on configured event
-                      (lambda (data proxy serial width height)
-                        (zwlr-layer-surface-v1-ack-configure proxy serial)
-                        (let ((prev-w (wallpaper-output-state-rendered-width state))
-                              (prev-h (wallpaper-output-state-rendered-height state))
-                              (prev-wp (wallpaper-output-state-rendered-wallpaper state))
-                              (eff-wp (output-effective-wallpaper output))
-                              (has-buf? (and (wallpaper-output-state-buffer state)
-                                             (not (null-pointer? (wallpaper-output-state-buffer state))))))
-                          (%wallpaper-output-state-rendered-width-set! state width)
-                          (%wallpaper-output-state-rendered-height-set! state height)
-                          (%wallpaper-output-state-configured?-set! state #t)
-                          (if (and has-buf?
-                                   (= prev-w width)
-                                   (= prev-h height)
-                                   (equal? prev-wp eff-wp))
-                              (log-debug "Wallpaper configure unchanged for ~a (~ax~a), skipping re-render"
-                                         (output-name output) width height)
-                              (begin
-                                (log-info "Wallpaper layer surface configured for output ~a. width=~a, height=~a" (output-name output) width height)
-                                (wallpaper-render-and-commit! output state)))))
-					  ;; on closed event
-                      (lambda (data proxy)
-                        (log-info "Wallpaper layer surface closed for output ~a" (output-name output))
-                        (wallpaper-cleanup-output! output)))))
-                (%wallpaper-output-state-listener-set! state listener)
-                (wl-proxy-add-listener layer-surf listener %null-pointer))
+                          (let ((listener
+                                 (make-zwlr-layer-surface-v1-listener
+                                  ;; on configured event
+                                  (lambda (data proxy serial width height)
+                                    (zwlr-layer-surface-v1-ack-configure proxy serial)
+                                    (let ((prev-w (wallpaper-output-state-rendered-width state))
+                                          (prev-h (wallpaper-output-state-rendered-height state))
+                                          (prev-wp (wallpaper-output-state-rendered-wallpaper state))
+                                          (eff-wp (output-effective-wallpaper output))
+                                          (has-buf? (and (wallpaper-output-state-buffer state)
+                                                         (not (null-pointer? (wallpaper-output-state-buffer state))))))
+                                      (%wallpaper-output-state-rendered-width-set! state width)
+                                      (%wallpaper-output-state-rendered-height-set! state height)
+                                      (%wallpaper-output-state-configured?-set! state #t)
+                                      (if (and has-buf?
+                                               (= prev-w width)
+                                               (= prev-h height)
+                                               (equal? prev-wp eff-wp))
+                                          (log-debug "Wallpaper configure unchanged for ~a (~ax~a), skipping re-render"
+                                                     (output-name output) width height)
+                                          (begin
+                                            (log-info "Wallpaper layer surface configured for output ~a. width=~a, height=~a" (output-name output) width height)
+                                            (wallpaper-render-and-commit! output state)))))
+                                  ;; on closed event
+                                  (lambda (data proxy)
+                                    (log-info "Wallpaper layer surface closed for output ~a" (output-name output))
+                                    (wallpaper-cleanup-output! output)))))
+                            (%wallpaper-output-state-listener-set! state listener)
+                            (wl-proxy-add-listener layer-surf listener %null-pointer))
 
-              ;; initial commit to trigger configure event from compositor
-              (wl-surface-commit surface)
-              (when *wl-display*
-                (wl-display-flush *wl-display*))
+                          ;; initial commit to trigger configure event from compositor
+                          (wl-surface-commit surface)
+                          (when *wl-display*
+                            (wl-display-flush *wl-display*))
                           (hash-table-set! *wallpaper-output-table* (output-id output) state))))))))))))
 
 (define (wallpaper-on-output-created output prev-obj-id)
@@ -340,13 +340,13 @@ Returns a wayland buffer foreign pointer."
                       (log-error "Failed to mmap wallpaper buffer")
                       %null-pointer)
                     (let ((fill-ok?
-                        (catch #t
+                           (catch #t
                              (lambda ()
                                (let ((bv (pointer->bytevector ptr size)))
-						  ;; fill the bytevector of the pointer using cairo
+								 ;; fill the bytevector of the pointer using cairo
                                  (fill-proc! ptr bv stride size width height)
                                  #t))
-                          (lambda (key . args)
+                             (lambda (key . args)
                                (log-error "Error filling wallpaper buffer with Cairo: ~a ~a" key args)
                                #f))))
 					  ;; free the virtual memory (won't impact fd)
@@ -358,10 +358,10 @@ Returns a wayland buffer foreign pointer."
                             %null-pointer)
                           (catch #t
                             (lambda ()
-                      (let* ((pool (wl-shm-create-pool *wl-shm* fd size))
-                             (buffer (wl-shm-pool-create-buffer pool 0 width height stride WL_SHM_FORMAT_ARGB8888)))
-                        (wl-shm-pool-destroy pool)
-                        (close-fd fd)
+                              (let* ((pool (wl-shm-create-pool *wl-shm* fd size))
+                                     (buffer (wl-shm-pool-create-buffer pool 0 width height stride WL_SHM_FORMAT_ARGB8888)))
+                                (wl-shm-pool-destroy pool)
+                                (close-fd fd)
                                 buffer))
                             (lambda (k . args)
                               (close-fd fd)

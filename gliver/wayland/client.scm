@@ -290,8 +290,8 @@ Returns a pointer to the listener struct."
 (define %wl-proxy-marshal-array-flags
   (if libwayland-client
       (pointer->procedure '*
-        (dynamic-func "wl_proxy_marshal_array_flags" libwayland-client)
-        (list '* uint32 '* uint32 uint32 '*))
+						  (dynamic-func "wl_proxy_marshal_array_flags" libwayland-client)
+						  (list '* uint32 '* uint32 uint32 '*))
       (lambda args
         (error "libwayland-client not loaded, cannot call wl_proxy_marshal_array_flags"))))
 
@@ -345,8 +345,8 @@ OPCODE: the request opcode.
 ARGS-LIST: list of tagged arguments for make-wl-args."
   (call-with-values (lambda () (make-wl-args args-list))
     (lambda (args-bv roots)
-    (%wl-proxy-marshal-array-flags proxy opcode %null-pointer 0 0
-                                    (bytevector->pointer args-bv))
+      (%wl-proxy-marshal-array-flags proxy opcode %null-pointer 0 0
+                                     (bytevector->pointer args-bv))
       (identity (cons args-bv roots))
       *unspecified*)))
 
@@ -356,9 +356,9 @@ ARGS-LIST: list of tagged arguments for make-wl-args."
   "Send a destructor request and destroy the client-side proxy."
   (let ((args-bv (make-bytevector 0 0)))
     (%wl-proxy-marshal-array-flags proxy opcode %null-pointer
-                                    (wl-proxy-get-version proxy)
-                                    WL_MARSHAL_FLAG_DESTROY
-                                    (bytevector->pointer args-bv))
+                                   (wl-proxy-get-version proxy)
+                                   WL_MARSHAL_FLAG_DESTROY
+                                   (bytevector->pointer args-bv))
     *unspecified*))
 
 (define (wl-marshal-constructor proxy opcode interface version args-list)
@@ -370,7 +370,7 @@ ARGS-LIST: list of tagged arguments for make-wl-args."
   (call-with-values (lambda () (make-wl-args args-list))
     (lambda (args-bv roots)
       (let ((res (%wl-proxy-marshal-array-flags proxy opcode interface version 0
-                                    (bytevector->pointer args-bv))))
+                                                (bytevector->pointer args-bv))))
         (identity (cons args-bv roots))
         res))))
 

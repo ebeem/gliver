@@ -143,27 +143,27 @@ RENDER-FN receives (cr width height). Returns the new wl_buffer foreign pointer.
         (if (< fd 0)
             %null-pointer
             (let ((ptr (begin
-                    (ftruncate fd size)
+                         (ftruncate fd size)
                          (mmap %null-pointer size *prot-read-write* *map-shared* fd 0))))
               (if (null-pointer? ptr)
                   (begin (close-fd fd) %null-pointer)
                   (catch #t
                     (lambda ()
                       (let* ((bv (pointer->bytevector ptr size))
-             (surf (cairo-image-surface-create-for-data bv 'argb32 width height stride))
-             (cr (cairo-create surf)))
-        ;; render into mmap memory
-        (render-fn cr width height)
+                             (surf (cairo-image-surface-create-for-data bv 'argb32 width height stride))
+                             (cr (cairo-create surf)))
+                        ;; render into mmap memory
+                        (render-fn cr width height)
                         (cairo-surface-flush surf)
                         (cairo-destroy cr)
                         (cairo-surface-destroy surf)
-        (munmap ptr size)
-        ;; create wayland buffer and clean up
-        (let* ((pool   (wl-shm-create-pool *wl-shm* fd size))
-               (buffer (wl-shm-pool-create-buffer pool 0 width height stride WL_SHM_FORMAT_ARGB8888)))
-          (wl-shm-pool-destroy pool)
-          (close-fd fd)
-          buffer)))
+                        (munmap ptr size)
+                        ;; create wayland buffer and clean up
+                        (let* ((pool   (wl-shm-create-pool *wl-shm* fd size))
+                               (buffer (wl-shm-pool-create-buffer pool 0 width height stride WL_SHM_FORMAT_ARGB8888)))
+                          (wl-shm-pool-destroy pool)
+                          (close-fd fd)
+                          buffer)))
                     (lambda (k . args)
                       (catch #t (lambda () (munmap ptr size)) (lambda _ #f))
                       (close-fd fd)
@@ -380,9 +380,9 @@ Example: (list 'window (make-module-mpd))"
                   (when (and (pointer? buf) (not (null-pointer? buf)))
                     (%statusbar-output-state-buffer-set! state buf)
                     (wl-surface-attach surface buf 0 0)
-          (wl-surface-damage surface 0 0 width height)
-          (wl-surface-commit surface)
-          (when *wl-display*
+                    (wl-surface-damage surface 0 0 width height)
+                    (wl-surface-commit surface)
+                    (when *wl-display*
                       (wl-display-flush *wl-display*))))))))
         (lambda (key . args)
           (log-error "Statusbar: Render and commit failed: ~a ~a" key args))))))
@@ -418,75 +418,75 @@ Example: (list 'window (make-module-mpd))"
                (not (hash-table-ref/default *statusbar-output-table* (output-id output) #f)))
       (let ((target-wl-out (resolve-target-wl-output)))
         (when (valid-pointer? target-wl-out)
-      (log-info "Statusbar: Initializing statusbar on output ~a..." (output-name output))
+          (log-info "Statusbar: Initializing statusbar on output ~a..." (output-name output))
 
-      (let* ((bar-pos       (statusbar-position bar))
-             (bar-height    (statusbar-height bar))
-             (margin-top    (statusbar-margin-top bar))
-             (margin-bottom (statusbar-margin-bottom bar))
-             (margin-left   (statusbar-margin-left bar))
-             (margin-right  (statusbar-margin-right bar))
-             (total-height  (+ bar-height margin-top margin-bottom))
-             (anchor        (calculate-anchor bar-pos))
-             (init-width    (max 100 (- (output-width output) margin-left margin-right)))
-             (surface       (wl-compositor-create-surface *wl-compositor*))
-             (layer-surf    (zwlr-layer-shell-v1-get-layer-surface
-                             *zwlr-layer-shell*
-                             surface
-                             target-wl-out
-                             ZWLR_LAYER_SHELL_V1_LAYER_TOP
-                             "gliver-statusbar"))
-             (state         (%make-statusbar-output-state
-                             output surface layer-surf %null-pointer
+          (let* ((bar-pos       (statusbar-position bar))
+                 (bar-height    (statusbar-height bar))
+                 (margin-top    (statusbar-margin-top bar))
+                 (margin-bottom (statusbar-margin-bottom bar))
+                 (margin-left   (statusbar-margin-left bar))
+                 (margin-right  (statusbar-margin-right bar))
+                 (total-height  (+ bar-height margin-top margin-bottom))
+                 (anchor        (calculate-anchor bar-pos))
+                 (init-width    (max 100 (- (output-width output) margin-left margin-right)))
+                 (surface       (wl-compositor-create-surface *wl-compositor*))
+                 (layer-surf    (zwlr-layer-shell-v1-get-layer-surface
+                                 *zwlr-layer-shell*
+                                 surface
+                                 target-wl-out
+                                 ZWLR_LAYER_SHELL_V1_LAYER_TOP
+                                 "gliver-statusbar"))
+                 (state         (%make-statusbar-output-state
+                                 output surface layer-surf %null-pointer
                                  init-width bar-height #f #f #f #f '() bar #f 0)))
 
-        (define (configure-layer-surface! layer-surf anchor th)
-          ;; width 0 asks the compositor to allocate full width according to anchor
-          (zwlr-layer-surface-v1-set-size layer-surf 0 bar-height)
-          (zwlr-layer-surface-v1-set-anchor layer-surf anchor)
-          (zwlr-layer-surface-v1-set-margin
-           layer-surf margin-top margin-right margin-bottom margin-left)
-          (zwlr-layer-surface-v1-set-exclusive-zone layer-surf th)
-          (zwlr-layer-surface-v1-set-keyboard-interactivity
-           layer-surf
-           ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_NONE))
+			(define (configure-layer-surface! layer-surf anchor th)
+			  ;; width 0 asks the compositor to allocate full width according to anchor
+			  (zwlr-layer-surface-v1-set-size layer-surf 0 bar-height)
+			  (zwlr-layer-surface-v1-set-anchor layer-surf anchor)
+			  (zwlr-layer-surface-v1-set-margin
+			   layer-surf margin-top margin-right margin-bottom margin-left)
+			  (zwlr-layer-surface-v1-set-exclusive-zone layer-surf th)
+			  (zwlr-layer-surface-v1-set-keyboard-interactivity
+			   layer-surf
+			   ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_NONE))
 
-        (define (update-usable-area! th)
-          (let* ((cur-x  (output-x output))
-                 (cur-y  (output-y output))
-                 (cur-w  (output-width output))
-                 (cur-h  (output-height output))
-                 (new-uy (+ cur-y (if (eq? bar-pos 'bottom) 0 th)))
-                 (new-uh (max 0 (- cur-h th))))
-            (output-usable-area-set! output cur-x new-uy cur-w new-uh)
-            (gliver-hook-run! *output-change-hook* output)))
+			(define (update-usable-area! th)
+			  (let* ((cur-x  (output-x output))
+					 (cur-y  (output-y output))
+					 (cur-w  (output-width output))
+					 (cur-h  (output-height output))
+					 (new-uy (+ cur-y (if (eq? bar-pos 'bottom) 0 th)))
+					 (new-uh (max 0 (- cur-h th))))
+				(output-usable-area-set! output cur-x new-uy cur-w new-uh)
+				(gliver-hook-run! *output-change-hook* output)))
 
-        (define (make-output-listener state)
-          (define (handle-configure data proxy serial width height)
-            (zwlr-layer-surface-v1-ack-configure proxy serial)
-            (let ((w (if (> width 0) width init-width))
-                  (h (if (> height 0) height bar-height)))
-              (%statusbar-output-state-rendered-width-set! state w)
-              (%statusbar-output-state-rendered-height-set! state h)
-              (%statusbar-output-state-configured?-set! state #t)
-              (statusbar-update-all-modules! output)
-              (statusbar-render-and-commit! output state)))
+			(define (make-output-listener state)
+			  (define (handle-configure data proxy serial width height)
+				(zwlr-layer-surface-v1-ack-configure proxy serial)
+				(let ((w (if (> width 0) width init-width))
+					  (h (if (> height 0) height bar-height)))
+				  (%statusbar-output-state-rendered-width-set! state w)
+				  (%statusbar-output-state-rendered-height-set! state h)
+				  (%statusbar-output-state-configured?-set! state #t)
+				  (statusbar-update-all-modules! output)
+				  (statusbar-render-and-commit! output state)))
 
-          (define (handle-close data proxy)
-            (log-info "Statusbar layer surface closed for output ~a" (output-name output))
-            (statusbar-cleanup-output! output))
+			  (define (handle-close data proxy)
+				(log-info "Statusbar layer surface closed for output ~a" (output-name output))
+				(statusbar-cleanup-output! output))
 
-          (make-zwlr-layer-surface-v1-listener handle-configure handle-close))
+			  (make-zwlr-layer-surface-v1-listener handle-configure handle-close))
 
-        (let ((listener (make-output-listener state)))
-          (configure-layer-surface! layer-surf anchor total-height)
-          (%statusbar-output-state-listener-set! state listener)
-          (wl-proxy-add-listener layer-surf listener %null-pointer)
-          (update-usable-area! total-height)
-          (wl-surface-commit surface)
-          (when *wl-display*
-            (wl-display-flush *wl-display*))
-          (hash-table-set! *statusbar-output-table* (output-id output) state))))))))
+			(let ((listener (make-output-listener state)))
+			  (configure-layer-surface! layer-surf anchor total-height)
+			  (%statusbar-output-state-listener-set! state listener)
+			  (wl-proxy-add-listener layer-surf listener %null-pointer)
+			  (update-usable-area! total-height)
+			  (wl-surface-commit surface)
+			  (when *wl-display*
+				(wl-display-flush *wl-display*))
+			  (hash-table-set! *statusbar-output-table* (output-id output) state))))))))
 
 (define (statusbar-cleanup-output! output)
   "Destroy statusbar layer surface and clean up resources for OUTPUT."
