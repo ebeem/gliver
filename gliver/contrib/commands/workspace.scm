@@ -113,23 +113,23 @@
 
 (define-command (workspace-focus-right)
   "Switch to the workspace in the right direction."
-  ;; TODO: implement focus right
-  (workspace-focus-next))
+  (let ((ws (workspace-right)))
+    (when ws (workspace-focus! ws))))
 
 (define-command (workspace-focus-left)
   "Switch to the workspace in the left direction."
-  ;; TODO: implement focus left
-  (workspace-focus-prev))
+  (let ((ws (workspace-left)))
+    (when ws (workspace-focus! ws))))
 
 (define-command (workspace-focus-up)
   "Switch to the workspace in the up direction."
-    ;; TODO: implement focus up
-  (workspace-focus-next))
+  (let ((ws (workspace-up)))
+    (when ws (workspace-focus! ws))))
 
 (define-command (workspace-focus-down)
   "Switch to the workspace in the down direction."
-  ;; TODO: implement focus down
-  (workspace-focus-prev))
+  (let ((ws (workspace-down)))
+    (when ws (workspace-focus! ws))))
 
 (define-command (workspace-rename name)
   #:interactive (string)

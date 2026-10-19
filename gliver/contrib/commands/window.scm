@@ -161,13 +161,12 @@
          (workspace (window-workspace window))
          (dir-sym (if (string? dir) (string->symbol dir) dir))
          (target (case dir-sym
-                   ((left prev) (workspace-prev workspace))
-                   ((right next) (workspace-next workspace))
-
-				   ;; TODO: implement up and down by implementing workspace
-				   ;; grid like behavior if rows > 1 is provided
-                   ((up) (workspace-prev workspace))
-                   ((down) (workspace-next workspace))
+                   ((left) (workspace-left workspace))
+                   ((right) (workspace-right workspace))
+                   ((prev) (workspace-prev workspace))
+                   ((next) (workspace-next workspace))
+                   ((up) (workspace-up workspace))
+                   ((down) (workspace-down workspace))
                    (else #f))))
 	(when (and window target (not (eq? target workspace)))
       (window-move-to-workspace! window target)

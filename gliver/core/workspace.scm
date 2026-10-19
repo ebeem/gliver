@@ -24,9 +24,8 @@
   #:autoload (gliver core output) (output-focus!)
   #:export (
 			workspace-add!
-			%workspace-remove-target
-			workspace-containers-move
 			workspace-windows-move
+			workspace-containers-move
 			workspace-manual?
 			workspace-remove!
 			workspace-focused?
@@ -34,6 +33,11 @@
 			workspace-focus!
 			workspace-next
 			workspace-prev
+			workspace-direction
+			workspace-down
+			workspace-up
+			workspace-left
+			workspace-right
 			workspace-windows
 			workspace-windows-visible
 ))
@@ -193,13 +197,60 @@ and then @var{s-workspace}'s container list is emptied."
     (and idx (list-ref workspaces (modulo (+ idx (length workspaces) -1)
                                       (length workspaces))))))
 
+(define* (workspace-direction dir #:optional (workspace (workspace-current)))
+  "Return the workspace in the direction DIR relative to WORKSPACE in a grid layout, or #f if none.
+The number of rows is specified by *workspace-grid-rows* which will change the default behavior
+of navigation if its value is greater than 1."
+  (and-let* ((ws         (or workspace (workspace-current)))
+             (output     (workspace-output ws))
+             (workspaces (output-workspaces output))
+             (len        (length workspaces))
+             ((positive? len))
+             (idx        (list-index (lambda (w) (eq? w ws)) workspaces)))
+    (let* ((dir-sym    (if (string? dir) (string->symbol dir) dir))
+           (vertical?  (memq dir-sym '(up down)))
+           (previous?  (memq dir-sym '(up left)))
+           (cols       (if (and (number? *workspace-grid-rows*)
+                                (> *workspace-grid-rows* 1))
+                           *workspace-grid-rows*
+                           len))
+           (step       (if vertical? cols 1))
+           (start      (if vertical?
+                           (modulo idx cols)
+                           (* (quotient idx cols) cols)))
+           (end        (if vertical?
+                           (- (1- len) (modulo (- (1- len) start) cols))
+                           (min (1- len) (+ start (1- cols)))))
+           (target     (if previous? (- idx step) (+ idx step)))
+           (target-idx (cond
+                        ((<= start target end) target)
+                        ((and *workspace-grid-wrap?* (> end start))
+                         (if previous? end start))
+                        (else #f))))
+      (and target-idx (list-ref workspaces target-idx)))))
+
+(define* (workspace-down #:optional (workspace (workspace-current)))
+  "Return the workspace below WORKSPACE in the grid layout, or #f if none."
+  (workspace-direction 'down workspace))
+
+(define* (workspace-up #:optional (workspace (workspace-current)))
+  "Return the workspace above WORKSPACE in the grid layout, or #f if none."
+  (workspace-direction 'up workspace))
+
+(define* (workspace-left #:optional (workspace (workspace-current)))
+  "Return the workspace on the left of WORKSPACE in the grid layout, or #f if none."
+  (workspace-direction 'left workspace))
+
+(define* (workspace-right #:optional (workspace (workspace-current)))
+  "Return the workspace on the right of WORKSPACE in the grid layout, or #f if none."
+  (workspace-direction 'right workspace))
+
 (define (workspace-windows workspace)
   "Return all windows in @var{workspace}."
-  (apply append 
+  (apply append
          (map container-windows
               (workspace-containers workspace))))
 
 (define (workspace-windows-visible workspace)
   "Return the currently visible (not hidden/minimized) windows in @var{workspace}."
   (filter window-visible? (workspace-windows workspace)))
-

@@ -33,6 +33,8 @@
 			*wm-behavior-focus-new-output*
 			*wm-behavior-workspace-remove-to*
 			*wm-behavior-workspace-destroyable*
+			*workspace-grid-rows*
+			*workspace-grid-wrap?*
 			*wm-behavior-default-decoration*
 			*wm-behavior-default-capabilties*
 			*wm-behavior-default-edges*
@@ -246,6 +248,11 @@
 (define-var *wm-behavior-default-capabilties* 4)         ;; fullscreen capability for clients
 (define-var *wm-behavior-default-edges* 15)
 (define-var *wm-behavior-default-border-edges* 15)
+
+(define-var *workspace-grid-rows* 1
+  "Number of rows in the workspace grid.up/down workspace focus moves by this number.")
+(define-var *workspace-grid-wrap?* #t
+  "Whether up/down workspace focus wraps around when moving out of the grid boundaries.")
 
 ;;; theme options
 (define-var *theme-font* "iosevka Bold"
