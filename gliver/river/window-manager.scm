@@ -29,6 +29,7 @@
 			*wm-manage-queue*
 			*wm-render-queue*
 			*in-manage-sequence*
+			*in-render-sequence*
 			RIVER_WINDOW_V1_EDGES_ALL
 			window-manager-on-globals-bind
 			window-manager-on-globals-unbind

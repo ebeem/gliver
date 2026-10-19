@@ -35,8 +35,6 @@
 			valid-pointer?
 			*container-tab-indicator-seat-proxies*
 			*container-tab-indicator-pointer-surface*
-			*container-tab-indicator-scroll-accum*
-			*container-tab-indicator-scroll-threshold*
 			container-tab-indicator-state?
 			make-container-tab-indicator-state
 			*container-tab-indicator-table*
@@ -47,6 +45,7 @@
 			container-tab-indicator-wl-node
 			container-tab-indicator-wl-buffer
 			container-tab-indicator-find-by-shell-surface
+			container-tab-indicator-find-by-surface
 			container-tab-indicator-shm-buffer-create
 			container-tab-indicator-buffer-create
 			apply-hex-color
@@ -82,8 +81,6 @@
 			container-tab-indicator-on-window-destroyed
 			container-tab-indicator-on-pointer-position
 			container-tab-indicator-on-shell-interaction
-
-			container-tab-indicator-find-by-surface
 			container-tab-indicator-find-at-pointer
 			container-tab-indicator-switch-window!
 			container-tab-indicator-on-scroll
@@ -101,7 +98,6 @@
 			container-tab-indicator-seat-setup!
 			container-tab-indicator-seat-cleanup!
 			container-tab-indicator-on-seat-object-id-changed
-
 			container-tab-indicator-on-globals-unbind
 			container-tab-indicator-on-listeners-attach
 			container-tab-indicator-on-window-fullscreen-entered
@@ -505,7 +501,12 @@ Needed because the indicator will cover some area of windows in the container."
 			;; I don't know if updating position approach has any drawbacks
 			;; it's currently working fine for all other components
             (with-render-sequence
-             (wm-node-position-set! node -10000 -10000))))))))
+             (wm-node-position-set! node -10000 -10000))
+
+			;; mark dirty if needed as this may be called outside of river sequence
+            (when (and (not *in-manage-sequence*)
+                       (not *in-render-sequence*))
+              (wm-manager-manage-dirty (manager-wl-proxy *manager*)))))))))
 
 (define* (container-tab-indicator-render! container #:key (force #f))
   "Render the container tab indicator for CONTAINER and commit."
@@ -567,7 +568,11 @@ Needed because the indicator will cover some area of windows in the container."
                          (wl-surface-commit surface)
                          (when (and old-buffer (pointer? old-buffer) (not (null-pointer? old-buffer))
                                     (not (equal? old-buffer new-buffer)))
-                           (catch #t (lambda () (wl-buffer-destroy old-buffer)) (lambda _ #f))))))))))))))
+                           (catch #t (lambda () (wl-buffer-destroy old-buffer)) (lambda _ #f))))))))))))
+
+	;; mark dirty if needed as this may be called outside of river sequence
+    (when (not *in-manage-sequence*)
+      (wm-manager-manage-dirty (manager-wl-proxy *manager*)))))
 
 (define (container-tab-indicators-update-all!)
   "Update indicators and usable area for all containers across all active outputs."
@@ -696,7 +701,9 @@ Needed because the indicator will cover some area of windows in the container."
                (n (length windows)))
           (cond
            ((= n 1)
-            (window-focus! (car windows)))
+            (window-focus! (car windows))
+			;; mark dirty to re-render
+            (wm-manager-manage-dirty (manager-wl-proxy *manager*)))
            ((> n 1)
             (let* ((cx (container-x container))
                    (cw (container-width container))
@@ -707,13 +714,20 @@ Needed because the indicator will cover some area of windows in the container."
                    (win (list-ref windows clamped-idx)))
               (log-debug "Clicked indicator tab ~a for window ~a in container ~a"
                          clamped-idx (window-title win) (container-id container))
-              (window-focus! win)))
+              (window-focus! win)
+			  ;; mark dirty to re-render
+              (wm-manager-manage-dirty (manager-wl-proxy *manager*))))
            (else #f)))))))
 
 (define (container-tab-indicator-find-at-pointer)
   "Find the container currently under the pointer, using surface or coordinates."
   (or (and (valid-pointer? *container-tab-indicator-pointer-surface*)
-           (container-tab-indicator-find-by-surface *container-tab-indicator-pointer-surface*))
+           (let ((c (container-tab-indicator-find-by-surface *container-tab-indicator-pointer-surface*)))
+             (and c
+                  (container? c)
+                  (not (container-destroyed? c))
+                  (workspace-visible? (container-workspace c))
+                  c)))
       (and *container-tab-indicator-last-pointer-x*
            *container-tab-indicator-last-pointer-y*
            (let ((px *container-tab-indicator-last-pointer-x*)
@@ -723,6 +737,7 @@ Needed because the indicator will cover some area of windows in the container."
               (lambda (c state)
                 (when (and (not found)
                            (container? c)
+                           (workspace-visible? (container-workspace c))
                            (container-tab-indicator-should-show? c))
                   (let* ((cx (container-x c))
                          (cw (container-width c))
@@ -743,24 +758,21 @@ Needed because the indicator will cover some area of windows in the container."
     (let* ((windows (container-windows container))
            (n (length windows)))
       (when (> n 1)
-        (let* ((active-win (container-window-current container))
-               (target-win (if (eq? direction 'next)
-                               (or (window-next active-win)
-                                   (let ((idx (list-index (lambda (w) (eq? w active-win)) windows)))
-                                     (list-ref windows (modulo (1+ (or idx 0)) n))))
-                               (or (window-prev active-win)
-                                   (let ((idx (list-index (lambda (w) (eq? w active-win)) windows)))
-                                     (list-ref windows (modulo (1- (or idx 0)) n)))))))
-          (when (and target-win (not (eq? target-win active-win)))
+        (and-let* ((active-win (or (container-window-current container)
+								   (and (pair? windows) (car windows))))
+				   (idx (list-index (lambda (w) (eq? w active-win)) windows))
+				   (target-idx (modulo (if (eq? direction 'next) (1+ idx) (1- idx)) n))
+				   (target-win (list-ref windows target-idx)))
+          (unless (eq? target-win active-win)
             (log-debug "Indicator: switching container ~a window ~a -> ~a (~a)"
                        (container-id container)
-                       (window-id active-win)
+                       (if (window? active-win) (window-id active-win) "none")
                        (window-id target-win)
                        direction)
             (window-focus! target-win)
-			;; we have to call manage dirty to update focused window
-			;; otherwise river won't go to manage or render state immediately
-			(wm-manager-manage-dirty (manager-wl-proxy *manager*))))))))
+            ;; we have to call manage dirty to update focused window
+            ;; otherwise river won't go to manage or render state immediately
+            (wm-manager-manage-dirty (manager-wl-proxy *manager*))))))))
 
 (define (container-tab-indicator-on-scroll container delta)
   "Handle scroll event on CONTAINER's tab indicator.
@@ -879,15 +891,17 @@ Calls switch-window to go to target one."
 
 (define (container-tab-indicator-on-window-fullscreen-entered window prev-status)
   "Hide indicator when a window enters fullscreen."
-  (let ((container (window-container window)))
-    (when (container? container)
-      (container-tab-indicator-hide! container))))
+  (when (window? window)
+    (let ((container (window-container window)))
+      (when (container? container)
+        (container-tab-indicator-hide! container)))))
 
 (define (container-tab-indicator-on-window-fullscreen-exited window prev-status)
   "Restore indicator when a window exits fullscreen."
-  (let ((container (window-container window)))
-    (when (container? container)
-      (container-tab-indicator-render! container))))
+  (when (window? window)
+    (let ((container (window-container window)))
+      (when (container? container)
+        (container-tab-indicator-render! container)))))
 
 (define (container-tab-indicator-enable!)
   "Enable container window indicator and hook into events and render indicators."

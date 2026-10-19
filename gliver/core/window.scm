@@ -89,7 +89,8 @@
 
 (define* (window-next current #:key (recursive #t))
   "Return the next window after CURRENT in WORKSPACE's list."
-  (and-let* ((container (window-container current))
+  (and-let* ((_ (window? current))
+			 (container (window-container current))
 			 (windows (container-windows container))
 			 (idx (list-index (lambda (f) (eq? f current)) windows)))
     (cond
@@ -102,7 +103,8 @@
 
 (define* (window-prev current #:key (recursive #t))
   "Return the previous window before CURRENT in WORKSPACE's list."
-  (and-let* ((container (window-container current))
+  (and-let* ((_ (window? current))
+			 (container (window-container current))
 			 (windows (container-windows container))
 			 (idx (list-index (lambda (f) (eq? f current)) windows)))
     (cond
