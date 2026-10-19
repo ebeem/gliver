@@ -692,14 +692,22 @@ Runs at most once per second and only re-renders when module contents change."
                               (let ((old-text (statusbar-module-text mod))
                                     (old-fg (statusbar-module-fg-color mod))
                                     (old-bg (statusbar-module-bg-color mod)))
-                                (statusbar-module-update! mod output)
+								(catch #t
+								  (lambda ()
+									(statusbar-module-update! mod output))
+								  (lambda (key . args)
+									(log-error "Failed to update statusbar module ~a: ~a ~a" mod key args)))
                                 (when (or (not (equal? old-text (statusbar-module-text mod)))
                                           (not (equal? old-fg (statusbar-module-fg-color mod)))
                                           (not (equal? old-bg (statusbar-module-bg-color mod))))
                                   (set! dirty? #t))))))))
                     mods)
                    (when dirty?
-                     (statusbar-render-and-commit! output state))))))
+					 (catch #t
+					   (lambda ()
+						 (statusbar-render-and-commit! output state))
+					   (lambda (key . args)
+						 (log-error "Failed commit statusbar on output ~a: ~a ~a" output key args))))))))
            (manager-outputs *manager*)))))))
 
 (define (statusbar-render-output! output)
