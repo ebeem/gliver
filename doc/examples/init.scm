@@ -29,6 +29,10 @@
 ;(set! *wallpaper* "~/.wallpapers/fixed/flat-16.png")
 ;(set! *wallpaper-mode* 'fill)
 
+;; workspace grid to enable up and down navigation
+;; by default its value is 1 which disables up and down movement
+;(set! *workspace-grid-rows* 3)
+
 ;; set log-level to 'debug (can also be 'info, 'warning, 'error)
 ;; you can find the logs in "$XDG_STATE_HOME/gliver/gliver.log"
 ;; to print path execute: echo "$XDG_STATE_HOME/gliver/gliver.log"
