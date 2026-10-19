@@ -529,11 +529,11 @@ Returns a string representing the kepmap definition or #f on failure."
     (wl-proxy-add-listener *keyboard-manager-xkb-config* *keyboard-manager-xkb-config-listener* %null-pointer)))
 
 (define (keyboard-manager-on-startup)
-  "apply keyboard configuration after initial startup."
+  "Apply keyboard configuration after initial startup."
   (keyboard-manager-apply-config!))
 
 (define (keyboard-manager-on-config-loaded)
-  "re-apply keyboard configuration when config is reloaded."
+  "Re-apply keyboard configuration when config is reloaded."
   (keyboard-manager-apply-config!))
 
 ;; attach handlers to gliver lifecycle hooks
