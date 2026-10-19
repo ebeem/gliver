@@ -174,3 +174,13 @@ no need for implementation now, but common functions should be used and expect a
 the implementation used to check for specific events like window creation and apply only needed changes to the layout. It's much easier to just reload the whole layout on some specific events needed by the layout. Check performance difference and change the logic accordingly. If there is no huge impact in performance keep current approach because it's much easier to read and maintain.
 
 ** TODO allow switching keyboard layout
+
+** TODO re-document all modules under river & core
+I will go to other directories later, I did so many refactoring and rushed work that I started not liking parts of the code especially the ui part in contrib directory. I took some time to write and very well document the keyboard-manager, I want this to be a reference to how I want other files to be documented.
+NOTE: this shouldn't break APIs, it should just make it easier for anyone to understand the code, some internal functions may have to be refactored along the way, but not APIs.
+
+** TODO investigate why notifications freeze librewolf sometimes
+Not sure if this is a problem with gliver's notification daemon or a bug in librewolf, but it seems like randomly sometimes notifications freeze librewolf for almost a minute
+
+** TODO investigate river memory leaks
+I am not sure if this is with gliver or river, but it seems to me that there are some memory leaks. gliver itself seems to destroy all created objects and its ram usage remains flat, river on the other hand keeps allocating more ram. what gliver has to ensure is proper destroy calls from the river protocol whenever needed which seems to be already implemented in all protocols but there maybe something that I missed.
