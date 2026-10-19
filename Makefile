@@ -28,18 +28,7 @@ LIBPANGOCAIRO_LIBDIR = $(shell $(PKG_CONFIG) --variable libdir pangocairo)
 LIBGOBJECT_LIBDIR = $(shell $(PKG_CONFIG) --variable libdir gobject-2.0)
 LIBRSVG_LIBDIR = $(shell $(PKG_CONFIG) --variable libdir librsvg-2.0)
 
-MODULES =   gliver/core/logs.scm \
-			gliver/core/types.scm \
-			gliver/core/hooks.scm \
-			gliver/core/config.scm \
-			gliver/core/keybindings.scm \
-			gliver/core/output.scm \
-			gliver/core/seat.scm \
-			gliver/core/workspace.scm \
-			gliver/core/container.scm \
-			gliver/core/window.scm \
-			gliver/core/ffi.scm \
-			gliver/core.scm \
+MODULES =	gliver/core/ffi.scm \
 			gliver/deps/libc.scm \
 			gliver/deps/color.scm \
 			gliver/deps/librsvg.scm \
@@ -55,6 +44,17 @@ MODULES =   gliver/core/logs.scm \
 			gliver/wayland/gen/river-xkb-bindings-v1.scm \
 			gliver/wayland/gen/river-xkb-config-v1.scm \
 			gliver/wayland/gen/wlr-layer-shell-unstable-v1.scm \
+			gliver/core/logs.scm \
+			gliver/core/types.scm \
+			gliver/core/hooks.scm \
+			gliver/core/config.scm \
+			gliver/core/keybindings.scm \
+			gliver/core/output.scm \
+			gliver/core/seat.scm \
+			gliver/core/workspace.scm \
+			gliver/core/container.scm \
+			gliver/core/window.scm \
+			gliver/core.scm \
 			gliver/river/connector.scm \
 			gliver/river/window-manager.scm \
 			gliver/river/wm-seat-manager.scm \
@@ -84,10 +84,16 @@ MODULES =   gliver/core/logs.scm \
 			gliver/contrib/ui/components/palette.scm \
 			gliver/contrib/ui/components/launcher.scm \
 			gliver/contrib/ui/components/toast.scm \
+			gliver/contrib/ui/gleui/base.scm \
+			gliver/contrib/ui/gleui/palette.scm \
+			gliver/contrib/ui/gleui/launcher.scm \
+			gliver/contrib/ui/gleui/toast.scm \
+			gliver/contrib/ui/gleui/notifications.scm \
+			gliver/contrib/ui/gleui/statusbar.scm \
+			gliver/contrib/ui/gleui.scm \
 			gliver/contrib/ui/overlay/which-key.scm \
 			gliver/contrib/ui/container/container-border.scm \
 			gliver/contrib/ui/container/container-tab-indicator.scm \
-			gliver/contrib/ui/statusbar.scm \
 			gliver/contrib/ui/statusbar/base.scm \
 			gliver/contrib/ui/statusbar/workspaces.scm \
 			gliver/contrib/ui/statusbar/window.scm \
@@ -98,18 +104,12 @@ MODULES =   gliver/core/logs.scm \
 			gliver/contrib/ui/statusbar/weather.scm \
 			gliver/contrib/ui/statusbar/battery.scm \
 			gliver/contrib/ui/statusbar/disk.scm \
+			gliver/contrib/ui/statusbar/keyboard.scm \
 			gliver/contrib/ui/statusbar/network.scm \
 			gliver/contrib/ui/statusbar/net-speed.scm \
-			gliver/contrib/ui/statusbar/keyboard.scm \
 			gliver/contrib/ui/statusbar/mpd.scm \
 			gliver/contrib/ui/statusbar/custom.scm \
-			gliver/contrib/ui/gleui/base.scm \
-			gliver/contrib/ui/gleui/palette.scm \
-			gliver/contrib/ui/gleui/launcher.scm \
-			gliver/contrib/ui/gleui/toast.scm \
-			gliver/contrib/ui/gleui/notifications.scm \
-			gliver/contrib/ui/gleui/statusbar.scm \
-			gliver/contrib/ui/gleui.scm \
+			gliver/contrib/ui/statusbar.scm \
 			gliver/contrib/ui/integrations/rofi.scm \
 			gliver/contrib/windows/window-rules.scm \
 			gliver/contrib/keybindings/stumpwm.scm \
