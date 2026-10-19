@@ -26,6 +26,7 @@
 	"s-S-r"     'config-reload!
 	"s-S-q"     'gliver-quit
 	"s-f"       'window-fullscreen-toggle
+	"s-M-space" 'keyboard-layout-next
 
 	;; move focus to direction
 	"s-h"       'container-focus-left

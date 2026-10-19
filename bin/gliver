@@ -29,8 +29,9 @@
              (gliver river window-manager)
              (gliver river keybindings-manager)
              (gliver river layer-shell-manager)
+             (gliver river keyboard-manager)
 			 (gliver contrib keybindings stumpwm)
-			 (gliver contrib debug ipc-server)
+             (gliver contrib debug ipc-server)
              (gliver contrib debug repl-server)
 )
 

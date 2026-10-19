@@ -7,6 +7,8 @@
   #:use-module (ice-9 format)
   #:use-module (srfi srfi-1)
   #:use-module (gliver core)
+  #:use-module (gliver river keyboard-manager)
+  #:use-module (gliver deps libxkbcommon)
   #:use-module (gliver contrib ui statusbar base)
   #:declarative? #f
   #:export (
@@ -15,9 +17,7 @@
 
 (define (%query-keyboard-layout)
   "Detect the currently active keyboard layout from available sources."
-  ;; TODO: not sure how to do that currently
-  ;; switching languages needs research
-  "US")
+  (keyboard-manager-current-layout-code))
 
 (define* (make-module-keyboard #:key
                                (id 'keyboard)
@@ -29,7 +29,6 @@
                                (short? #t)
                                (uppercase? #t)
                                (mappings '())
-                               (layout-cmd #f)
                                (bg-color *statusbar-bg-color*)
                                (fg-color *theme-fg-main*)
                                (border-radius 6)
@@ -41,26 +40,42 @@ Detects and dynamically listens to Wayland xkb_layout changes.
 Supports short aliases, custom icon, layout cycling, and click actions."
 
   (define (%update module output)
-    (let* ((raw (if layout-cmd
-                    (or (statusbar-execute-shell-command layout-cmd) "US")
-                    (%query-keyboard-layout)))
-           ;; check custom user mappings first
-           (mapped (assoc-ref mappings raw))
+    (let* ((raw (%query-keyboard-layout))
+		   ;; TODO: this should get layout name rather than code
+           (curr-name (keyboard-manager-current-layout-code))
+           (curr-code (keyboard-manager-current-layout-code))
+           ;; check custom user mappings first for raw, code, or name
+           (mapped (or (assoc-ref mappings raw)
+                       (and curr-code (assoc-ref mappings curr-code))
+                       (and curr-name (assoc-ref mappings curr-name))))
            (display-str (cond
                          (mapped mapped)
-                         (short? raw)
-                         (uppercase? (string-upcase raw))
-                         (else raw)))
-           (text (format #f format-template display-str)))
+                         (short? (if uppercase? (string-upcase raw) raw))
+                         (uppercase? (string-upcase (or curr-name raw)))
+                         (else (or curr-name raw))))
+           (text (format #f format-template display-str))
+           (tooltip (format #f "Keyboard Layout: ~a" (or curr-name raw))))
       (statusbar-module-text-set! module text)
-      (statusbar-module-tooltip-set! module (format #f "Keyboard Layout: ~a" raw))
-      (statusbar-module-state-set! module `((layout . ,raw)))))
+      (statusbar-module-tooltip-set! module tooltip)
+      (statusbar-module-state-set! module `((layout . ,raw)
+                                           (name . ,curr-name)
+                                           (code . ,curr-code)
+                                           (index . ,*keyboard-manager-current-layout-index*)))))
 
   (define (%handle-click button x y module output custom-data)
-    (when (= button 272)  ;; left click
+    (cond
+     ((= button 272)  ;; left click
       (if on-click-cmd
-          ;; TODO: switch language
-          (log-info "switch language"))))
+          (if (string? on-click-cmd)
+              (statusbar-execute-shell-command on-click-cmd)
+              (command-run-by-name on-click-cmd))
+          (command-run-by-name 'keyboard-layout-next)))
+     ((= button 273)  ;; right click
+      (if on-click-cmd
+          (if (string? on-click-cmd)
+              (statusbar-execute-shell-command on-click-cmd)
+              (command-run-by-name on-click-cmd))
+          (command-run-by-name 'keyboard-layout-prev)))))
 
   (let ((mod (make-statusbar-module
               #:id id

@@ -35,6 +35,9 @@
 (log-level-set! 'debug)
 (log-info "Loading init.scm configuration")
 
+;; list of keyboard layouts, only english by default
+;(set! *keyboard-layouts* '("us" "ara"))
+
 ;; install gliver default keybindings (you can try out sway, stumpwm, etc)
 (keybindings-clear!)
 (keybindings-gliver-install-default!)

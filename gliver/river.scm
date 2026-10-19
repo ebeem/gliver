@@ -11,7 +11,8 @@
   #:use-module (gliver river wm-shell-surface-manager)
   #:use-module (gliver river wm-window-manager)
   #:use-module (gliver river layer-shell-manager)
-  #:use-module (gliver river wallpaper-manager))
+  #:use-module (gliver river wallpaper-manager)
+  #:use-module (gliver river keyboard-manager))
 
 (define-syntax re-export-modules
   (syntax-rules ()
@@ -31,5 +32,6 @@
 				   (gliver river wm-shell-surface-manager)
 				   (gliver river wm-window-manager)
 				   (gliver river layer-shell-manager)
-				   (gliver river wallpaper-manager))
+				   (gliver river wallpaper-manager)
+				   (gliver river keyboard-manager))
 

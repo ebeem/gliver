@@ -28,6 +28,14 @@
 			munmap-memory
 			memcpy
 			memset
+			c-free
+			free
+			*f-add-seals*
+			*f-seal-seal*
+			*f-seal-shrink*
+			*f-seal-grow*
+			*f-seal-write*
+			memfd-seal-all!
 ))
 
 (define *mfd-cloexec* 1)
@@ -81,3 +89,32 @@
 
 (define memset
   (pointer->procedure '* (dynamic-func "memset" *libc*) (list '* int size_t)))
+
+(define c-free
+  (pointer->procedure void (dynamic-func "free" *libc*) (list '*)))
+
+(define (free ptr)
+  (when (and ptr (pointer? ptr) (not (null-pointer? ptr)))
+    (c-free ptr)))
+
+(define *f-add-seals* 1033)
+(define *f-seal-seal* 1)
+(define *f-seal-shrink* 2)
+(define *f-seal-grow* 4)
+(define *f-seal-write* 8)
+
+(define %fcntl
+  (catch #t
+    (lambda ()
+      (pointer->procedure int (dynamic-func "fcntl" *libc*) (list int int int)))
+    (lambda _ #f)))
+
+(define (memfd-seal-all! fd)
+  "Seal an anonymous memfd against shrinkage, growth, and writing."
+  (if %fcntl
+      (catch #t
+        (lambda ()
+          (%fcntl fd *f-add-seals*
+                  (logior *f-seal-seal* *f-seal-shrink* *f-seal-grow* *f-seal-write*)))
+        (lambda _ -1))
+      -1))

@@ -9,6 +9,7 @@
   #:use-module (ice-9 format)
   #:use-module (gliver core ffi)
   #:use-module (gliver core logs)
+  #:use-module (gliver deps libc)
   #:export (
 			*libxkbcommon*
 			xkb-context-new
@@ -18,6 +19,9 @@
 			xkb-keymap-new-from-buffer
 			xkb-keymap-unref
 			xkb-keymap-layout-get-name
+			xkb-keymap-get-as-string
+			xkb-keymap-num-layouts
+			xkb-keymap-layout-get-index
 			xkb-state-new
 			xkb-state-unref
 			xkb-state-update-mask
@@ -35,6 +39,9 @@
 			xkb-keysym-get-name
 			xkb-value->keysym-name
 			query-xkbcommon-default-layout
+			xkb-keymap-compile-from-names
+			xkb-keymap->string
+			xkb-keymap-layouts
 ))
 
 (define *libxkbcommon*
@@ -75,6 +82,15 @@
 
 (define xkb-keymap-layout-get-name
   (%xkb-func "xkb_keymap_layout_get_name" '* (list '* uint32)))
+
+(define xkb-keymap-get-as-string
+  (%xkb-func "xkb_keymap_get_as_string" '* (list '* int)))
+
+(define xkb-keymap-num-layouts
+  (%xkb-func "xkb_keymap_num_layouts" uint32 (list '*)))
+
+(define xkb-keymap-layout-get-index
+  (%xkb-func "xkb_keymap_layout_get_index" uint32 (list '* '*)))
 
 (define xkb-state-new
   (%xkb-func "xkb_state_new" '* (list '*)))
@@ -144,3 +160,62 @@
         (lambda _ #f))
       #f))
 
+(define* (xkb-keymap-compile-from-names #:key (rules #f) (model #f) (layout #f) (variant #f) (options #f) (ctx #f))
+  "Compile an XKB keymap from names. Returns (values keymap-ptr owned-ctx-or-#f).
+Caller is responsible for calling xkb-keymap-unref (and xkb-context-unref if owned-ctx)."
+  (if (or (not *libxkbcommon*) (not xkb-context-new) (not xkb-keymap-new-from-names))
+      (values %null-pointer #f)
+      (catch #t
+        (lambda ()
+          (let* ((own-ctx? (not ctx))
+                 (context (or ctx (xkb-context-new 0))))
+            (if (or (not context) (null-pointer? context))
+                (values %null-pointer #f)
+                (let* ((names-bv (make-bytevector (* 5 (sizeof '*)) 0))
+                       (set-field! (lambda (idx val)
+                                     (when (and val (string? val) (> (string-length val) 0))
+                                       (bytevector-u64-native-set!
+                                        names-bv (* idx (sizeof '*))
+                                        (pointer-address (string->pointer val)))))))
+                  (set-field! 0 rules)
+                  (set-field! 1 model)
+                  (set-field! 2 layout)
+                  (set-field! 3 variant)
+                  (set-field! 4 options)
+                  (let ((km (xkb-keymap-new-from-names
+                             context (bytevector->pointer names-bv) 0)))
+                    (if (and km (pointer? km) (not (null-pointer? km)))
+                        (values km (if own-ctx? context #f))
+                        (begin
+                          (when own-ctx? (xkb-context-unref context))
+                          (values %null-pointer #f))))))))
+        (lambda (key . args)
+          (log-error "xkb-keymap-compile-from-names failed: ~a ~a" key args)
+          (values %null-pointer #f)))))
+
+(define* (xkb-keymap->string km #:optional (format 1))
+  "Convert an XKB keymap pointer to an allocated Scheme string.
+FORMAT defaults to 1 (XKB_KEYMAP_FORMAT_TEXT_V1)."
+  (if (and km (pointer? km) (not (null-pointer? km)) xkb-keymap-get-as-string)
+      (let ((str-ptr (xkb-keymap-get-as-string km format)))
+        (if (and str-ptr (not (null-pointer? str-ptr)))
+            (let ((str (pointer->string str-ptr)))
+              (c-free str-ptr)
+              str)
+            #f))
+      #f))
+
+(define (xkb-keymap-layouts km)
+  "Return a list of layout names for keymap KM."
+  (if (and km (pointer? km) (not (null-pointer? km)) xkb-keymap-num-layouts xkb-keymap-layout-get-name)
+      (let ((num (xkb-keymap-num-layouts km)))
+        (let loop ((i 0) (res '()))
+          (if (< i num)
+              (let ((name-ptr (xkb-keymap-layout-get-name km i)))
+                (loop (1+ i)
+                      (cons (if (and name-ptr (not (null-pointer? name-ptr)))
+                                (pointer->string name-ptr)
+                                "")
+                            res)))
+              (reverse res))))
+      '()))

@@ -18,6 +18,10 @@
 			*running?*
 			*prefix-timeout*
 			*message-timeout*
+			*keyboard-layouts*
+			*keyboard-variants*
+			*keyboard-repeat-rate*
+			*keyboard-repeat-delay*
 			*container-inner-gap*
 			*container-outer-gap*
 			*wm-behavior-focus-mouse-enter*
@@ -227,7 +231,6 @@
 			"Inner gap size between containers in pixels.")
 (define-var *container-outer-gap* 8
 			"Outer gap size around containers in pixels.")
-
 
 ;;; window manager behavior
 (define-var *wm-behavior-focus-mouse-enter* #f)
@@ -645,4 +648,3 @@ following the same order in a keyboard numpad
       (log-info "Config reloaded."))
     (lambda (key . args)
       (log-error "Config reload error: ~a ~a" key args))))
-

@@ -66,6 +66,7 @@ MODULES =   gliver/core/logs.scm \
 			gliver/river/keybindings-manager.scm \
 			gliver/river/layer-shell-manager.scm \
 			gliver/river/wallpaper-manager.scm \
+			gliver/river/keyboard-manager.scm \
 			gliver/river.scm \
 			gliver/contrib/commands.scm \
 			gliver/contrib/commands/container.scm \
@@ -76,6 +77,7 @@ MODULES =   gliver/core/logs.scm \
 			gliver/contrib/commands/shell.scm \
 			gliver/contrib/commands/help.scm \
 			gliver/contrib/commands/keybindings.scm \
+			gliver/contrib/commands/keyboard.scm \
 			gliver/contrib/debug/ipc-server.scm \
 			gliver/contrib/debug/repl-server.scm \
 			gliver/contrib/utils/systemd.scm \

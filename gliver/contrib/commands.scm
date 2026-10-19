@@ -12,6 +12,7 @@
   #:use-module (gliver contrib commands container)
   #:use-module (gliver contrib commands workspace)
   #:use-module (gliver contrib commands output)
+  #:use-module (gliver contrib commands keyboard)
   #:declarative? #f)
 
 (define-syntax re-export-modules
@@ -29,4 +30,5 @@
                    (gliver contrib commands window)
                    (gliver contrib commands container)
                    (gliver contrib commands workspace)
-                   (gliver contrib commands output))
+                   (gliver contrib commands output)
+                   (gliver contrib commands keyboard))
