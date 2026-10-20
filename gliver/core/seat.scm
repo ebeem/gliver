@@ -2,8 +2,6 @@
 ;;;
 ;;; Copyright (C) 2026 Gliver Contributors
 ;;; SPDX-License-Identifier: GPL-3.0-or-later
-;;; Author: ebeem <lord.ebeem@gmail.com>
-;;; Maintainer: ebeem <lord.ebeem@gmail.com>
 ;;; Seat: A single seat bundles together the different ways
 ;;; a user can provide input e.g. (mouse, keyboard, touch input)
 

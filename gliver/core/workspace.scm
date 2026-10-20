@@ -2,8 +2,6 @@
 ;;;
 ;;; Copyright (C) 2026 Gliver Contributors
 ;;; SPDX-License-Identifier: GPL-3.0-or-later
-;;; Author: ebeem <lord.ebeem@gmail.com>
-;;; Maintainer: ebeem <lord.ebeem@gmail.com>
 ;;; Workspace: similar to an emacs group/isolation concept and stumpwm group
 ;;; A collection of containers and their associated windows (workspace/virtual desktop)
 
