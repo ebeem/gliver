@@ -112,6 +112,7 @@ MODULES =	gliver/core/ffi.scm \
 			gliver/contrib/ui/statusbar.scm \
 			gliver/contrib/ui/integrations/rofi.scm \
 			gliver/contrib/windows/window-rules.scm \
+			gliver/contrib/workspaces/workspace-group.scm \
 			gliver/contrib/keybindings/stumpwm.scm \
 			gliver/contrib/keybindings/sway.scm \
 			gliver/contrib/keybindings/gliver.scm \
