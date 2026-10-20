@@ -110,7 +110,6 @@ MODULES =	gliver/core/ffi.scm \
 			gliver/contrib/ui/statusbar/mpd.scm \
 			gliver/contrib/ui/statusbar/custom.scm \
 			gliver/contrib/ui/statusbar.scm \
-			gliver/contrib/ui/integrations/rofi.scm \
 			gliver/contrib/windows/window-rules.scm \
 			gliver/contrib/workspaces/workspace-group.scm \
 			gliver/contrib/keybindings/stumpwm.scm \
