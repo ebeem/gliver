@@ -15,9 +15,8 @@
                            (id 'date)
                            (section 'center)
                            (interval 1)
-                           (formats '(" %a %b %d   %H:%M"
-                                      " %H:%M:%S"
-                                      " %Y-%m-%d   %H:%M:%S"))
+                           (formats '(" %a %b %d   %I:%M:%S %p"
+                                      " %Y-%m-%d   %I:%M:%S %p"))
                            (bg-color *statusbar-bg-color*)
                            (fg-color *theme-fg-main*)
                            (border-radius 6)
