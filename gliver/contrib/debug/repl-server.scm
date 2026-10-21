@@ -28,6 +28,7 @@
 
 ;;; server
 (define (gliver-serve-client client addr)
+  (fcntl client F_SETFD FD_CLOEXEC)
   (let ((thread (current-thread)))
     ((@@ (system repl server) add-open-socket!)
      client
@@ -76,8 +77,9 @@ Uses Guile's built-in (system repl server) for Geiser compatibility."
 
     (catch #t
       (lambda ()
-        ;; spawn-server takes a list specifying the server type
-        (set! *repl-server* (gliver-spawn-server (make-unix-domain-server-socket #:path path)))
+        (let ((server-sock (make-unix-domain-server-socket #:path path)))
+          (fcntl server-sock F_SETFD FD_CLOEXEC)
+          (set! *repl-server* (gliver-spawn-server server-sock)))
         (chmod path #o700)
         (log-info "REPL server listening on ~a" path)
         (log-info "Connect with: guile -c '(begin (use-modules (system repl server)) (run-client (make-unix-domain-server-socket #:path \"~a\")))'" path))
@@ -93,6 +95,7 @@ Uses Guile's built-in (system repl server) for Geiser compatibility."
 (define (simple-repl-start! path)
   "Start a simple REPL server without (system repl server)."
   (let ((sock (socket AF_UNIX SOCK_STREAM 0)))
+    (fcntl sock F_SETFD FD_CLOEXEC)
     (bind sock AF_UNIX path)
     (chmod path #o700)
     (listen sock 1)

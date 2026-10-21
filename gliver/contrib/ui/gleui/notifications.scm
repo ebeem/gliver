@@ -161,6 +161,8 @@
 (define (%dbus-connect path)
   "Connect to dbus session bus at PATH."
   (let ((sock (socket AF_UNIX SOCK_STREAM 0)))
+    ;; prevent socket leakage to child processes
+    (fcntl sock F_SETFD FD_CLOEXEC)
     (connect sock AF_UNIX path)
     ;; sasl external auth requires hex-encoding the ASCII string of decimal UID
     (let* ((uid-str (number->string (getuid)))
@@ -320,6 +322,8 @@
           (loop (cons (%get-dbus-string port) acc))))))
 
 (define (%get-dbus-hints-dict port)
+  (catch #t
+    (lambda ()
   (define (%cur-pos)
     (seek port 0 SEEK_CUR))
 
@@ -346,13 +350,21 @@
            (channels  (%get-s32 port))
            (data-len  (%get-u32 port))
            (data      (get-bytevector-n port data-len)))
-      (list 'image-data w h rowstride has-alpha bps channels data)))
+          (if (bytevector? data)
+              (list 'image-data w h rowstride has-alpha bps channels data)
+              #f)))
 
   (define (%read-variant sig)
     (cond
      ((string=? sig "y")  (%get-u8 port))
      ((string=? sig "u")  (%get-u32 port))
      ((string=? sig "i")  (%get-s32 port))
+         ((or (string=? sig "q") (string=? sig "n"))
+          (%get-align port 2)
+          (let ((bv (get-bytevector-n port 2)))
+            (if (and (bytevector? bv) (= (bytevector-length bv) 2))
+                (bytevector-u16-ref bv 0 (endianness little))
+                0)))
      ((string=? sig "x")  (%read-8byte bytevector-s64-ref 0))
      ((string=? sig "t")  (%read-8byte bytevector-u64-ref 0))
      ((string=? sig "d")  (%read-8byte bytevector-ieee-double-ref 0.0))
@@ -361,8 +373,9 @@
      ((string=? sig "as") (%get-dbus-string-array port))
      ((string=? sig "(iiibiiay)") (%read-image-data))
      ((string-prefix? "a" sig)
-      (%safe-skip (%get-u32 port))
-      #f)
+          (let ((arr-len (%get-u32 port)))
+            (%safe-skip arr-len)
+            #f))
      (else #f)))
 
   (let ((len (%get-u32 port)))
@@ -373,7 +386,9 @@
                (rem (modulo cur 8))
                (pad (if (zero? rem) 0 (- 8 rem))))
           (if (or (port-eof? port) (>= (+ cur pad) end))
-              (reverse acc)
+                  (begin
+                    (seek port end SEEK_SET)
+                    (reverse acc))
               (begin
                 (%safe-skip pad)
                 (let* ((key (%get-dbus-string port))
@@ -383,7 +398,12 @@
                       (loop (cons (cons key val) acc))
                       (if (< (%cur-pos) end)
                           (loop acc)
-                          (reverse acc)))))))))))
+                              (begin
+                                (seek port end SEEK_SET)
+                                (reverse acc))))))))))))
+    (lambda (k . args)
+      (log-error "notification-daemon: Error parsing hints dict: ~a ~a" k args)
+      '())))
 
 ;;; dbus message and body handlers
 (define (%build-header-fields fields)
@@ -486,6 +506,27 @@
       (lambda (key . args)
         (log-error "notification-daemon: Error sending reply: ~a ~a" key args)))))
 
+(define (%dbus-error-reply! sock sender reply-serial error-name error-msg)
+  "Send a D-Bus ERROR reply message (type 3) for the method call with REPLY-SERIAL."
+  (when (and sock sender reply-serial)
+    (catch #t
+      (lambda ()
+        (let* ((serial (%next-serial!))
+               (err (or error-name "org.freedesktop.DBus.Error.Failed"))
+               (fields `((4 "s" ,err)
+                         (5 "u" ,reply-serial)
+                         (6 "s" ,sender)
+                         ,@(if (and error-msg (not (string-null? error-msg)))
+                               `((8 "g" "s"))
+                               '())))
+               (body-bv (if (and error-msg (not (string-null? error-msg)))
+                            (%encode-string error-msg)
+                            #f))
+               (msg (%build-dbus-message 3 serial fields body-bv)))
+          (%socket-send-all! sock msg)))
+      (lambda (key . args)
+        (log-error "notification-daemon: Error sending error reply: ~a ~a" key args)))))
+
 ;; integration with gleui toast
 (define (%format-notification-message app-name summary body actions urgency)
   "Format notification parts into a Pango markup string suitable for gleui-toast-show."
@@ -495,10 +536,11 @@
                          (not (string-null? app-name)))
                     (format #f "<span alpha=\"70%\" size=\"small\">[~a]</span> " (pango-escape-markup app-name))
                     ""))
-         (title-line (string-append badge "<b>" (pango-escape-markup summary) "</b>")))
+         (safe-summary (if (string? summary) summary ""))
+         (title-line (string-append badge "<b>" (pango-escape-markup safe-summary) "</b>")))
     (set! lines (cons title-line lines))
     (when (and (string? body) (not (string-null? body)))
-      (set! lines (cons body lines)))
+      (set! lines (cons (gleui-toast-markup-ensure body) lines)))
     (when (and *notification-daemon-show-actions*
                (pair? actions))
       ;; actions is list: (id1 label1 id2 label2 ...)
@@ -512,7 +554,7 @@
             (let ((key (car acts))
                   (label (cadr acts)))
               (loop (cddr acts)
-                    (cons (format #f "<b>[~a]</b>" (pango-escape-markup label)) tags))))))
+                    (cons (format #f "<b>[~a]</b>" (pango-escape-markup (if (string? label) label ""))) tags))))))
     (string-join (reverse lines) "\n")))
 
 (define (%extract-notification-icon app-icon hints)
@@ -735,13 +777,18 @@
                              ((zero? expire-timeout) 0)
                              (else *notification-daemon-timeout*)))
                    (theme-overrides (%notification-daemon-theme-overrides urgency icon)))
+              ;; send reply immediately so caller never waits
+              (%dbus-reply! *notification-daemon-socket* sender serial "u" (%encode-u32 notif-id))
               (%add-to-history! notif-id app-name summary body urgency icon)
+              (catch #t
+                (lambda ()
               (%notification-daemon-show! formatted
                                           timeout
                                           notif-id
                                           icon
-                                          theme-overrides)
-              (%dbus-reply! *notification-daemon-socket* sender serial "u" (%encode-u32 notif-id))))
+                                              theme-overrides))
+                (lambda (k . args)
+                  (log-error "notification-daemon: Error displaying toast: ~a ~a" k args)))))
           (%dbus-reply! *notification-daemon-socket* sender serial "u" (%encode-u32 0)))))
 
    ((string=? member "GetCapabilities")
@@ -766,7 +813,11 @@
                   (%encode-string *notification-daemon-introspection-xml*)))
 
    (else
-    (%dbus-reply! *notification-daemon-socket* sender serial "" #f))))
+    (%dbus-error-reply! *notification-daemon-socket*
+                        sender
+                        serial
+                        "org.freedesktop.DBus.Error.UnknownMethod"
+                        (format #f "Method ~a is not supported on interface ~a" member (or iface ""))))))
 
 (define (%unpack-dbus-message bv)
   "Unpack a raw dbus message bytevector into a list."
@@ -783,20 +834,33 @@
     (list mtype serial hfields-bv body-bv)))
 
 (define (%handle-dbus-message! bv)
-  (catch #t
-    (lambda ()
-      (match-let (((mtype serial hfields-bv body-bv) (%unpack-dbus-message bv)))
-        (let* ((fields (%parse-header-fields hfields-bv))
+  (let ((unpacked (catch #t
+                    (lambda () (%unpack-dbus-message bv))
+                    (lambda (k . args)
+                      (log-error "notification-daemon: Error unpacking D-Bus message: ~a ~a" k args)
+                      #f))))
+    (when unpacked
+      (match-let (((mtype serial hfields-bv body-bv) unpacked))
+        (let* ((fields (catch #t
+                         (lambda () (%parse-header-fields hfields-bv))
+                         (lambda (k . args)
+                           (log-error "notification-daemon: Error parsing header fields: ~a ~a" k args)
+                           '())))
                (member (assoc-ref fields 3))
                (sender (assoc-ref fields 7))
                (path (assoc-ref fields 1))
                (iface (assoc-ref fields 2)))
           (when (and (= mtype 1) member sender) ;; METHOD_CALL
-            (%handle-method-call! member sender serial path iface body-bv)))))
+            (catch #t
+              (lambda ()
+                (%handle-method-call! member sender serial path iface body-bv))
     (lambda (k . args)
-	  ;; I still sometimes see errors, not sure if it's reading error
-	  ;; or violation from clients sending notifications
-      (log-error "notification-daemon: Error handling D-Bus message: ~a ~a" k args))))
+                (log-error "notification-daemon: Error executing method ~a: ~a ~a" member k args)
+                (%dbus-error-reply! *notification-daemon-socket*
+                                    sender
+                                    serial
+                                    "org.freedesktop.DBus.Error.Failed"
+                                    (format #f "Internal error handling method ~a" member))))))))))
 
 (define (%pop-message!)
   "Extract the next complete dbus message bytevector from the input buffer."

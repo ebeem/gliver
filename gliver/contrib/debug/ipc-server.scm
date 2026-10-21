@@ -39,6 +39,7 @@
     (catch #t
       (lambda ()
         (let ((sock (socket AF_UNIX SOCK_STREAM 0)))
+          (fcntl sock F_SETFD FD_CLOEXEC)
           (bind sock AF_UNIX path)
           (chmod path #o700)  ;; owner-only access
           (listen sock 5)
@@ -81,6 +82,7 @@
         (let ((client (accept *ipc-server-socket*)))
           (when client
             (let ((port (car client)))
+              (fcntl port F_SETFD FD_CLOEXEC)
               (fcntl port F_SETFL (logior (fcntl port F_GETFL) O_NONBLOCK))
               (set! *ipc-clients* (cons port *ipc-clients*))
               (log-debug "IPC client connected.")))))

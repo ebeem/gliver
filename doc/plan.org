@@ -179,7 +179,7 @@ the implementation used to check for specific events like window creation and ap
 I will go to other directories later, I did so many refactoring and rushed work that I started not liking parts of the code especially the ui part in contrib directory. I took some time to write and very well document the keyboard-manager, I want this to be a reference to how I want other files to be documented.
 NOTE: this shouldn't break APIs, it should just make it easier for anyone to understand the code, some internal functions may have to be refactored along the way, but not APIs.
 
-** TODO investigate why notifications freeze librewolf sometimes
+** DONE investigate why notifications freeze librewolf sometimes
 Not sure if this is a problem with gliver's notification daemon or a bug in librewolf, but it seems like randomly sometimes notifications freeze librewolf for almost a minute
 
 ** TODO investigate river memory leaks
