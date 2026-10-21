@@ -208,10 +208,10 @@ clean:
 	rm -rf "$${XDG_CACHE_HOME:-$$HOME/.cache}/guile/ccache/"*"$(CURDIR)"
 
 run:
-	./bin/gliver
+	cd $$HOME && $(CURDIR)/bin/gliver
 
 debug:
-	GUILE_AUTO_COMPILE=0 ./bin/gliver
+	cd $$HOME && GUILE_AUTO_COMPILE=0 $(CURDIR)/bin/gliver
 
 repl:
 	./bin/gliver-repl
