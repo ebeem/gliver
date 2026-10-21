@@ -18,6 +18,7 @@
   #:use-module (gliver contrib ui statusbar keyboard)
   #:use-module (gliver contrib ui statusbar net-speed)
   #:use-module (gliver contrib ui statusbar mpd)
+  #:use-module (gliver contrib ui statusbar volume)
   #:use-module (gliver contrib ui statusbar custom))
 
 (define-syntax re-export-modules
@@ -42,4 +43,5 @@
 				   (gliver contrib ui statusbar keyboard)
 				   (gliver contrib ui statusbar net-speed)
 				   (gliver contrib ui statusbar mpd)
+				   (gliver contrib ui statusbar volume)
 				   (gliver contrib ui statusbar custom))

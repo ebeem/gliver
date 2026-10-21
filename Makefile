@@ -108,6 +108,7 @@ MODULES =	gliver/core/ffi.scm \
 			gliver/contrib/ui/statusbar/network.scm \
 			gliver/contrib/ui/statusbar/net-speed.scm \
 			gliver/contrib/ui/statusbar/mpd.scm \
+			gliver/contrib/ui/statusbar/volume.scm \
 			gliver/contrib/ui/statusbar/custom.scm \
 			gliver/contrib/ui/statusbar.scm \
 			gliver/contrib/windows/window-rules.scm \
