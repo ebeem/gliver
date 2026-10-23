@@ -44,6 +44,7 @@ MODULES =	gliver/core/ffi.scm \
 			gliver/wayland/gen/river-xkb-bindings-v1.scm \
 			gliver/wayland/gen/river-xkb-config-v1.scm \
 			gliver/wayland/gen/wlr-layer-shell-unstable-v1.scm \
+			gliver/config.scm \
 			gliver/core/logs.scm \
 			gliver/core/types.scm \
 			gliver/core/hooks.scm \
@@ -128,6 +129,13 @@ build/%.go: %.scm
 	@echo "Compiling $<..."
 	@mkdir -p $(dir $@)
 	@guild compile -L . -o $@ $<
+
+# prepare gliver/config.scm
+# to support prefixed installations.
+gliver/config.scm: gliver/config.scm.in
+	sed -e "s|[@]GUILEDIR@|$(GUILEDIR)|" \
+		-e "s|[@]GUILECCDIR@|$(GUILECCDIR)|" \
+		-e "s|[@]PREFIX@|$(PREFIX)|" $< > $@
 
 # build ffi.scm and include its dependencies
 # gliver/deps/libxkbcommon.scm -> xkb

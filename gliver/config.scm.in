@@ -1,0 +1,17 @@
+(define-module (gliver config)
+  #:export
+  (%gliver-installation-prefix
+   %gliver-source-directory
+   %gliver-compiled-directory))
+
+(define %gliver-installation-prefix
+  "@PREFIX@")
+
+(define %gliver-source-directory
+  (or (getenv "GLIVER_SOURCE_DIR")
+      "@GUILEDIR@"))
+
+(define %gliver-compiled-directory
+  (or (getenv "GLIVER_COMPILED_DIR")
+      "@GUILECCDIR@"))
+
