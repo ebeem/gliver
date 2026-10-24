@@ -186,7 +186,7 @@ Must be called in a ~render_sequence~."
 
 (define (wm-window-tiled-set proxy-window edges)
   "Set tiled state for the provided window.
-edges: flag enum value, use `RIVER_WINDOW_V1_EDGES_NONE`,
+  - EDGES: flag enum value, use `RIVER_WINDOW_V1_EDGES_NONE`,
 `RIVER_WINDOW_V1_EDGES_TOP`, `RIVER_WINDOW_V1_EDGES_BOTTOM`,
 `RIVER_WINDOW_V1_EDGES_RIGHT`, `RIVER_WINDOW_V1_EDGES_LEFT`
 Must be called in a ~manage_sequence~."
@@ -276,7 +276,7 @@ Must be called in a ~manage_sequence~."
   "Make the window fullscreen on the given output. river_shell_surface_v1
 objects above the window will still be rendered (move it to top).
 This request automatically informs the window that it has entered fullscreen.
-output: output object from which a proxy will be retrieved.
+  - PROXY-OUTPUT: output object from which a proxy will be retrieved.
 Must be called in a ~manage_sequence~."
   (when (and proxy-window proxy-output)
     (when *log-river-calls*
@@ -324,16 +324,14 @@ Must be called in a ~manage_sequence~."
 ;;; window events
 (define (wm-window-on-window-closed data proxy-window)
   "Window was closed by the client. This will take care of
-Removing the window record and clearing up memory.
-Hook: *window-destroyed-hook*"
+Removing the window record and clearing up memory."
   ;; just let the window manager handle it
   (when *log-river-calls*
 	(log-debug "Window closed: ~a" proxy-window))
   (gliver-hook-run! %window-destroyed-hook data proxy-window))
 
 (define (wm-window-on-window-dimensions-hint data proxy-window min-w min-h max-w max-h)
-  "Window shared its preferred min/max dimensions excluding borders and decorations.
-Hook: *window-size-hint-changed*"
+  "Window shared its preferred min/max dimensions excluding borders and decorations."
   (when *log-river-calls*
 	(log-debug "Window dimensions hint: ~a min=~ax~a max=~ax~a"
              proxy-window min-w min-h max-w max-h))
@@ -341,15 +339,13 @@ Hook: *window-size-hint-changed*"
                     proxy-window min-w min-h max-w max-h))
 
 (define (wm-window-on-window-dimensions data proxy-window width height)
-  "Window committed new dimensions (sent before render_start).
-Hook: *window-size-changed-hook*"
+  "Window committed new dimensions (sent before render_start)."
   (when *log-river-calls*
 	(log-debug "Window dimensions: ~a ~ax~a" proxy-window width height))
   (gliver-hook-run! %window-size-changed-hook proxy-window width height))
 
 (define (wm-window-on-window-app-id data proxy-window app-id-ptr)
-  "Window updated its app_id.
-Hook: *window-app-id-changed-hook*"
+  "Window updated its app_id."
   (let ((app-id (if (or (not (pointer? app-id-ptr)) (null-pointer? app-id-ptr))
                     ""
                     (pointer->string app-id-ptr))))
@@ -358,8 +354,7 @@ Hook: *window-app-id-changed-hook*"
     (gliver-hook-run! %window-app-id-changed-hook proxy-window app-id)))
 
 (define (wm-window-on-window-title data proxy-window title-ptr)
-  "Window updated its title.
-Hook: *window-title-changed-hook*"
+  "Window updated its title."
   (let ((title (if (or (not (pointer? title-ptr)) (null-pointer? title-ptr))
                    ""
                    (pointer->string title-ptr))))
@@ -368,8 +363,7 @@ Hook: *window-title-changed-hook*"
 	(gliver-hook-run! %window-title-changed-hook proxy-window title)))
 
 (define (wm-window-on-window-parent data proxy-window parent-proxy)
-  "Window updated its parent.
-Hook: *window-parent-changed-hook*"
+  "Window updated its parent."
   (let ((parent (if (or (not (pointer? parent-proxy)) (null-pointer? parent-proxy))
                     ""
                     parent-proxy)))
@@ -379,11 +373,10 @@ Hook: *window-parent-changed-hook*"
 
 (define (wm-window-on-window-decoration-hint data proxy-window hint)
   "Window updated its preferred client side/server side decoration options.
-hint: enum value `RIVER_WINDOW_V1_DECORATION_HINT_ONLY_SUPPORTS_CSD`,
+  - HINT: enum value `RIVER_WINDOW_V1_DECORATION_HINT_ONLY_SUPPORTS_CSD`,
 `RIVER_WINDOW_V1_DECORATION_HINT_PREFERS_CSD`,
 `RIVER_WINDOW_V1_DECORATION_HINT_PREFERS_SSD`,
-`RIVER_WINDOW_V1_DECORATION_HINT_NO_PREFERENCE`.
-Hook: *window-decoration-hint-changed-hook*"
+`RIVER_WINDOW_V1_DECORATION_HINT_NO_PREFERENCE`."
   (when *log-river-calls*
 	(log-debug "Window ~a updated its decoration hint to ~a" proxy-window hint))
   (gliver-hook-run! %window-decoration-hint-changed-hook proxy-window hint))
@@ -455,7 +448,7 @@ Only called once when the window is created."
 
 (define (wm-window-on-window-presentation-hint data proxy-window hint)
   "Window updated its preferred presentation mode.
-hint: enum value `RIVER_OUTPUT_V1_PRESENTATION_MODE_VSYNC`,
+  - HINT: enum value `RIVER_OUTPUT_V1_PRESENTATION_MODE_VSYNC`,
 `RIVER_OUTPUT_V1_PRESENTATION_MODE_ASYNC`."
   (when *log-river-calls*
 	(log-debug "Window ~a updated its preferred presentation hint to ~a" proxy-window hint))

@@ -65,7 +65,7 @@ will be automatically managed and called when needed."
 
 (define (wm-output-presentation-mode-set proxy-output mode)
   "Set the preferred presentation mode of the output.
-mode: enum value `RIVER_OUTPUT_V1_PRESENTATION_MODE_VSYNC`,
+  - MODE: enum value `RIVER_OUTPUT_V1_PRESENTATION_MODE_VSYNC`,
 `RIVER_OUTPUT_V1_PRESENTATION_MODE_ASYNC`."
   (when proxy-output
     (when *log-river-calls*
@@ -75,8 +75,7 @@ mode: enum value `RIVER_OUTPUT_V1_PRESENTATION_MODE_VSYNC`,
 ;;; output events
 (define (wm-output-on-output-removed data proxy-output)
   "Output was removed. This will take care of
-Removing the output record and clearing up memory.
-Hook: *output-destroy-hook*"
+Removing the output record and clearing up memory."
   (when *log-river-calls*
 	(log-debug "Output removed: ~a" proxy-output))
   (wm-output-destroy proxy-output)

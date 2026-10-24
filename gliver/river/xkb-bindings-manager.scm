@@ -118,17 +118,17 @@
 ;;; river_xkb_bindings_v1 requests
 (define (xkb-bindings-manager-bindings-destroy)
   "Destroy the river_xkb_bindings_v1 object PROXY.
-PROXY: river_xkb_bindings_v1 object PROXY."
+  - PROXY: river_xkb_bindings_v1 object PROXY."
   (when (valid-pointer? *xkb-bindings-manager-bindings*)
 	(river-xkb-bindings-v1-destroy *xkb-bindings-manager-bindings*)))
 
 (define (xkb-bindings-manager-bindings-create-binding proxy-seat keysym modifiers)
   "Create a new binding on PROXY-SEAT.
 NOTE: river-xkb-binding created must be enabled
-PROXY: river_xkb_bindings_v1 object PROXY.
-PROXY-SEAT: the proxy of the targeted seat.
-KEYSYM: uint xkb keysym value.
-MODIFIERS: uint modifier bitmask.
+  - PROXY: river_xkb_bindings_v1 object PROXY.
+  - PROXY-SEAT: the proxy of the targeted seat.
+  - KEYSYM: uint xkb keysym value.
+  - MODIFIERS: uint modifier bitmask.
 Returns proxy of created river_xkb_binding_v1."
   (when (valid-pointer? *xkb-bindings-manager-bindings*)
 	(when *log-river-calls*
@@ -148,10 +148,7 @@ Returns proxy of created river_xkb_binding_v1."
 
 (define (xkb-bindings-manager-bindings-create-seat seat-proxy)
   "Create a new xkb bindings seat on PROXY-SEAT.
-PROXY: river_xkb_bindings_v1 object PROXY.
-PROXY-SEAT: the proxy of the targeted seat.
-KEYSYM: uint xkb keysym value.
-MODIFIERS: uint modifier bitmask.
+  - SEAT-PROXY: the proxy of the targeted seat.
 Returns proxy of created river_xkb_bindings_seat_v1."
   ;; create if not available and return the *xkb-bindings-manager-bindings-seat*
   (unless (valid-pointer? *xkb-bindings-manager-bindings-seat*)
@@ -172,7 +169,7 @@ Returns proxy of created river_xkb_bindings_seat_v1."
 ;;; river_xkb_binding_v1 requests
 (define (xkb-bindings-manager-binding-destroy proxy)
   "Destroy the river_xkb_binding_v1 object PROXY.
-PROXY: river_xkb_binding_v1 object PROXY."
+  - PROXY: river_xkb_binding_v1 object PROXY."
   (when (valid-pointer? proxy)
 	(when *log-river-calls*
 	  (log-debug "Destroying binding ~a" proxy))
@@ -185,8 +182,8 @@ PROXY: river_xkb_binding_v1 object PROXY."
   "Specify the xkb layout that should be used for this binding.
 This allows keybindings to work even after switching layout/language.
 Must be called in a ~manage_sequence~.
-PROXY: river_xkb_binding_v1 object PROXY.
-LAYOUT: index of xkb layout."
+  - PROXY: river_xkb_binding_v1 object PROXY.
+  - LAYOUT: index of xkb layout."
   (when (valid-pointer? proxy)
 	(when *log-river-calls*
 	  (log-debug "Setting layout override of binding ~a to index ~a" proxy layout))
@@ -195,7 +192,7 @@ LAYOUT: index of xkb layout."
 (define (xkb-bindings-manager-binding-enable proxy)
   "Enable the binding (it's disabled by default after creation).
 Must be called in a ~manage_sequence~.
-PROXY: river_xkb_binding_v1 object PROXY."
+  - PROXY: river_xkb_binding_v1 object PROXY."
   (when (valid-pointer? proxy)
 	(when *log-river-calls*
 	  (log-debug "Enable xkb binding ~a" proxy))
@@ -204,7 +201,7 @@ PROXY: river_xkb_binding_v1 object PROXY."
 (define (xkb-bindings-manager-binding-disable proxy)
   "Disable the binding with the provided PROXY.
 Must be called in a ~manage_sequence~.
-PROXY: river_xkb_binding_v1 object PROXY."
+  - PROXY: river_xkb_binding_v1 object PROXY."
   (when (valid-pointer? proxy)
 	(when *log-river-calls*
 	  (log-debug "Disable xkb binding ~a" proxy))
@@ -232,7 +229,7 @@ PROXY: river_xkb_binding_v1 object PROXY."
 ;;; river_xkb_bindings_seat_v1 requests
 (define (xkb-bindings-manager-bindings-seat-destroy proxy)
   "Destroy the river_xkb_bindings_seat_v1 object PROXY.
-PROXY: river_xkb_bindings_seat_v1 object PROXY."
+  - PROXY: river_xkb_bindings_seat_v1 object PROXY."
   (when (valid-pointer? proxy)
 	(when *log-river-calls*
 	  (log-debug "Destroy bindings seat ~a" proxy))
@@ -244,7 +241,7 @@ This will trigger the event xkb-bindings-manager-on-bindings-seat-ate if key is 
 Useful for submaps and awaiting for valid binding rather than sending it to applications.
 This will be automatically cancelled after a key press (eaten or not).
 Must be called in a ~manage_sequence~.
-PROXY: river_xkb_bindings_seat_v1 object PROXY."
+  - PROXY: river_xkb_bindings_seat_v1 object PROXY."
   (when (valid-pointer? proxy)
 	(when *log-river-calls*
 	  (log-debug "Ensure next key eaten on seat ~a" proxy))
@@ -253,7 +250,7 @@ PROXY: river_xkb_bindings_seat_v1 object PROXY."
 (define (xkb-bindings-manager-bindings-seat-cancel-ensure-next-key-eaten proxy)
   "Cancels the ensure next non-modifier key eaten request for seat PROXY.
 Must be called in a ~manage_sequence~.
-PROXY: river_xkb_bindings_seat_v1 object PROXY."
+  - PROXY: river_xkb_bindings_seat_v1 object PROXY."
   (when (valid-pointer? proxy)
 	(when *log-river-calls*
 	  (log-debug "Ate binding on seat ~a" proxy))

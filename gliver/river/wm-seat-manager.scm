@@ -131,8 +131,8 @@ Must be called in a ~manage_sequence~."
 ;; TODO: needs testing
 (define (wm-seat-pointer-binding-get proxy-seat button modifiers)
   "Define a pointer binding in terms of a pointer button.
-button: input event code like ~BTN_RIGHT~.
-modifiers: flag enums.
+  - BUTTON: input event code like ~BTN_RIGHT~.
+  - MODIFIERS: flag enums.
 Returns river_pointer_binding_v1"
   (when proxy-seat
     (when *log-river-calls*
@@ -157,8 +157,7 @@ Must be called in a ~manage_sequence~."
 ;;; seat events
 (define (wm-seat-on-seat-removed data proxy-seat)
   "Seat was removed. This will take care of
-The seat record should be cleared.
-Hook: %seat-removed-hook"
+The seat record should be cleared."
   (when *log-river-calls*
 	(log-debug "Seat removed: ~a" proxy-seat))
   (gliver-hook-run! %seat-removed-hook data proxy-seat))

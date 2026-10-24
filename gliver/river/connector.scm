@@ -68,11 +68,11 @@
 (define (river-on-registry-global data registry object-id protocol-ptr version)
   "Callback for any advertised Wayland protocol. All available protocols
 will be passed to this callback upon connecting to Wayland.
-DATA: pointer to user context, null in gliver
-REGISTRY: proxy of the registry, a protocol must be bound on this registry
-OBJECT-ID: the identifier used in the registry to bind to this protocol
-PROTOCOL-PTR: string pointer to protocol name like river_window_manager_v1
-VERSION: the maximum interface version supported by the protocol."
+  - DATA: pointer to user context, null in gliver
+  - REGISTRY: proxy of the registry, a protocol must be bound on this registry
+  - OBJECT-ID: the identifier used in the registry to bind to this protocol
+  - PROTOCOL-PTR: string pointer to protocol name like river_window_manager_v1
+  - VERSION: the maximum interface version supported by the protocol."
   (let ((protocol-name (pointer->string protocol-ptr)))
     ;; any interface should start binding with this hook
     (log-debug "binding ~a..." protocol-name)
@@ -81,9 +81,9 @@ VERSION: the maximum interface version supported by the protocol."
 
 (define (river-on-registry-global-remove data registry object-id)
   "Callback when any advertised Wayland protocol becomes unavailable.
-DATA: pointer to user context, null in gliver
-REGISTRY: proxy of the registry, a protocol must be bound on this registry
-OBJECT-ID: the identifier used in the registry to bind to this protocol"
+  - DATA: pointer to user context, null in gliver
+  - REGISTRY: proxy of the registry, a protocol must be bound on this registry
+  - OBJECT-ID: the identifier used in the registry to bind to this protocol"
   ;; currently isn't used at all, it should be useful
   ;; for certain situations were advertised protocols become
   ;; unavailable, but using river will probably make this useless
