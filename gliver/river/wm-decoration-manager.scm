@@ -41,7 +41,7 @@ will be automatically managed and called when needed."
   "Set the offset of the decoration surface from the top left corner
 Must be called in a ~render_sequence~."
   (when proxy-docoration
-    (when *log-river-calls
+    (when *log-river-calls*
 	  (log-debug "setting offset of docoration ~a to ~ax~a" proxy-docoration x y))
     (river-decoration-v1-set-offset proxy-docoration x y)))
 
