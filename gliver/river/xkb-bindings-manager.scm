@@ -178,7 +178,7 @@ PROXY: river_xkb_binding_v1 object PROXY."
 	  (log-debug "Destroying binding ~a" proxy))
 	;; untrack the proxy
 	(set! *xkb-bindings-manager-binding-list*
-	 (delete proxy *xkb-bindings-manager-binding-list*))
+		  (delete proxy *xkb-bindings-manager-binding-list*))
 	(river-xkb-binding-v1-destroy proxy)))
 
 (define (xkb-bindings-manager-binding-set-layout-override proxy layout)
@@ -198,7 +198,7 @@ Must be called in a ~manage_sequence~.
 PROXY: river_xkb_binding_v1 object PROXY."
   (when (valid-pointer? proxy)
 	(when *log-river-calls*
-	  (log-debug "Enable xkb binding ~a" proxy-binding))
+	  (log-debug "Enable xkb binding ~a" proxy))
 	(river-xkb-binding-v1-enable proxy)))
 
 (define (xkb-bindings-manager-binding-disable proxy)
@@ -207,7 +207,7 @@ Must be called in a ~manage_sequence~.
 PROXY: river_xkb_binding_v1 object PROXY."
   (when (valid-pointer? proxy)
 	(when *log-river-calls*
-	  (log-debug "Disable xkb binding ~a" proxy-binding))
+	  (log-debug "Disable xkb binding ~a" proxy))
 	(river-xkb-binding-v1-disable proxy)))
 
 ;;; river_xkb_binding_v1 events
@@ -262,7 +262,7 @@ PROXY: river_xkb_bindings_seat_v1 object PROXY."
 ;;; river_xkb_bindings_seat_v1 events
 (define (xkb-bindings-manager-on-bindings-seat-ate data proxy-seat)
   "Handle an eaten key press event on PROXY-SEAT with user DATA."
-  (when (valid-pointer? proxy)
+  (when (valid-pointer? proxy-seat)
 	(when *log-river-calls*
 	  (log-debug "Ate binding on seat ~a" proxy-seat))
 	(gliver-hook-run! %keybinding-eaten-hook proxy-seat)))
@@ -279,4 +279,3 @@ PROXY: river_xkb_bindings_seat_v1 object PROXY."
 (gliver-hook-add! *gliver-globals-unbind-hook* 'xkb-bindings-manager-on-globals-unbind)
 (gliver-hook-add! *gliver-globals-verify-hook* 'xkb-bindings-manager-on-globals-verify)
 (gliver-hook-add! *gliver-listeners-attach-hook* 'xkb-bindings-manager-on-listeners-attach)
-
