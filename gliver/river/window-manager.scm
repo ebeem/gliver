@@ -1,27 +1,24 @@
-;;; gliver/river/window-manager.scm --- River compositor integration
+;;; gliver/river/window-manager.scm --- River window management protocol integration
 ;;;
 ;;; Copyright (C) 2026 Gliver Contributors
 ;;; SPDX-License-Identifier: GPL-3.0-or-later
 ;;;
-;;; This module integrates Gliver with the River Wayland compositor.
-;;; It handles: Window management via river-window-management-v1 protocol
-;;; Only one window management client may be active at a time.
-;;; Maybe later add variables to disable the default window manager and
-;;; other components to allow users to customize them
-;;; TODO: create hooks later for all of river native events for more freedom
-;;; TODO: divide this file into more files, probably one for each interface
-;;; this will introduce dependency problems but will make the code most likely
-;;; much more readable and more maintainable p
+;;; This module manages window management in river:
+;;; It handles:
+;;;   - Binding river_window_manager_v1 and attaching the primary Wayland event listener
+;;;   - Handling manage sequences (manage_start / manage_finish)
+;;;   - Handling render sequences (render_start / render_finish)
+;;;   - Managing river basic events for windows, outputs, seats, and session
+;;;
+;;; This module implements the river interfaces (protocol river_window_manager_v1):
+;;;   - river_window_manager_v1
+;;;
+;;; NOTE: the rest of the interfaces that belong to river_window_manager_v1
+;;; are delegated to other managers that are prefixed with wm- under the river directory
 
 (define-module (gliver river window-manager)
-  #:use-module (ice-9 format)
-  #:use-module (ice-9 match)
-  #:use-module (ice-9 rdelim)
-  #:use-module (srfi srfi-1)
   #:use-module (system foreign)
-  #:use-module (gliver core types)
-  #:use-module (gliver core logs)
-  #:use-module (gliver core hooks)
+  #:use-module (gliver core-base)
   #:use-module (gliver river connector)
   #:use-module (gliver wayland client)
   #:use-module (gliver wayland gen river-window-management-v1)
@@ -58,41 +55,36 @@
 
 ;; river_window_manager_v1 interface implementation
 ;; make sure to initialize and destroy these variables when needed
-
 (define *wm-manage-queue* '())
 (define *wm-render-queue* '())
 
 (define *in-manage-sequence* #f)
 (define *in-render-sequence* #f)
 
-;; extra helper variables and functions
-(define RIVER_WINDOW_V1_EDGES_ALL 15)
-
 (define (window-manager-on-globals-bind registry protocol-name object-id version)
-  "Bind and register the window manager"
+  "Bind river_window_manager_v1 global interface from REGISTRY."
   (when (string=? protocol-name RIVER_WINDOW_MANAGER_V1_NAME)
-	(log-info "Binding ~a..." protocol-name)
-	(%manager-wl-proxy-set! *manager*
-						   (gliver-wl-registry-bind registry object-id
-								   *river-window-manager-v1-interface*
-								   (min version 4)))
-	(log-info "Manager ~a proxy is set to ~a" *manager* (manager-wl-proxy *manager*))))
+    (log-info "Binding ~a..." protocol-name)
+	(let ((proxy (gliver-wl-registry-bind registry object-id
+                                          *river-window-manager-v1-interface*
+                                          (min version 4))))
+	  (%manager-wl-proxy-set! *manager* proxy)
+	  (log-info "Manager ~a proxy is set to ~a" *manager* proxy))))
 
 (define (window-manager-on-globals-unbind)
   "Unbind/destroy the window manager"
-  (when (and *manager* (manager-state? *manager*))
-    (let ((proxy (manager-wl-proxy *manager*)))
-      (when (and (pointer? proxy) (not (null-pointer? proxy)))
-        (catch #t (lambda () (river-window-manager-v1-destroy proxy)) (lambda _ #f))))))
+  (let ((proxy (manager-wl-proxy *manager*)))
+	(when (valid-pointer? proxy)
+	  (wm-manager-destroy proxy))))
 
 (define (window-manager-on-globals-verify)
-  "Verify critical globals were bound "
-  (when (null-pointer? (manager-wl-proxy *manager*))
+  "Verify that the manager was bound successfully, raise error otherwise"
+  (unless (valid-pointer? (manager-wl-proxy *manager*))
     (log-error "river_window_manager_v1 not available, is River running?")
     (error "river_window_manager_v1 not available")))
 
 (define (window-manager-on-listeners-attach)
-  "Attach wayland listeners"
+  "Attach the primary Wayland event listener to the river_window_manager_v1 proxy."
   ;; set up the window manager event listener.
   ;; the window manager must be attached before
   ;; the roundtrip that delivers initial state
@@ -111,13 +103,13 @@
     (wl-proxy-add-listener (manager-wl-proxy *manager*)
 						   wm-listener %null-pointer)))
 
-;;; TODO: implement
 ;;; river_window_manager_v1: requests
 (define (wm-manager-stop proxy-manager)
   "Close the manager, the manager may take time to closed. listen
 for *manager-destroy-hook* in case an action other than clearing
 state needs to be executed."
-  (log-debug "Stopping manager ~a" proxy-manager)
+  (when *log-river-calls*
+	(log-debug "Stopping manager ~a" proxy-manager))
   (when proxy-manager
 	(river-window-manager-v1-stop proxy-manager)))
 
@@ -126,14 +118,15 @@ state needs to be executed."
 client side and the server should also clear everything.
 This most likely should be used internally only, and it
 will be automatically managed and called when needed."
-  (log-debug "Destroying manager ~a" proxy-manager)
+  (when *log-river-calls*
+	(log-debug "Destroying manager ~a" proxy-manager))
   (when proxy-manager
 	(river-window-manager-v1-destroy proxy-manager)))
 
 (define (wm-manager-manage-finish proxy-manager)
   "Client has made all changes to window management
 state it wishes to include in the current manage sequence."
-  (when *log-sequences*
+  (when (and *log-sequences* *log-river-calls*)
 	(log-debug "Finishing manage sequence ~a" proxy-manager))
   (when proxy-manager
 	(river-window-manager-v1-manage-finish proxy-manager)))
@@ -141,14 +134,15 @@ state it wishes to include in the current manage sequence."
 (define (wm-manager-manage-dirty proxy-manager)
   "Ensures a manage sequence is started and that a
 manage_start event is sent by the server."
-  (log-debug "Dirty manage sequence ~a" proxy-manager)
-  (when proxy-manager
+  (when *log-river-calls*
+	(log-debug "Dirty manage sequence ~a" proxy-manager))
+  (when (and proxy-manager *in-manage-sequence*)
 	(river-window-manager-v1-manage-dirty proxy-manager)))
 
 (define (wm-manager-render-finish proxy-manager)
   "Client has made all changes to render state
 server should atomically apply and display them."
-  (when *log-sequences*
+  (when (and *log-sequences* *log-river-calls*)
 	(log-debug "Finishing render sequence ~a" proxy-manager))
   (when proxy-manager
 	(river-window-manager-v1-render-finish proxy-manager)))
@@ -156,13 +150,15 @@ server should atomically apply and display them."
 (define (wm-manager-shell-surface-get proxy-manager proxy-surface)
   "Create a new shell surface for window manager UI
 and assign the river_shell_surface_v1 role to the surface."
-  (log-debug "Creating a new shell surface ~a" proxy-surface)
+  (when *log-river-calls*
+	(log-debug "Creating a new shell surface ~a" proxy-surface))
   (when proxy-manager
 	(river-window-manager-v1-get-shell-surface proxy-manager proxy-surface)))
 
 (define (wm-manager-exit proxy-manager)
   "End the current Wayland session and exit the compositor."
-  (log-debug "Exiting manager ~a" proxy-manager)
+  (when *log-river-calls*
+	(log-debug "Exiting manager ~a" proxy-manager))
   (when proxy-manager
 	(river-window-manager-v1-exit-session proxy-manager)))
 
@@ -188,18 +184,21 @@ object. The client should destroy the object."
   "Handle a new window event from the compositor.
 Creates a core <window> record, attaches the event listener, and queues
 the window for initial setup in the upcoming manage sequence."
-  (log-debug "New window proxy: ~a" proxy-win)
+  (when *log-river-calls*
+	(log-debug "New window proxy: ~a" proxy-win))
   (gliver-hook-run! %window-created-hook data proxy-manager proxy-win))
 
 (define (wm-on-output data proxy-manager output-proxy)
   "Handle a new output event from the compositor.
 Creates an output and attaches the output event listener."
-  (log-debug "New output pointer created: ~a" output-proxy)
+  (when *log-river-calls*
+	(log-debug "New output pointer created: ~a" output-proxy))
   (gliver-hook-run! %output-created-hook data proxy-manager output-proxy))
 
 (define (wm-on-seat data proxy-manager seat-proxy)
   "Handle a new seat event from the compositor."
-  (log-debug "New seat proxy: ~a" seat-proxy)
+  (when *log-river-calls*
+	(log-debug "New seat proxy: ~a" seat-proxy))
   (gliver-hook-run! %seat-created-hook data proxy-manager seat-proxy))
 
 (define (wm-on-session-locked data proxy-manager)
@@ -214,7 +213,7 @@ Creates an output and attaches the output event listener."
   "Handle manage start: execute pending actions and finish the sequence.
 All window management state changes (keybinding enable/disable, focus
 changes, etc.) must happen between manage_start and manage_finish."
-  (when *log-sequences*
+  (when (and *log-sequences* *log-river-calls*)
 	(log-debug "Start manage sequence"))
   (set! *in-manage-sequence* #t)
 
@@ -232,7 +231,7 @@ changes, etc.) must happen between manage_start and manage_finish."
       (log-error "Error in manage sequence: ~a ~a" key args)))
 
   ;; always finish the manage sequence
-  (when *log-sequences*
+  (when (and *log-sequences* *log-river-calls*)
 	(log-debug "Finish manage sequence"))
   (wm-manager-manage-finish proxy-manager)
   (set! *in-manage-sequence* #f))
@@ -241,7 +240,7 @@ changes, etc.) must happen between manage_start and manage_finish."
   "Handle render start: position, show, and style all windows, then finish.
 The server sends window dimension events before this, so nodes can be
 positioned accurately."
-  (when *log-sequences*
+  (when (and *log-sequences* *log-river-calls*)
 	(log-debug "Start render sequence"))
   (set! *in-render-sequence* #t)
 
@@ -260,7 +259,7 @@ positioned accurately."
 
   ;; always finish the render sequence
   (wm-manager-render-finish proxy-manager)
-  (when *log-sequences*
+  (when (and *log-sequences* *log-river-calls*)
 	(log-debug "Finish render sequence"))
   (set! *in-render-sequence* #f))
 
