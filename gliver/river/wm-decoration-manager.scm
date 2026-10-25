@@ -30,26 +30,31 @@
 (define (wm-decoration-destroy! proxy-decoration)
   "Destroy a decoration, this means everything was cleared from
 client side and the server should also clear everything.
-This most likely should be used internally only, and it
-will be automatically managed and called when needed."
+Parameters: (PROXY-DECORATION)
+  - PROXY-DECORATION: Pointer to river_decoration_v1 proxy."
   (when proxy-decoration
     (when *log-river-calls*
 	  (log-debug "destroying decoration proxy: ~a" proxy-decoration))
 	(river-decoration-v1-destroy proxy-decoration)))
 
 (define (wm-docoration-offset-set! proxy-docoration x y)
-  "Set the offset of the decoration surface from the top left corner
-Must be called in a ~render_sequence~."
+  "Set the offset of the decoration surface from the top-left corner.
+Must be called in a render sequence.
+Parameters: (PROXY-DOCORATION X Y)
+  - PROXY-DOCORATION: Pointer to river_decoration_v1 proxy.
+  - X: Horizontal offset in compositor coordinates.
+  - Y: Vertical offset in compositor coordinates."
   (when proxy-docoration
     (when *log-river-calls*
 	  (log-debug "setting offset of docoration ~a to ~ax~a" proxy-docoration x y))
     (river-decoration-v1-set-offset proxy-docoration x y)))
 
 (define (wm-decoration-sync-next-commit! proxy-decoration)
-  "Request that synchronize application of the next wl_surface.commit request on the
-shell surface with rest of the rendering state atomically applied with
-the next river_window_manager_v1.render_finish request.
-Must be called in a ~render_sequence~."
+  "Synchronize application of the next wl_surface commit
+with the next render sequence finish.
+Must be called in a render sequence.
+Parameters: (PROXY-DECORATION)
+  - PROXY-DECORATION: Pointer to river_decoration_v1 proxy."
   (when proxy-decoration
     (when *log-river-calls*
 	  (log-debug "syncing decoration ~a" proxy-decoration))

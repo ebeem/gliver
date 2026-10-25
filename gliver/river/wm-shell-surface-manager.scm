@@ -26,28 +26,30 @@
 
 ;;; shell-surface requests
 (define (wm-shell-surface-destroy! proxy-shell-surface)
-  "Destroy a shell-surface, this means everything was cleared from
-client side and the server should also clear everything.
-This most likely should be used internally only, and it
-will be automatically managed and called when needed."
+  "Destroy river_shell_surface_v1 proxy object, this means everything was
+cleared from client side and the server should also clear everything.
+Parameters: (PROXY-SHELL-SURFACE)
+  - PROXY-SHELL-SURFACE: Pointer to river_shell_surface_v1 proxy."
   (when proxy-shell-surface
     (when *log-river-calls*
 	  (log-debug "destroying shell-surface proxy: ~a" proxy-shell-surface))
 	(river-shell-surface-v1-destroy proxy-shell-surface)))
 
 (define (wm-shell-surface-node-get! proxy-shell-surface)
-  "Get the node in the render list corresponding to the shell surface.
-Should only be sent once per shell-surface"
+  "Get node corresponding to the shell surface (called once per surface).
+Parameters: (PROXY-SHELL-SURFACE)
+  - PROXY-SHELL-SURFACE: Pointer to river_shell_surface_v1 proxy."
   (when proxy-shell-surface
     (when *log-river-calls*
 	  (log-debug "getting node of shell-surface ~a" proxy-shell-surface))
     (river-shell-surface-v1-get-node proxy-shell-surface)))
 
 (define (wm-shell-surface-sync-next-commit! proxy-shell-surface)
-  "Request that synchronize application of the next wl_surface.commit request on the
-shell surface with rest of the rendering state atomically applied with
-the next river_window_manager_v1.render_finish request.
-Must be called in a ~render_sequence~."
+  "Synchronize application of the next wl_surface commit
+with the next render sequence.
+Must be called in a render sequence.
+Parameters: (PROXY-SHELL-SURFACE)
+  - PROXY-SHELL-SURFACE: Pointer to river_shell_surface_v1 proxy."
   (when proxy-shell-surface
     (when *log-river-calls*
 	  (log-debug "syncing shell-surface ~a" proxy-shell-surface))

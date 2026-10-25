@@ -46,10 +46,6 @@
 (define %WL_COMPOSITOR_NAME "wl_compositor")
 (define %WL_SHM_NAME "wl_shm")
 
-(define (%valid-pointer? ptr)
-  "Return #t if pointer PTR is valid and not null."
-  (and ptr (not (null-pointer? ptr))))
-
 ;;; state
 (define-var *wl-display* %null-pointer
 			"Global Wayland display pointer, used for event loop pulling and flushing requests.")
@@ -68,11 +64,12 @@
 (define (river-on-registry-global data registry object-id protocol-ptr version)
   "Callback for any advertised Wayland protocol. All available protocols
 will be passed to this callback upon connecting to Wayland.
-  - DATA: pointer to user context, null in gliver
-  - REGISTRY: proxy of the registry, a protocol must be bound on this registry
-  - OBJECT-ID: the identifier used in the registry to bind to this protocol
-  - PROTOCOL-PTR: string pointer to protocol name like river_window_manager_v1
-  - VERSION: the maximum interface version supported by the protocol."
+Parameters: (DATA REGISTRY OBJECT-ID PROTOCOL-PTR VERSION)
+  - DATA: Pointer to user context (unused, null in Gliver).
+  - REGISTRY: Pointer to wl_registry proxy.
+  - OBJECT-ID: Numeric Wayland object ID.
+  - PROTOCOL-PTR: Pointer to interface name string.
+  - VERSION: Maximum interface version supported by compositor."
   (let ((protocol-name (pointer->string protocol-ptr)))
     ;; any interface should start binding with this hook
     (log-debug "binding ~a..." protocol-name)
@@ -80,17 +77,19 @@ will be passed to this callback upon connecting to Wayland.
                       registry protocol-name object-id version)))
 
 (define (river-on-registry-global-remove data registry object-id)
-  "Callback when any advertised Wayland protocol becomes unavailable.
-  - DATA: pointer to user context, null in gliver
-  - REGISTRY: proxy of the registry, a protocol must be bound on this registry
-  - OBJECT-ID: the identifier used in the registry to bind to this protocol"
+  "Callback when any advertised Wayland protocol becomes unavailable/removed.
+Parameters: (DATA REGISTRY OBJECT-ID)
+  - DATA: Pointer to user context (unused, null in Gliver).
+  - REGISTRY: Pointer to wl_registry proxy.
+  - OBJECT-ID: Numeric Wayland object ID."
   ;; currently isn't used at all, it should be useful
   ;; for certain situations were advertised protocols become
   ;; unavailable, but using river will probably make this useless
   (log-debug "Registry global_remove: object-id=~a" object-id))
 
 (define (river-connect!)
-  "Connect to Wayland display and bind required protocols."
+  "Connect to Wayland display and bind required protocols.
+Parameters: None."
   ;; ensure $DISPLAY is set for Xwayland applications
   ;; only x11 application use this environment variable
   (unless (getenv "DISPLAY")
@@ -145,7 +144,8 @@ will be passed to this callback upon connecting to Wayland.
       (set! *river-connected?* #f))))
 
 (define (river-disconnect!)
-  "Disconnect from the Wayland display."
+  "Disconnect from Wayland display and clear globals.
+Parameters: None."
   (when *river-connected?*
     (log-info "Disconnecting from Wayland display...")
     (gliver-hook-run! *gliver-globals-unbind-hook*)
@@ -164,7 +164,8 @@ will be passed to this callback upon connecting to Wayland.
     (log-info "Disconnected.")))
 
 (define (river-event-loop!)
-  "Run the main event loop, flush requests and read events."
+  "Run the main Wayland event loop, flush requests, and dispatch incoming events.
+Parameters: None."
   (log-info "Entering Wayland main event loop.")
 
   (let ((wl-fd (wl-display-get-fd *wl-display*)))
@@ -217,7 +218,12 @@ will be passed to this callback upon connecting to Wayland.
   (log-info "Main event loop exited."))
 
 (define (river-on-globals-bind registry protocol-name object-id version)
-  "Bind Wayland compositor, shm, and layer-shell globals from REGISTRY."
+  "Bind Wayland compositor, shm, and layer-shell globals from REGISTRY.
+Parameters: (REGISTRY PROTOCOL-NAME OBJECT-ID VERSION)
+  - REGISTRY: Pointer to wl_registry proxy.
+  - PROTOCOL-NAME: Interface name string.
+  - OBJECT-ID: Numeric Wayland object ID.
+  - VERSION: Maximum interface version supported by compositor."
   (cond
    ;; binding *wl-compositor*
    ((string=? protocol-name %WL_COMPOSITOR_NAME)
@@ -244,20 +250,22 @@ will be passed to this callback upon connecting to Wayland.
                                    (min version 4))))))
 
 (define (river-on-globals-unbind)
-  "Reset connector global Wayland proxies on disconnect."
+  "Reset connector global Wayland proxies on compositor disconnect.
+Parameters: None."
   (set! *wl-compositor* %null-pointer)
   (set! *wl-shm* %null-pointer)
   (set! *zwlr-layer-shell* %null-pointer))
 
 (define (river-on-globals-verify)
-  "Verify availability of connector globals and raise error mandatory interfaces are missing."
-  (unless (and (%valid-pointer? *wl-display*)
-			   (%valid-pointer? *wl-registry*)
-			   (%valid-pointer? *wl-compositor*))
+  "Verify availability of connector globals and raise error if mandatory interfaces are missing.
+Parameters: None."
+  (unless (and (valid-pointer? *wl-display*)
+			   (valid-pointer? *wl-registry*)
+			   (valid-pointer? *wl-compositor*))
     (log-error "Wayland display, registry, or compositor wasn't found")
 	(error "Wayland display, registry, or compositor wasn't found"))
 
-  (unless (%valid-pointer? *zwlr-layer-shell*)
+  (unless (valid-pointer? *zwlr-layer-shell*)
     (log-warn "zwlr_layer_shell_v1 not available, layer shell features may be disabled")))
 
 (gliver-hook-add! *gliver-globals-bind-hook* 'river-on-globals-bind)

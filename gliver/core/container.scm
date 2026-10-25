@@ -168,6 +168,8 @@ If STRICT? is #t, TARGET's near edge must be past CURRENT's far edge."
 (define (container-pick-closest current candidates)
   "Return the container ID of the candidate closest to CURRENT, or #f if empty."
   (and (pair? candidates)
+	   ;; caar will return first element of first item
+	   ;; in this case it's the container-id of first candidates
        (caar (sort candidates
                    (lambda (a b)
                      (< (container-dist-sq current a)
