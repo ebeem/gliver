@@ -11,14 +11,12 @@
 (define-module (gliver core helpers)
   #:use-module (system foreign)
   #:use-module (srfi srfi-69)
-  #:use-module (gliver core logs)
   #:declarative? #f
   #:export (
 			valid-pointer?
 			*variable-registry*
 			variable-register!
 			define-var
-			name
 			var-get
 			%var-set!
 			var-set!
@@ -61,7 +59,7 @@
     (if record
         (let ((module (car record)))
           (module-ref module name))
-        (log-error "var-get: variable not found in registry ~a" name))))
+        #f)))
 
 (define (%var-set! name new-value)
   "Update a registered variable NAME with NEW-VALUE."
@@ -70,7 +68,7 @@
         (let ((module (car record)))
           (module-set! module name new-value))
         (begin
-		  (log-error "var-set!: Variable not found in registry" name)))))
+		  #f))))
 
 (define-syntax var-set!
   (syntax-rules ()
