@@ -137,7 +137,6 @@
 			*seat-created-hook*
 			*seat-destroy-hook*
 			*seat-object-id-changed-hook*
-			*seat-name-changed-hook*
 			*seat-window-entered-changed-hook*
 			*seat-window-interacted-hook*
 			*seat-shell-interacted-hook*
@@ -149,11 +148,6 @@
 			%keybinding-released-hook
 			%keybinding-repeat-stopped-hook
 			%keybinding-eaten-hook
-			*keybinding-pressed-hook*
-			*keybinding-released-hook*
-			*keybinding-stop-repeat-hook*
-			*keybinding-eaten-hook*
-			*key-press-hook*
 			*submap-change-hook**
 			*command-pre-hook*
 			*command-post-hook*
@@ -218,15 +212,15 @@ CALLER-MODULE is associated with symbol references to allow dynamic REPL resolut
   "Remove function or quoted symbol FN from HOOK."
   (let ((fn-name (if (symbol? fn) fn (and (procedure? fn) (procedure-name fn)))))
     (set-gliver-hook-functions! hook
-      (filter (lambda (pair)
-                (let ((existing (cdr pair)))
-                  (not (or
-                        (eq? existing fn)
-                        (and (symbol? fn) (pair? existing) (eq? (car existing) fn))
-                        (and fn-name
-                             (procedure? existing)
-                             (eq? (procedure-name existing) fn-name))))))
-              (gliver-hook-functions hook)))))
+								(filter (lambda (pair)
+										  (let ((existing (cdr pair)))
+											(not (or
+												  (eq? existing fn)
+												  (and (symbol? fn) (pair? existing) (eq? (car existing) fn))
+												  (and fn-name
+													   (procedure? existing)
+													   (eq? (procedure-name existing) fn-name))))))
+										(gliver-hook-functions hook)))))
 
 (define (%gliver-hook-run hook strict? args)
   "Invoke all registered callbacks in HOOK with ARGS.
@@ -358,7 +352,7 @@ Parameters: None.")
 Parameters: (DATA PROXY-MANAGER PROXY-WIN)
   - DATA: User context pointer (unused, null in Gliver).
   - PROXY-MANAGER: Pointer to river_window_manager_v1 proxy.
-  - PROXY-WIN: Pointer to advertised river_window_v1 proxy."
+  - PROXY-WIN: Pointer to advertised river_window_v1 proxy.")
 
 (define-var *window-container-removed-hook*
   (make-gliver-hook 'window-container-removed 2)
@@ -894,7 +888,7 @@ Parameters: (DATA MANAGER SEAT-PROXY)
   "Invoked when a seat is removed from compositor.
 Parameters: (DATA PROXY-SEAT)
   - DATA: User context pointer (unused, null in Gliver).
-  - PROXY-SEAT: Pointer to river_seat_v1 proxy."
+  - PROXY-SEAT: Pointer to river_seat_v1 proxy.")
 
 (define-var %seat-object-id-changed-hook
   (make-gliver-hook '%seat-object-id-changed 3)
@@ -902,7 +896,7 @@ Parameters: (DATA PROXY-SEAT)
 Parameters: (DATA PROXY-SEAT OBJECT-ID)
   - DATA: User context pointer (unused, null in Gliver).
   - PROXY-SEAT: Pointer to river_seat_v1 proxy.
-  - OBJECT-ID: Numeric Wayland object ID of the wl_seat global."
+  - OBJECT-ID: Numeric Wayland object ID of the wl_seat global.")
 
 (define-var %seat-window-pointer-entered-hook
   (make-gliver-hook '%seat-window-pointer-entered 3)
@@ -910,14 +904,14 @@ Parameters: (DATA PROXY-SEAT OBJECT-ID)
 Parameters: (DATA PROXY-SEAT PROXY-WINDOW)
   - DATA: User context pointer (unused, null in Gliver).
   - PROXY-SEAT: Pointer to river_seat_v1 proxy.
-  - PROXY-WINDOW: Pointer to river_window_v1 proxy."
+  - PROXY-WINDOW: Pointer to river_window_v1 proxy.")
 
 (define-var %seat-window-pointer-left-hook
   (make-gliver-hook '%seat-window-pointer-left 2)
   "Invoked when a seat pointer leaves a window area.
 Parameters: (DATA PROXY-SEAT)
   - DATA: User context pointer (unused, null in Gliver).
-  - PROXY-SEAT: Pointer to river_seat_v1 proxy."
+  - PROXY-SEAT: Pointer to river_seat_v1 proxy.")
 
 (define-var %seat-window-interacted-hook
   (make-gliver-hook '%seat-window-interacted 3)
@@ -925,7 +919,7 @@ Parameters: (DATA PROXY-SEAT)
 Parameters: (DATA PROXY-SEAT PROXY-WIN)
   - DATA: User context pointer (unused, null in Gliver).
   - PROXY-SEAT: Pointer to river_seat_v1 proxy.
-  - PROXY-WIN: Pointer to river_window_v1 proxy."
+  - PROXY-WIN: Pointer to river_window_v1 proxy.")
 
 (define-var %seat-shell-interacted-hook
   (make-gliver-hook '%seat-shell-interacted 3)
@@ -933,7 +927,7 @@ Parameters: (DATA PROXY-SEAT PROXY-WIN)
 Parameters: (DATA PROXY-SEAT SHELL-PROXY)
   - DATA: User context pointer (unused, null in Gliver).
   - PROXY-SEAT: Pointer to river_seat_v1 proxy.
-  - SHELL-PROXY: Pointer to river_shell_surface_v1 proxy."
+  - SHELL-PROXY: Pointer to river_shell_surface_v1 proxy.")
 
 (define-var %seat-op-delta-changed-hook
   (make-gliver-hook '%seat-op-delta-changed 4)
@@ -942,14 +936,14 @@ Parameters: (DATA PROXY-SEAT DX DY)
   - DATA: User context pointer (unused, null in Gliver).
   - PROXY-SEAT: Pointer to river_seat_v1 proxy.
   - DX: Horizontal delta since operation start.
-  - DY: Vertical delta since operation start."
-  
+  - DY: Vertical delta since operation start.")
+
 (define-var %seat-op-released-hook
   (make-gliver-hook '%seat-op-released 2)
   "Invoked when a seat interaction is released (pointer/touch release).
 Parameters: (DATA PROXY-SEAT)
   - DATA: User context pointer (unused, null in Gliver).
-  - PROXY-SEAT: Pointer to river_seat_v1 proxy."
+  - PROXY-SEAT: Pointer to river_seat_v1 proxy.")
 
 (define-var %seat-pointer-position-changed-hook
   (make-gliver-hook '%seat-pointer-position-changed 4)
@@ -958,7 +952,7 @@ Parameters: (DATA PROXY-SEAT X Y)
   - DATA: User context pointer (unused, null in Gliver).
   - PROXY-SEAT: Pointer to river_seat_v1 proxy.
   - X: Logical horizontal pointer position.
-  - Y: Logical vertical pointer position."
+  - Y: Logical vertical pointer position.")
 
 (define-var *seat-created-hook*
   (make-gliver-hook 'seat-created 1)
@@ -1105,4 +1099,3 @@ Parameters: (PATH-OR-COLOR)
 Parameters: (LAYOUT-INDEX LAYOUT-CODE)
   - LAYOUT-INDEX: Integer layout index (0-indexed).
   - LAYOUT-CODE: Short layout code string (e.g. \"us\", \"ara\").")
-

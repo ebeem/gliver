@@ -379,4 +379,4 @@ without changing focus."
                                    (container-usable-y container)
                                    #:animate animate)))
 	     windows)
-	    (gliver-hook-run! *container-resize-hook* container)))))
+	    (gliver-hook-run! *container-position-change-hook* container)))))
