@@ -82,7 +82,11 @@
 			"Whether newly created containers are automatically focused.")
 
 (define* (container-next current #:key (recursive #t))
-  "Return the next container after CURRENT container."
+  "Return the next container after CURRENT container.
+Parameters: (CURRENT [#:recursive #t])
+  - CURRENT: <container> record to move to next from.
+  - RECURSIVE: Boolean, whether to wrap around at list boundary (default #t).
+Returns next <container> record, or #f if not found."
   (and-let* ((workspace (container-workspace current))
 			 (containers (workspace-containers workspace))
 			 (idx (list-index (lambda (f) (eq? f current)) containers)))
@@ -99,7 +103,11 @@
       (list-ref containers (modulo (1+ idx) (length containers)))))))
 
 (define* (container-prev current #:key (recursive #t))
-  "Return the previous container before CURRENT container."
+  "Return the previous container before CURRENT container.
+Parameters: (CURRENT [#:recursive #t])
+  - CURRENT: <container> record to move to previous from.
+  - RECURSIVE: Boolean, whether to wrap around at list boundary (default #t).
+Returns previous <container> record, or #f if not found."
   (and-let* ((workspace (container-workspace current))
 			 (containers (workspace-containers workspace))
 			 (idx (list-index (lambda (f) (eq? f current)) containers)))
@@ -117,7 +125,9 @@
 
 (define (container-active-global)
   "Collect all active containers mapped to global screen coordinates.
-This is helpful for navigation and finding closest container in a direction."
+This is helpful for navigation and finding closest container in a direction.
+Parameters: None.
+Returns list of active container entries in global screen coordinates."
   (append-map
    (lambda (output)
 	 ;; get active workspace of each output
@@ -145,8 +155,11 @@ This is helpful for navigation and finding closest container in a direction."
    (manager-outputs *manager*)))
 
 (define (container-dist-sq current target)
-  "Return squared Euclidean distance between the centers
-of CURRENT container and TARGET container."
+  "Calculate squared Euclidean distance between the centers of CURRENT container and TARGET container.
+Parameters: (CURRENT TARGET)
+  - CURRENT: Container geometry tuple.
+  - TARGET: Container geometry tuple.
+Returns squared Euclidean distance number."
   (match-let (((_ _ _ _ _ ccx ccy) current)
               ((_ _ _ _ _ tcx tcy) target))
     (let ((dx (- tcx ccx))
@@ -154,8 +167,14 @@ of CURRENT container and TARGET container."
       (+ (* dx dx) (* dy dy)))))
 
 (define (container-in-dir? dir current target strict?)
-  "Check if TARGET is in direction DIR from CURRENT.
-If STRICT? is #t, TARGET's near edge must be past CURRENT's far edge."
+  "Check if TARGET is in direction DIR from CURRENT container.
+If STRICT? is #t, TARGET's near edge must be past CURRENT's far edge.
+Parameters: (DIR CURRENT TARGET STRICT?)
+  - DIR: Direction symbol ('up, 'down, 'left, 'right).
+  - CURRENT: Container geometry tuple.
+  - TARGET: Container geometry tuple.
+  - STRICT?: Boolean, whether to require strict far edge separation.
+Returns #t if TARGET is in direction DIR from CURRENT, #f otherwise."
   (match-let (((_ cx0 cy0 cx1 cy1 ccx ccy) current)
               ((_ tx0 ty0 tx1 ty1 tcx tcy) target))
     (case dir
@@ -166,17 +185,25 @@ If STRICT? is #t, TARGET's near edge must be past CURRENT's far edge."
       (else #f))))
 
 (define (container-pick-closest current candidates)
-  "Return the container ID of the candidate closest to CURRENT, or #f if empty."
+  "Return the <container> record of the candidate closest to CURRENT, or #f if empty.
+Parameters: (CURRENT CANDIDATES)
+  - CURRENT: Container geometry tuple.
+  - CANDIDATES: List of container geometry tuples.
+Returns <container> record of the closest candidate, or #f if empty."
   (and (pair? candidates)
 	   ;; caar will return first element of first item
-	   ;; in this case it's the container-id of first candidates
+	   ;; in this case it's the <container> record of the first candidate
        (caar (sort candidates
                    (lambda (a b)
                      (< (container-dist-sq current a)
                         (container-dist-sq current b)))))))
 
 (define* (container-in-direction dir #:key (current (container-current)))
-  "Find the closest container in direction DIR in unified screen space."
+  "Find the closest container in direction DIR in unified screen space.
+Parameters: (DIR [#:current (container-current)])
+  - DIR: Direction symbol or string ('up, 'down, 'left, 'right).
+  - CURRENT: <container> record to navigate from (defaults to current container).
+Returns closest <container> record in direction DIR, or #f if none."
   (let* ((all (container-active-global))
 		 ;; this is in order to get the container current with
 		 ;; the same format as the rest where global coordinate is considered
@@ -188,7 +215,10 @@ If STRICT? is #t, TARGET's near edge must be past CURRENT's far edge."
                (container-pick-closest cur (filter (lambda (e) (container-in-dir? dir-sym cur e #f)) cands)))))))
 
 (define* (container-add! container #:key (focus #t))
-  "Register CONTAINER in its parent workspace's container list."
+  "Register CONTAINER in its parent workspace's container list.
+Parameters: (CONTAINER [#:focus #t])
+  - CONTAINER: <container> record to register.
+  - FOCUS: Boolean, whether to focus CONTAINER (default #t)."
   (and-let* ((workspace (container-workspace container)))
 	(log-debug "adding container ~a to " container)
 	;; add the container to the back referenced workspace containers
@@ -203,14 +233,20 @@ If STRICT? is #t, TARGET's near edge must be past CURRENT's far edge."
 	(gliver-hook-run! *container-created-hook* container)))
 
 (define (container-move-windows-to-container! source-container target-container)
-  "Move all windows from SOURCE-CONTAINER to TARGET-CONTAINER
-without changing focus."
+  "Move all windows from SOURCE-CONTAINER to TARGET-CONTAINER without changing focus.
+Parameters: (SOURCE-CONTAINER TARGET-CONTAINER)
+  - SOURCE-CONTAINER: <container> record to move windows from.
+  - TARGET-CONTAINER: <container> record to receive windows."
   (for-each (lambda (window)
               (window-move-to-container! window target-container #:focus #f))
 			(container-windows source-container)))
 
 (define (container-swap-windows! container win1 win2)
-  "Swap the positions of WIN1 and WIN2 in CONTAINER's window list."
+  "Swap the positions of WIN1 and WIN2 in CONTAINER's window list.
+Parameters: (CONTAINER WIN1 WIN2)
+  - CONTAINER: <container> record containing WIN1 and WIN2.
+  - WIN1: First <window> record.
+  - WIN2: Second <window> record."
   (if (and (container? container)
            (window? win1)
            (window? win2)
@@ -233,7 +269,11 @@ without changing focus."
 			  (gliver-hook-run! *window-focused-hook* (container-window-current container)))))))
 
 (define* (container-remove! container #:key (target-container #f) (focus #t))
-  "Remove CONTAINER from its workspace."
+  "Remove CONTAINER from its workspace.
+Parameters: (CONTAINER [#:target-container #f] [#:focus #t])
+  - CONTAINER: <container> record to remove.
+  - TARGET-CONTAINER: Optional fallback <container> record.
+  - FOCUS: Boolean, whether to focus fallback container if CONTAINER was focused (default #t)."
   (and-let* ((workspace (container-workspace container))
 			 (container-target (or target-container
 								   (container-next container #:recursive #f)
@@ -256,11 +296,18 @@ without changing focus."
         (container-focus! container-target)))))
 
 (define (container-focused? container)
-  "Returns true if the container is currently focused"
+  "Return #t if CONTAINER is currently the active focused container.
+Parameters: (CONTAINER)
+  - CONTAINER: <container> record to check.
+Returns boolean indicating whether CONTAINER is focused."
   (eq? container (container-current)))
 
 (define* (container-focus! container #:key (focus-child #t) (focus-parent #t))
-  "Focus a container by focusing its last focused window."
+  "Focus a container by focusing its last focused window.
+Parameters: (CONTAINER [#:focus-child #t] [#:focus-parent #t])
+  - CONTAINER: <container> record to focus.
+  - FOCUS-CHILD: Boolean, whether to focus the active child window (default #t).
+  - FOCUS-PARENT: Boolean, whether to focus the parent workspace (default #t)."
   (when (and container (container? container))
     (log-debug "focusing container ~a, is focused? = ~a" container
 			   (container-focused? container))
@@ -305,7 +352,10 @@ without changing focus."
 					(seat-wm-window-focus-clear seat))))))))))
 
 (define* (container-usable-area-update-windows! container #:key (animate #t))
-  "Apply the container's usable area to all non-fullscreen windows inside CONTAINER."
+  "Apply the container's usable area to all non-fullscreen windows inside CONTAINER.
+Parameters: (CONTAINER [#:animate #t])
+  - CONTAINER: <container> record whose windows to update.
+  - ANIMATE: Boolean, whether to animate the transition (default #t)."
   (when (and container (container? container))
     (let ((ux (container-usable-x container))
           (uy (container-usable-y container))
@@ -322,7 +372,12 @@ without changing focus."
        (container-windows container)))))
 
 (define* (container-size-set! container width height #:key (animate #t))
-  "Resize the container to the provided width and height."
+  "Resize the container to the provided WIDTH and HEIGHT.
+Parameters: (CONTAINER WIDTH HEIGHT [#:animate #t])
+  - CONTAINER: <container> record to resize.
+  - WIDTH: New width in pixels.
+  - HEIGHT: New height in pixels.
+  - ANIMATE: Boolean, whether to animate the resize (default #t)."
   (let* ((windows (container-windows container))
 		 (int-width (inexact->exact (floor width)))
 		 (int-height (inexact->exact (floor height)))
@@ -354,7 +409,12 @@ without changing focus."
 	    (gliver-hook-run! *container-resize-hook* container)))))
 
 (define* (container-position-set! container x y #:key (animate #t))
-  "Move the container position to the provided x and y."
+  "Move the container position to the provided X and Y.
+Parameters: (CONTAINER X Y [#:animate #t])
+  - CONTAINER: <container> record to move.
+  - X: New horizontal position in pixels.
+  - Y: New vertical position in pixels.
+  - ANIMATE: Boolean, whether to animate the movement (default #t)."
   (let* ((windows (container-windows container))
 		 (int-x (inexact->exact (floor x)))
 		 (int-y (inexact->exact (floor y)))
