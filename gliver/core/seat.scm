@@ -1,23 +1,21 @@
-;;; gliver/core/seat.scm --- Core data model for Gliver
+;;; gliver/core/seat.scm --- Seat input and pointer operations
 ;;;
 ;;; Copyright (C) 2026 Gliver Contributors
 ;;; SPDX-License-Identifier: GPL-3.0-or-later
-;;; Seat: A single seat bundles together the different ways
-;;; a user can provide input e.g. (mouse, keyboard, touch input)
+;;;
+;;; This module manages seat input devices, keyboard focus, and pointer interactions.
+;;; It handles:
+;;;  - Managing seat creation, removal, and focus tracking
+;;;  - Handling pointer gestures, interactive drag/resize operations, and warping
+;;;  - Handling pointer bindings and cursor theme configuration
+;;;  - Providing callbacks for pointer motion, clicks, and interaction
 
 (define-module (gliver core seat)
-  #:use-module (ice-9 format)
-  #:use-module (ice-9 match)
-  #:use-module (srfi srfi-1)
-  #:use-module (srfi srfi-9)
-  #:use-module (srfi srfi-9 gnu)
-  #:use-module (system foreign)
-  #:use-module (gliver core config)
-  #:use-module (gliver core logs)
-  #:use-module (gliver core hooks)
-  #:use-module (gliver core types)
+  #:use-module (srfi srfi-2)
+  #:use-module (gliver core-base)
   #:use-module (gliver river window-manager)
   #:use-module (gliver river wm-seat-manager)
+  #:declarative? #f
   #:export (
 			seat-add!
 			seat-remove!
@@ -41,36 +39,44 @@
 ))
 
 (define (seat-add! seat)
+  "Register SEAT in the Gliver's manager hierarchy.
+Parameters: (SEAT)
+  - SEAT: <seat> record to register."
   (%manager-seats-set! *manager*
-					  (cons seat (manager-seats *manager*)))
+					   (cons seat (manager-seats *manager*)))
   (gliver-hook-run! *seat-created-hook* seat))
 
 (define (seat-remove! seat)
+  "Remove SEAT from the Gliver's manager hierarchy.
+Parameters: (SEAT)
+  - SEAT: <seat> record to remove."
   (let ((remaining (delq seat (manager-seats *manager*))))
     (%manager-seats-set! *manager* remaining))
   (gliver-hook-run! *seat-destroy-hook* seat))
 
 ;;; window manager api calls
 (define (seat-wm-window-focus seat window)
-  "Request that the compositor send keyboard input to the given window.
-Must be called in a ~manage_sequence~."
-  (when (and (seat? seat) (window? window) (not (window-destroyed? window)))
-    (let ((proxy-seat (seat-wl-proxy seat))
-		  (proxy-window (window-wl-proxy window)))
-      (when (and proxy-seat proxy-window)
-	    (log-debug "Seat ~a focusing surface ~a" seat window)
-	    (unless (eq? window (seat-window-focused seat))
-		  (%seat-window-focused-set! seat window)
-		  ;; unfocus old window and focus the new one via hooks as well
-		  (with-manage-sequence
-		   (wm-seat-window-focus proxy-seat proxy-window)
-		   (gliver-hook-run! *seat-window-focused-hook* seat window)))))))
+  "Focus WINDOW so all SEAT interaction happen with it.
+Parameters: (SEAT WINDOW)
+  - SEAT: <seat> record.
+  - WINDOW: <window> record to focus."
+  (and-let* (((seat? seat))
+			 ((window? window))
+			 ((not (window-destroyed? window)))
+			 (proxy-seat (seat-wl-proxy seat))
+			 (proxy-window (window-wl-proxy window)))
+	(log-debug "Seat ~a focusing surface ~a" seat window)
+	(unless (eq? window (seat-window-focused seat))
+	  (%seat-window-focused-set! seat window)
+	  (with-manage-sequence
+	   (wm-seat-window-focus proxy-seat proxy-window)
+	   (gliver-hook-run! *seat-window-focused-hook* seat window)))))
 
-;; NOTE: wm-seat-shell-focus should be implemented here
-;; I am not sure if it's actually needed, so I skipped it
 ;; (define (seat-wm-shell-focus seat shell-surface)
-;;   "Request that the compositor send keyboard input to the given shell surface.
-;; Must be called in a ~manage_sequence~."
+;;   "Focus SHELL so all SEAT interaction happen with it.
+;; Parameters: (SEAT SHELL-SURFACE)
+;;   - SEAT: <seat> record.
+;;   - SHELL-SURFACE: <window> record to focus."
 ;;   (let ((proxy-seat (seat-wl-proxy seat))
 ;; 		(proxy-shell-surface (shell-surface-wl-proxy shell-surface)))
 ;;     (when (and proxy-seat proxy-shell-surface)
@@ -83,146 +89,185 @@ Must be called in a ~manage_sequence~."
 ;; 		 (gliver-hook-run! *seat-shell-surface-focused-hook* seat shell-surface))))))
 
 (define (seat-wm-window-focus-clear seat)
-  "Request that the compositor send keyboard input to the given window.
-Must be called in a ~manage_sequence~."
-  (when (seat? seat)
-    (let ((proxy-seat (seat-wl-proxy seat)))
-      (when proxy-seat
-	    (with-manage-sequence
-	     (wm-seat-window-focus-clear proxy-seat)
-	     (%seat-window-focused-set! seat #f)
-	     (gliver-hook-run! *seat-window-focused-hook* seat #f))))))
+  "Clear SEAT window/surface focus.
+Parameters: (SEAT)
+  - SEAT: <seat> record to clear focus."
+  (and-let* (((seat? seat))
+			 (proxy-seat (seat-wl-proxy seat)))
+	(with-manage-sequence
+	 (wm-seat-window-focus-clear proxy-seat)
+	 (%seat-window-focused-set! seat #f)
+	 (gliver-hook-run! *seat-window-focused-hook* seat #f))))
 
 (define (seat-wm-pointer-op-start seat)
-  "Start an interactive pointer operation.
-Must be called in a ~manage_sequence~."
-  (%seat-pointer-op-set! seat #t)
-  (let ((proxy-seat (seat-wl-proxy seat)))
-    (when proxy-seat
-	  (with-manage-sequence
-	   (wm-seat-pointer-op-start proxy-seat)))))
+  "Start an interactive pointer operation (resize or drag window/surface).
+Parameters: (SEAT)
+  - SEAT: <seat> record."
+  (and-let* ((proxy-seat (seat-wl-proxy seat)))
+	(%seat-pointer-op-set! seat #t)
+	(with-manage-sequence
+	 (wm-seat-pointer-op-start proxy-seat))))
 
 (define (seat-wm-pointer-op-end seat)
-  "End an interactive pointer operation.
-Must be called in a ~manage_sequence~."
-  (%seat-pointer-op-set! seat #f)
-  (let ((proxy-seat (seat-wl-proxy seat)))
-    (when proxy-seat
-	  (with-manage-sequence
-	   (wm-seat-pointer-op-end proxy-seat)))))
+  "End an interactive pointer operation (resize or drag window/surface).
+Parameters: (SEAT)
+  - SEAT: <seat> record."
+  (and-let* ((proxy-seat (seat-wl-proxy seat)))
+	(%seat-pointer-op-set! seat #f)
+	(with-manage-sequence
+	 (wm-seat-pointer-op-end proxy-seat))))
 
 (define (seat-wm-pointer-binding-get seat button modifiers)
   "Define a pointer binding in terms of a pointer button.
-button: input event code like ~BTN_RIGHT~.
-modifiers: flag enums.
-Returns river_pointer_binding_v1"
-  (let ((proxy-seat (seat-wl-proxy seat)))
-    (when proxy-seat
-	  (wm-seat-pointer-binding-get proxy-seat button modifiers))))
+Parameters: (SEAT BUTTON MODIFIERS)
+  - SEAT: <seat> record.
+  - BUTTON: Input event button code (e.g. BTN_LEFT from input-event-codes.h).
+  - MODIFIERS: Modifier bitmask flags (same as keyboard modifiers).
+Returns river_pointer_binding_v1 proxy pointer."
+  ;; TODO: this should store the river_pointer_binding_v1 somewhere
+  ;; I am not implementing this for now as it's more of floating/stacking behavior
+  (and-let* ((proxy-seat (seat-wl-proxy seat)))
+	(wm-seat-pointer-binding-get proxy-seat button modifiers)))
 
 (define (seat-wm-pointer-theme seat name size)
-  "Set the XCursor theme for the seat."
-  (let ((proxy-seat (seat-wl-proxy seat)))
-    (when proxy-seat
-	  (wm-seat-pointer-theme proxy-seat name size))))
+  "Set the XCursor theme for the seat.
+Parameters: (SEAT NAME SIZE)
+  - SEAT: <seat> record.
+  - NAME: Cursor theme name string.
+  - SIZE: Cursor size integer."
+  (and-let* ((proxy-seat (seat-wl-proxy seat)))
+	(wm-seat-pointer-theme proxy-seat name size)))
 
 (define (seat-wm-pointer-warp seat x y)
   "Warp the pointer to the given position.
-Must be called in a ~manage_sequence~."
-  (let ((proxy-seat (seat-wl-proxy seat)))
-    (when proxy-seat
-	  (with-manage-sequence
-	   (wm-seat-pointer-warp proxy-seat x y)))))
+Parameters: (SEAT X Y)
+  - SEAT: <seat> record.
+  - X: Integer X coordinate.
+  - Y: Integer Y coordinate."
+  (and-let* ((proxy-seat (seat-wl-proxy seat)))
+	(with-manage-sequence
+	 (wm-seat-pointer-warp proxy-seat x y))))
 
 ;;; events
 (define (seat-on-seat data manager proxy-seat)
-  "Handle a new seat event from the compositor."
-  (log-debug "New seat proxy: ~a" proxy-seat)
+  "Invoked when a seat is advertised.
+Parameters: (DATA MANAGER SEAT-PROXY)
+  - DATA: User context pointer (unused, null in Gliver).
+  - MANAGER: Pointer to river_window_manager_v1 proxy.
+  - SEAT-PROXY: Pointer to river_seat_v1 proxy."
+  (log-info "New seat proxy: ~a" proxy-seat)
   (let ((seat (make-seat #:wl-proxy proxy-seat)))
     (seat-add! seat)))
 
 (define (seat-on-removed data proxy-seat)
-  "Seat was removed. This will take care of
-Removing the seat record and clearing up memory.
-It calls wm-seat-destroy to destroy wayland references
-Hook: *seat-destroy-hook*"
-  (let ((seat (seat-find-by-proxy proxy-seat)))
-	(log-debug "Seat removed: ~a" seat)
-    (when seat (seat-remove! seat))
-	(wm-seat-destroy proxy-seat)
+  "Invoked when a seat is removed from compositor.
+Parameters: (DATA PROXY-SEAT)
+  - DATA: User context pointer (unused, null in Gliver).
+  - PROXY-SEAT: Pointer to river_seat_v1 proxy."
+  (and-let* ((seat (seat-find-by-proxy proxy-seat)))
+	(log-info "Seat removed: ~a" seat)
+    (seat-remove! seat)
+	;; NOTE: after this hook, the seat will be destroyed from river
 	(gliver-hook-run! *seat-destroy-hook* seat)))
 
 (define (seat-on-wl-seat data proxy-seat object-id)
-  "The wl_seat object corresponding to the river_seat_v1."
-  (let ((seat (seat-find-by-proxy proxy-seat)))
-    (when seat
-	  (let ((prev-object-id (seat-wl-seat seat)))
-		(%seat-wl-seat-set! seat object-id)
-		(log-debug "Seat ~a object-id updated to ~a" seat object-id)
-		(gliver-hook-run! *seat-object-id-changed-hook* seat prev-object-id)))))
+  "Invoked when a wl_seat is advertised river_seat_v1.
+Parameters: (DATA PROXY-SEAT OBJECT-ID)
+  - DATA: User context pointer (unused, null in Gliver).
+  - PROXY-SEAT: Pointer to river_seat_v1 proxy.
+  - OBJECT-ID: Numeric Wayland object ID of the wl_seat global."
+  (and-let* ((seat (seat-find-by-proxy proxy-seat))
+			 (prev-object-id (seat-wl-seat seat)))
+	(%seat-wl-seat-set! seat object-id)
+	(log-debug "Seat ~a object-id updated to ~a" seat object-id)
+	(gliver-hook-run! *seat-object-id-changed-hook* seat prev-object-id)))
 
 (define (seat-on-pointer-enter data proxy-seat proxy-window)
-  "The seat's pointer entered the given window's area."
-  (let ((seat (seat-find-by-proxy proxy-seat))
-		(window (window-find-by-proxy proxy-window)))
-    (when (and seat window)
-	  (log-debug "Seat ~a pointer entered ~a" seat window)
-	  (when *wm-behavior-focus-mouse-enter*
-		(seat-wm-window-focus seat window))
-	  (%seat-window-entered-set! seat window)
-	  (gliver-hook-run! *seat-window-entered-changed-hook* seat window))))
+  "Invoked when a seat pointer enters a window area.
+Parameters: (DATA PROXY-SEAT PROXY-WINDOW)
+  - DATA: User context pointer (unused, null in Gliver).
+  - PROXY-SEAT: Pointer to river_seat_v1 proxy.
+  - PROXY-WINDOW: Pointer to river_window_v1 proxy."
+  (and-let* ((seat (seat-find-by-proxy proxy-seat))
+			 (window (window-find-by-proxy proxy-window)))
+	(log-debug "Seat ~a pointer entered ~a" seat window)
+	(when *wm-behavior-focus-mouse-enter*
+	  (seat-wm-window-focus seat window))
+	(%seat-window-entered-set! seat window)
+	(gliver-hook-run! *seat-window-entered-changed-hook* seat window)))
 
 (define (seat-on-pointer-leave data proxy-seat)
-  "The seat's pointer left the recent window entered."
-  (let ((seat (seat-find-by-proxy proxy-seat)))
-    (when seat
-	  (log-debug "Seat ~a pointer left window" seat)
-	  (when *wm-behavior-focus-clear-mouse-leave*
-		(wm-seat-window-focus-clear proxy-seat))
-	  (%seat-window-entered-set! seat #f)
-	  (gliver-hook-run! *seat-window-entered-changed-hook* seat #f))))
+  "Invoked when a seat pointer leaves a window area.
+Parameters: (DATA PROXY-SEAT)
+  - DATA: User context pointer (unused, null in Gliver).
+  - PROXY-SEAT: Pointer to river_seat_v1 proxy."
+  (and-let* ((seat (seat-find-by-proxy proxy-seat)))
+	(log-debug "Seat ~a pointer left window" seat)
+	(when *wm-behavior-focus-clear-mouse-leave*
+	  (wm-seat-window-focus-clear proxy-seat))
+	(%seat-window-entered-set! seat #f)
+	(gliver-hook-run! *seat-window-entered-changed-hook* seat #f)))
 
-(define (seat-on-window-interaction data proxy-seat proxy-window)
-  "Window is clicked or input is sent to it, focus it"
-  (let ((seat (seat-find-by-proxy proxy-seat))
-		(window (window-find-by-proxy proxy-window)))
+(define (seat-on-window-interaction data proxy-seat proxy-win)
+  "Invoked when a seat interacts (click or input) with a window.
+Parameters: (DATA PROXY-SEAT PROXY-WIN)
+  - DATA: User context pointer (unused, null in Gliver).
+  - PROXY-SEAT: Pointer to river_seat_v1 proxy.
+  - PROXY-WIN: Pointer to river_window_v1 proxy."
+  (and-let* ((seat (seat-find-by-proxy proxy-seat))
+			 (window (window-find-by-proxy proxy-win)))
 	(log-debug "Seat ~a is interacting with window ~a" seat window)
-    (when (and seat window)
-	  (when *wm-behavior-focus-mouse-click*
-		(seat-wm-window-focus seat window))
-	  (gliver-hook-run! *seat-window-interacted-hook* seat window))))
+	(when *wm-behavior-focus-mouse-click*
+	  (seat-wm-window-focus seat window))
+	(gliver-hook-run! *seat-window-interacted-hook* seat window)))
 
 (define (seat-on-shell-interaction data proxy-seat proxy-shell)
-  "Surface is clicked or input is sent to it"
+  "Invoked when a seat interacts (click or input) with a shell surface.
+Parameters: (DATA PROXY-SEAT SHELL-PROXY)
+  - DATA: User context pointer (unused, null in Gliver).
+  - PROXY-SEAT: Pointer to river_seat_v1 proxy.
+  - PROXY-SHELL: Pointer to river_shell_surface_v1 proxy."
   (log-debug "Seat ~a is interacting with surface: ~a" proxy-seat proxy-shell)
-  (let ((seat (seat-find-by-proxy proxy-seat)))
-    (when seat
-	  (gliver-hook-run! *seat-shell-interacted-hook* seat proxy-shell))))
+  (and-let* ((seat (seat-find-by-proxy proxy-seat)))
+	(gliver-hook-run! *seat-shell-interacted-hook* seat proxy-shell)))
 
 (define (seat-on-op-delta data proxy-seat dx dy)
-  "This event indicates the total change in position since the
-start of the operation of the pointer/touch point/etc."
-  (let ((seat (seat-find-by-proxy proxy-seat)))
-    (when seat
-	  (log-debug "Seat ~a position delta: ~ax~a" seat dx dy)
-	  (gliver-hook-run! *seat-seat-op-delta-changed-hook* seat dx dy))))
+  "Invoked when a pointer/touch position delta changes during an interactive operation.
+Parameters: (DATA PROXY-SEAT DX DY)
+  - DATA: User context pointer (unused, null in Gliver).
+  - PROXY-SEAT: Pointer to river_seat_v1 proxy.
+  - DX: Horizontal delta since operation start.
+  - DY: Vertical delta since operation start."
+  (and-let* ((seat (seat-find-by-proxy proxy-seat)))
+	(log-debug "Seat ~a position delta: ~ax~a" seat dx dy)
+	(gliver-hook-run! *seat-seat-op-delta-changed-hook* seat dx dy)))
 
 (define (seat-on-op-release data proxy-seat)
-  "The input driving the current interactive operation has been released."
-  (let ((seat (seat-find-by-proxy proxy-seat)))
-    (when seat
-	  (log-debug "Seat ~a interaction released" seat)
-	  (gliver-hook-run! *seat-seat-op-released-hook* seat))))
+  "Invoked when a seat interaction is released (pointer/touch release).
+Parameters: (DATA PROXY-SEAT)
+  - DATA: User context pointer (unused, null in Gliver).
+  - PROXY-SEAT: Pointer to river_seat_v1 proxy."
+  (and-let* ((seat (seat-find-by-proxy proxy-seat)))
+	(log-debug "Seat ~a interaction released" seat)
+	(gliver-hook-run! *seat-seat-op-released-hook* seat)))
 
 (define (seat-on-pointer-position data proxy-seat x y)
-  "The current position of the pointer in the compositor's logical."
-  (let ((seat (seat-find-by-proxy proxy-seat)))
-    (when seat
-	  (log-debug "Seat ~a pointer position changed to ~ax~a" seat x y)
-	  (gliver-hook-run! *seat-seat-pointer-position-changed-hook* seat x y))))
+  "Invoked when a pointer position update in compositor logical coordinates.
+Parameters: (DATA PROXY-SEAT X Y)
+  - DATA: User context pointer (unused, null in Gliver).
+  - PROXY-SEAT: Pointer to river_seat_v1 proxy.
+  - X: Logical horizontal pointer position.
+  - Y: Logical vertical pointer position."
+  (and-let* ((seat (seat-find-by-proxy proxy-seat)))
+	(log-debug "Seat ~a pointer position changed to ~ax~a" seat x y)
+	(gliver-hook-run! *seat-seat-pointer-position-changed-hook* seat x y)))
 
 (define (seat-on-window-destroyed window container workspace)
-  "Clear focused and entered references if the destroyed window is held by any seat."
+  "Invoked when window is destroyed.
+Parameters: (WINDOW CONTAINER WORKSPACE)
+  - WINDOW: <window> record being destroyed.
+  - CONTAINER: <container> record previously containing the window.
+  - WORKSPACE: <workspace> record previously containing the container."
   (for-each
    (lambda (seat)
      (when (eq? (seat-window-focused seat) window)
