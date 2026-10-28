@@ -54,17 +54,22 @@
 ;;; level management
 (define (log-level-value level)
   "Return the integer severity value associated with LEVEL symbol.
+Parameters: (LEVEL)
+  - LEVEL: Severity symbol ('debug, 'info, 'warn, 'error).
 Returns integer priority (0-3), or #f if LEVEL is unknown."
   (assoc-ref *log-levels* level))
 
 (define (log-level-set! level)
-  "Set the global logging threshold to LEVEL symbol ('debug, 'info, 'warn, 'error)."
+  "Set the global logging threshold to LEVEL symbol.
+Parameters: (LEVEL)
+  - LEVEL: Severity symbol ('debug, 'info, 'warn, 'error)."
   (*log-level* level))
 
 (define (log-file-set! path)
   "Redirect log output to the file at PATH.
-If PATH is #f or previous file port is active, it closes the previous port.
-Creates parent directory if it does not exist."
+Creates parent directory if it does not exist.
+Parameters: (PATH)
+  - PATH: File path string, or #f to close file port."
   (when (*log-file-path*)
     (when (and (port? (*log-port*))
                (not (eq? (*log-port*) (current-error-port))))
@@ -79,7 +84,12 @@ Creates parent directory if it does not exist."
 ;;; log writing
 (define (log-write filename level fmt args)
   "Format and write a log entry at LEVEL from FILENAME using FMT and ARGS.
-Filters out any messages with a priority lower than (*log-level*)."
+Filters out any messages with a priority lower than (*log-level*).
+Parameters: (FILENAME LEVEL FMT ARGS)
+  - FILENAME: File of caller generating the log message.
+  - LEVEL: Severity symbol ('debug, 'info, 'warn, 'error).
+  - FMT: Format string.
+  - ARGS: Arguments list for FMT."
   (when (>= (log-level-value level)
             (log-level-value (*log-level*)))
     (let* ((now (current-date))
