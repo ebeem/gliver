@@ -111,6 +111,7 @@ Parameters: (DATA MANAGER WINDOW-PROXY)
   "Close a window, the window may take time to respond or
 completely ignore the request. listen for *window-destroyed-hook*
 in case an action other than clearing state needs to be executed.
+Must be called in a manage sequence.
 Parameters: (PROXY-WINDOW)
   - PROXY-WINDOW: Pointer to river_window_v1 proxy."
   (when proxy-window
@@ -334,7 +335,7 @@ Parameters: (PROXY-WINDOW)
 (define (wm-window-clip-box-set proxy-window x y width height)
   "Clip the window including borders and decorations.
 Clip box is ignored while window is on fullscreen.
-Must be called in a manage sequence.
+Must be called in a render sequence.
 Parameters: (PROXY-WINDOW X Y WIDTH HEIGHT)
   - PROXY-WINDOW: Pointer to river_window_v1 proxy.
   - X: Horizontal clip origin in window coordinates.
@@ -348,7 +349,7 @@ Parameters: (PROXY-WINDOW X Y WIDTH HEIGHT)
 
 (define (wm-window-content-clip-box-set proxy-window x y width height)
   "Clip the window content excluding borders and decorations.
-Must be called in a manage sequence.
+Must be called in a render sequence.
 Parameters: (PROXY-WINDOW X Y WIDTH HEIGHT)
   - PROXY-WINDOW: Pointer to river_window_v1 proxy.
   - X: Horizontal clip origin in content coordinates.

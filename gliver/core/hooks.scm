@@ -661,7 +661,6 @@ Parameters: (WINDOW PREV-STATUS)
 (define-var *window-fullscreen-entered-informed-hook*
   (make-gliver-hook 'window-fullscreen-entered-informed 2)
   "Invoked when a window is informed that it entered fullscreen.
-Must be called in a manage sequence.
 Parameters: (WINDOW OUTPUT)
   - WINDOW: The <window> record.
   - OUTPUT: The <output> displaying the fullscreen window.")

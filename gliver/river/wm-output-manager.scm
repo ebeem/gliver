@@ -8,14 +8,17 @@
 ;;; It handles:
 ;;;   - Binding river_output_v1 and exposing interface requests and events
 ;;;   - Updating output presentation mode (enable/disable VSync)
+;;;   - Binding and releasing wl_output proxies
 ;;;
 ;;; This module implements the river interfaces (protocol river_window_manager_v1):
 ;;;   - river_output_v1
 
 (define-module (gliver river wm-output-manager)
   #:use-module (gliver core-base)
+  #:use-module (gliver river connector)
   #:use-module (gliver wayland client)
   #:use-module (gliver wayland gen river-window-management-v1)
+  #:use-module (gliver wayland gen wayland)
   #:use-module (system foreign)
   #:export (
 			*wm-output-listener*
@@ -23,6 +26,8 @@
 			wm-output-on-output
 			wm-output-destroy
 			wm-output-presentation-mode-set
+			wm-output-wl-output-bind
+			wm-output-wl-output-release
 			wm-output-on-output-removed
 			wm-output-on-output-wl-output
 			wm-output-on-output-position
@@ -70,6 +75,7 @@ Parameters: (PROXY-OUTPUT)
 
 (define (wm-output-presentation-mode-set proxy-output mode)
   "Set the preferred presentation mode of the output.
+Must be called in a render sequence.
 Parameters: (PROXY-OUTPUT MODE)
   - PROXY-OUTPUT: Pointer to river_output_v1 proxy.
   - MODE: Presentation mode enum RIVER_OUTPUT_V1_PRESENTATION_MODE_VSYNC,
@@ -78,6 +84,26 @@ or RIVER_OUTPUT_V1_PRESENTATION_MODE_ASYNC."
     (when *log-river-calls*
 	  (log-debug "Setting output ~a presentation mode to ~a" proxy-output mode))
     (river-output-v1-set-presentation-mode proxy-output mode)))
+
+(define* (wm-output-wl-output-bind object-id #:optional (version 4))
+  "Bind wl_output global OBJECT-ID from Wayland registry.
+Parameters: (OBJECT-ID [VERSION])
+  - OBJECT-ID: Numeric Wayland object ID.
+  - VERSION: Interface version (default 4).
+Returns wl_output proxy pointer, or #f if registry is unavailable or invalid."
+  (when (number? object-id)
+    (when *log-river-calls*
+      (log-debug "Binding wl_output object ~a (version ~a)" object-id version))
+    (gliver-wl-registry-bind *wl-registry* object-id *wl-output-interface* version)))
+
+(define (wm-output-wl-output-release proxy-wl-output)
+  "Release wl_output proxy object if valid.
+Parameters: (PROXY-WL-OUTPUT)
+  - PROXY-WL-OUTPUT: Pointer to wl_output proxy."
+  (when (valid-pointer? proxy-wl-output)
+    (when *log-river-calls*
+      (log-debug "Releasing wl_output proxy: ~a" proxy-wl-output))
+    (wl-output-release proxy-wl-output)))
 
 ;;; output events
 (define (wm-output-on-output-removed data proxy-output)
