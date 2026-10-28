@@ -171,14 +171,20 @@
   (functions gliver-hook-functions set-gliver-hook-functions!))
 
 (define* (make-gliver-hook name #:optional (arity 0))
-  "Create a new hook named NAME that expects ARITY arguments."
+  "Create a new hook named NAME that expects ARITY arguments.
+Parameters: (NAME [ARITY])
+  - NAME: Symbol name for the hook.
+  - ARITY: Number of arguments the hook expects (default 0).
+Returns new <gliver-hook> record."
   (%make-gliver-hook name arity '()))
 
 (define* (%gliver-hook-add! hook fn caller-module #:optional (order 999))
   "Add function or quoted symbol FN to HOOK with priority ORDER (default 999).
-Callbacks with lower order values are executed first.
-If multiple callbacks share the same order, they execute in registration order.
-CALLER-MODULE is associated with symbol references to allow dynamic REPL resolution."
+Parameters: (HOOK FN CALLER-MODULE [ORDER])
+  - HOOK: <gliver-hook> record.
+  - FN: Procedure or quoted symbol.
+  - CALLER-MODULE: Module of the caller.
+  - ORDER: Numeric priority (default 999, lower runs earlier)."
   (let* ((current-funcs (gliver-hook-functions hook))
          (fn-name (if (symbol? fn) fn (and (procedure? fn) (procedure-name fn))))
          (cleaned (filter (lambda (pair)
@@ -209,7 +215,10 @@ CALLER-MODULE is associated with symbol references to allow dynamic REPL resolut
      (%gliver-hook-add! hook fn (current-module)))))
 
 (define (gliver-hook-remove! hook fn)
-  "Remove function or quoted symbol FN from HOOK."
+  "Remove function or quoted symbol FN from HOOK.
+Parameters: (HOOK FN)
+  - HOOK: <gliver-hook> record.
+  - FN: Procedure or quoted symbol to remove."
   (let ((fn-name (if (symbol? fn) fn (and (procedure? fn) (procedure-name fn)))))
     (set-gliver-hook-functions! hook
 								(filter (lambda (pair)
@@ -224,9 +233,10 @@ CALLER-MODULE is associated with symbol references to allow dynamic REPL resolut
 
 (define (%gliver-hook-run hook strict? args)
   "Invoke all registered callbacks in HOOK with ARGS.
-When STRICT? is #t, unhandled exceptions in callbacks cause process termination
-Attention must be paid to strict as only critical errors in hook execution
-should terminate Gliver, typical errors in normal hooks shouldn't be strict."
+Parameters: (HOOK STRICT? ARGS)
+  - HOOK: <gliver-hook> record.
+  - STRICT?: Boolean, whether unhandled exceptions terminate the process.
+  - ARGS: Argument list passed to hook callbacks."
   (when *log-hooks*
     (log-debug "Running hook ~a ~a" (gliver-hook-name hook) args))
   (for-each
@@ -263,20 +273,31 @@ should terminate Gliver, typical errors in normal hooks shouldn't be strict."
 
 (define (gliver-hook-run! hook . args)
   "Run all functions in HOOK with ARGS in their defined order safely.
-If a function fails, the error is logged and the rest of the callbacks continue."
+If a function fails, the error is logged and the rest of the callbacks continue.
+Parameters: (HOOK . ARGS)
+  - HOOK: <gliver-hook> record.
+  - ARGS: Arguments passed to hook callbacks."
   (%gliver-hook-run hook #f args))
 
 (define (gliver-hook-run-strict! hook . args)
   "Run all functions in HOOK with ARGS in their defined order strictly.
-If a function fails, the error is logged and Gliver is terminated."
+If a function fails, the error is logged and Gliver is terminated.
+Parameters: (HOOK . ARGS)
+  - HOOK: <gliver-hook> record.
+  - ARGS: Arguments passed to hook callbacks."
   (%gliver-hook-run hook #t args))
 
 (define (gliver-hook-clear! hook)
-  "Remove all functions from HOOK."
+  "Remove all functions from HOOK.
+Parameters: (HOOK)
+  - HOOK: <gliver-hook> record to clear."
   (set-gliver-hook-functions! hook '()))
 
 (define (gliver-hook-empty? hook)
-  "Return #t if HOOK has no registered functions."
+  "Return #t if HOOK has no registered functions.
+Parameters: (HOOK)
+  - HOOK: <gliver-hook> record to check.
+Returns #t if HOOK has no registered functions, #f otherwise."
   (null? (gliver-hook-functions hook)))
 
 ;;; river / wayland lifecycle hooks
