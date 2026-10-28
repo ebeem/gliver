@@ -69,6 +69,12 @@ make
 sudo make install
 #+END_SRC
 
+*** Configuring
+~Gliver~'s configuration is by default located in =~/.config/gliver/init.scm=. To get started, you may want to copy the sample configuration in =doc/examples/init.scm= into your configuration file. From ~gliver~'s source code, you may execute the below:
+#+BEGIN_SRC sh
+mkdir -p ~/.config/gliver && cp -n doc/examples/init.scm ~/.config/gliver/init.scm
+#+END_SRC
+
 *** Starting
 
 Because ~gliver~ depends on ~river~, the cleanest way to run them is by passing the -c flag which ensures ~river~ initializes first and immediately runs ~gliver~ as its init executable.
