@@ -353,7 +353,7 @@ Returns procedure result or #f on failure."
       (gliver-hook-run! *command-post-hook* (command-name cmd) args result)
       result)))
 
-(define (%command-run-by-string command)
+(define (%command-run-by-string command . extra-args)
   "Run commands in a space-separated command format e.g. \"workspace-switch 2\".
 Parameters: (COMMAND)
   - COMMAND: Command in a space-separated string format.
@@ -378,8 +378,8 @@ Returns procedure result or #f if command is unknown or fails."
      (apply command-run cmd args))
    ;; if command is a space-separated string with arguments
    ;; run it by string
-   (and-let* (((string? command))
-			  (> (length (string-tokenize command)) 1))
+   (and-let* (((string? name))
+			  ((> (length (string-tokenize name)) 1)))
 	 (apply %command-run-by-string name args))
    ;; otherwise, log a warning and return #f
    (begin
@@ -465,35 +465,35 @@ Returns formatted string hierarchy of the manager state tree."
   "Allocate and return the next unique window ID (integer).
 Parameters: None.
 Returns next unique integer window ID."
-  (set! *window-number-next* (1+ id))
+  (set! *window-number-next* (1+ *window-number-next*))
   *window-number-next*)
 
 (define (manager-workspace-number-next!)
   "Allocate and return the next unique workspace ID (integer).
 Parameters: None.
 Returns next unique integer workspace ID."
-  (set! *workspace-number-next* (1+ id))
+  (set! *workspace-number-next* (1+ *workspace-number-next*))
   *workspace-number-next*)
 
 (define (manager-output-number-next!)
   "Allocate and return the next unique output ID (integer).
 Parameters: None.
 Returns next unique integer output ID."
-  (set! *output-number-next* (1+ id))
+  (set! *output-number-next* (1+ *output-number-next*))
   *output-number-next*)
 
 (define (manager-tag-next!)
   "Allocate and return the next unique workspace tag bitmask (integer).
 Parameters: None.
 Returns next unique integer workspace tag bitmask."
-  (set! *next-tag-bit* (ash bit 1))
+  (set! *next-tag-bit* (ash *next-tag-bit* 1))
   *next-tag-bit*)
 
 (define (container-id-next!)
   "Allocate and return the next unique container ID (integer).
 Parameters: None.
 Returns next unique integer container ID."
-  (set! *container-id-next* (1+ n))
+  (set! *container-id-next* (1+ *container-id-next*))
   *container-id-next*)
 
 ;;; output record (<output>) and helper functions
@@ -674,7 +674,7 @@ Returns currently active <output> record from *manager*, or #f."
 ;;  - wl-proxy: river_seat_v1 proxy handle
 ;;  - metadata: alist for any metadata to be stored by extensions
 (define-record-type <seat>
-  (%make-seat window-entered window-focused wl-proxy wl-seat)
+  (%make-seat window-entered window-focused wl-proxy wl-seat metadata)
   seat?
   (window-entered     seat-window-entered     %seat-window-entered-set!)
   (window-focused     seat-window-focused     %seat-window-focused-set!)
@@ -730,7 +730,7 @@ Returns active <seat> record, or #f if no seats exist."
 ;;  - metadata: alist for any metadata to be stored by extensions (wallpaper should be here)
 (define-record-type <workspace>
   (%make-workspace id name tag-mask containers output
-                   layout container-current container-previous wallpaper)
+                   layout container-current container-previous wallpaper metadata)
   workspace?
   (id                   workspace-id                   %workspace-id-set!)
   (name                 workspace-name                 workspace-name-set!)
