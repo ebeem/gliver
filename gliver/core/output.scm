@@ -17,9 +17,11 @@
   #:autoload (gliver core workspace) (workspace-add! workspace-focus!)
   #:declarative? #f
   #:export (
+			*output-focus-new?*
 			output-add!
 			output-remove!
 			output-focused?
+			output-prev-focused?
 			output-focus!
 			output-next
 			output-prev
@@ -32,8 +34,8 @@
 			output-on-output-dimensions
 ))
 
-(define-var *wm-behavior-focus-new-output* #f
-  "Whether newly connected monitors/outputs are automatically focused.")
+(define-var *output-focus-new?* #f
+			"Whether newly connected monitors/outputs are automatically focused.")
 
 ;;; output management
 (define* (output-add! output #:key (focus #t))
@@ -62,7 +64,7 @@ Parameters: (OUTPUT [#:focus #t])
   ;; focus the output if no output is currently focused
   ;; or if configuration is set to focus new output
   (when (and focus
-             (or *wm-behavior-focus-new-output*
+             (or *output-focus-new?*
 			     (not (manager-output-current *manager*))))
 	(output-focus! output))
 
@@ -178,7 +180,7 @@ Parameters: (DATA PROXY-OUTPUT)
   (let ((output (output-find-by-proxy proxy-output)))
     (when output
       (output-remove! output)
-	(gliver-hook-run! *output-destroy-hook* output))))
+	  (gliver-hook-run! *output-destroy-hook* output))))
 
 (define (output-on-output-wl-output data proxy-output object-id)
   "Invoked when wl_output Wayland object is advertisement for river_output_v1.
@@ -244,4 +246,3 @@ Parameters: (DATA PROXY-OUTPUT WIDTH HEIGHT)
 (gliver-hook-add! %output-position-changed-hook 'output-on-output-position 0)
 (gliver-hook-add! %output-dimensions-changed-hook 'output-on-output-dimensions 0)
 (gliver-hook-add! %output-removed-hook 'output-on-output-removed 0)
-

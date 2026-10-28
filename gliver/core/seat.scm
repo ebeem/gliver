@@ -17,6 +17,9 @@
   #:use-module (gliver river wm-seat-manager)
   #:declarative? #f
   #:export (
+			*seat-focus-on-mouse-enter*
+			*seat-unfocus-on-mouse-leave*
+			*seat-focus-on-mouse-click*
 			seat-add!
 			seat-remove!
 			seat-wm-window-focus
@@ -36,7 +39,15 @@
 			seat-on-op-delta
 			seat-on-op-release
 			seat-on-pointer-position
+			seat-on-window-destroyed
 ))
+
+(define-var *seat-focus-on-mouse-enter* #f
+			"Whether moving the mouse pointer into a window automatically focuses it.")
+(define-var *seat-unfocus-on-mouse-leave* #f
+			"Whether moving the mouse pointer out of a window automatically unfocus it.")
+(define-var *seat-focus-on-mouse-click* #t
+			"Whether clicking within a window focuses it.")
 
 (define (seat-add! seat)
   "Register SEAT in the Gliver's manager hierarchy.
@@ -191,7 +202,7 @@ Parameters: (DATA PROXY-SEAT PROXY-WINDOW)
   (and-let* ((seat (seat-find-by-proxy proxy-seat))
 			 (window (window-find-by-proxy proxy-window)))
 	(log-debug "Seat ~a pointer entered ~a" seat window)
-	(when *wm-behavior-focus-mouse-enter*
+	(when *seat-focus-on-mouse-enter*
 	  (seat-wm-window-focus seat window))
 	(%seat-window-entered-set! seat window)
 	(gliver-hook-run! *seat-window-entered-changed-hook* seat window)))
@@ -203,7 +214,7 @@ Parameters: (DATA PROXY-SEAT)
   - PROXY-SEAT: Pointer to river_seat_v1 proxy."
   (and-let* ((seat (seat-find-by-proxy proxy-seat)))
 	(log-debug "Seat ~a pointer left window" seat)
-	(when *wm-behavior-focus-clear-mouse-leave*
+	(when *seat-unfocus-on-mouse-leave*
 	  (wm-seat-window-focus-clear proxy-seat))
 	(%seat-window-entered-set! seat #f)
 	(gliver-hook-run! *seat-window-entered-changed-hook* seat #f)))
@@ -217,7 +228,7 @@ Parameters: (DATA PROXY-SEAT PROXY-WIN)
   (and-let* ((seat (seat-find-by-proxy proxy-seat))
 			 (window (window-find-by-proxy proxy-win)))
 	(log-debug "Seat ~a is interacting with window ~a" seat window)
-	(when *wm-behavior-focus-mouse-click*
+	(when *seat-focus-on-mouse-click*
 	  (seat-wm-window-focus seat window))
 	(gliver-hook-run! *seat-window-interacted-hook* seat window)))
 

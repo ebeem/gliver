@@ -69,7 +69,7 @@
             "Border color for urgent containers.")
 (define-var *container-border-radius* *theme-border-radius*
             "Default container corner radius in pixels.")
-(define-var *container-border-edges* *wm-behavior-default-border-edges*
+(define-var *container-border-edges* 15
             "Bitfield of edges on which container borders are drawn.")
 (define-var *container-border-bg-color* "#00000044"
             "Background color for empty containers.")
@@ -393,7 +393,7 @@ Parameters: (CONTAINER WIDTH HEIGHT [#:animate #t])
 		;; as those are expected to change with size as well
 		;; the approach now it they will increase/decrease by the difference
 		;; in size from last container size, typically this should be followed
-		;; by a container-usable-area-set! call to update usable area 
+		;; by a container-usable-area-set! call to update usable area
         (%container-usable-width-set! container (max 0 (+ (container-usable-width container) dw)))
         (%container-usable-height-set! container (max 0 (+ (container-usable-height container) dh)))
 		;; update size of all windows in the container
