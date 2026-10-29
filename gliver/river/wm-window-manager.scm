@@ -94,7 +94,6 @@ Parameters: None."
 
 (define (wm-window-on-window data manager window-proxy)
   "Invoked when a window is advertised.
-Attach the river_window_v1 listener.
 Parameters: (DATA MANAGER WINDOW-PROXY)
   - DATA: User context pointer (unused, null in Gliver).
   - MANAGER: Pointer to river_window_manager_v1 proxy.

@@ -150,8 +150,8 @@ Parameters: (PROXY-SEAT)
   "Create a pointer binding on PROXY-SEAT.
 Parameters: (PROXY-SEAT BUTTON MODIFIERS)
   - PROXY-SEAT: Pointer to river_seat_v1 proxy.
-  - BUTTON: Input event button code (e.g. BTN_LEFT, BTN_RIGHT).
-  - MODIFIERS: Modifier bitmask flags."
+  - BUTTON: Input event button code (e.g. BTN_LEFT from input-event-codes.h).
+  - MODIFIERS: Modifier bitmask flags (same as keyboard modifiers)."
   (when proxy-seat
     (when *log-river-calls*
 	  (log-debug "Getting binding for seat ~a with button ~a and modifiers ~a" proxy-seat button modifiers))
@@ -230,15 +230,15 @@ Parameters: (DATA PROXY-SEAT PROXY-WIN)
 	(log-debug "seat ~a interacting with window ~a" proxy-seat proxy-win))
   (gliver-hook-run! %seat-window-interacted-hook data proxy-seat proxy-win))
 
-(define (wm-seat-on-seat-shell-interaction data proxy-seat shell-proxy)
+(define (wm-seat-on-seat-shell-interaction data proxy-seat proxy-shell)
   "Invoked when a seat interacts (click or input) with a shell surface.
 Parameters: (DATA PROXY-SEAT SHELL-PROXY)
   - DATA: User context pointer (unused, null in Gliver).
   - PROXY-SEAT: Pointer to river_seat_v1 proxy.
-  - SHELL-PROXY: Pointer to river_shell_surface_v1 proxy."
+  - PROXY-SHELL: Pointer to river_shell_surface_v1 proxy."
   (when *log-river-calls*
-	(log-debug "Shell surface interaction: ~a" shell-proxy))
-  (gliver-hook-run! %seat-shell-interacted-hook data proxy-seat shell-proxy))
+	(log-debug "Shell surface interaction: ~a" proxy-shell))
+  (gliver-hook-run! %seat-shell-interacted-hook data proxy-seat proxy-shell))
 
 (define (wm-seat-on-seat-op-delta data proxy-seat dx dy)
   "Invoked when a pointer/touch position delta changes during an interactive operation.
