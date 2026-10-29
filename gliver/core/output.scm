@@ -79,7 +79,7 @@ Parameters: (OUTPUT)
   (let ((remaining (delq output (manager-outputs *manager*))))
     (%manager-outputs-set! *manager* remaining)
 	;; if output is currently focused, focus another one
-    (when (output-focuse? output)
+    (when (output-focused? output)
 	  (if (pair? remaining)
 		  (output-focus! (and  (car remaining)))
 		  ;; if we don't have anymore outputs, dereference deleted one

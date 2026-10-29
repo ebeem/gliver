@@ -96,6 +96,7 @@
 			*window-pid-changed-hook*
 			*window-parent-changed-hook*
 			*window-presentation-hint-changed-hook*
+			*window-identifier-changed-hook*
 			*window-fullscreen-requested-hook*
 			*window-fullscreen-exit-requested-hook*
 			*window-minimize-requested-hook*
@@ -706,6 +707,13 @@ Parameters: (WINDOW PARENT)
 Parameters: (WINDOW HINT)
   - WINDOW: The <window> record.
   - HINT: The presentation flag (e.g. RIVER_OUTPUT_V1_PRESENTATION_MODE_VSYNC).")
+
+(define-var *window-identifier-changed-hook*
+  (make-gliver-hook 'window-identifier-changed 2)
+  "Invoked when window presentation hint is changed.
+Parameters: (WINDOW HINT)
+  - WINDOW: The <window> record.
+  - ID-PTR: Pointer to identifier ASCII string.")
 
 (define-var *window-fullscreen-requested-hook*
   (make-gliver-hook 'window-fullscreen-requested 1)
