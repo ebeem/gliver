@@ -78,6 +78,8 @@
 			output-usable-x
 			%output-wallpaper-set!
 			output-wallpaper
+			%output-wl-ls-proxy-set!
+			output-wl-ls-proxy
 			%output-wl-proxy-set!
 			output-wl-proxy
 			%output-wl-output-proxy-set!
@@ -108,6 +110,7 @@
 			output-usable-area-set!
 			output-usable-area
 			output-find-by-proxy
+			output-find-by-ls-proxy
 			output-find-by-wl-output
 			output-find-by-name
 			output-find-by-id
@@ -117,12 +120,16 @@
 			output-current
 			%seat-metadata-set!
 			seat-metadata
+			%seat-wl-ls-proxy-set!
+			seat-wl-ls-proxy
 			%seat-wl-proxy-set!
 			seat-wl-proxy
 			%seat-wl-seat-set!
 			seat-wl-seat
 			%seat-pointer-op-set!
 			seat-pointer-op?
+			%seat-focus-type-set!
+			seat-focus-type
 			%seat-window-focused-set!
 			seat-window-focused
 			%seat-window-entered-set!
@@ -513,7 +520,7 @@ Returns next unique integer container ID."
 ;;  - metadata: alist for any metadata to be stored by extensions (wallpaper and statusbar should be here)
 (define-record-type <output>
   (%make-output id name x y width height workspaces workspace-current
-                workspace-previous wl-proxy wl-output wl-output-proxy wallpaper
+                workspace-previous wl-proxy wl-ls-proxy wl-output wl-output-proxy wallpaper
                 usable-x usable-y usable-width usable-height
                 statusbar metadata)
   output?
@@ -529,6 +536,7 @@ Returns next unique integer container ID."
   (wl-output          output-wl-output          %output-wl-output-set!)
   (wl-output-proxy    output-wl-output-proxy    %output-wl-output-proxy-set!)
   (wl-proxy           output-wl-proxy           %output-wl-proxy-set!)
+  (wl-ls-proxy        output-wl-ls-proxy        %output-wl-ls-proxy-set!)
   (wallpaper          output-wallpaper          %output-wallpaper-set!)
   (usable-x           output-usable-x           %output-usable-x-set!)
   (usable-y           output-usable-y           %output-usable-y-set!)
@@ -538,7 +546,7 @@ Returns next unique integer container ID."
   (metadata           output-metadata           %output-metadata-set!))
 
 (define* (make-output name
-                      #:key (id (manager-output-number-next!)) (wl-proxy #f) (x 0) (y 0) (width 1920) (height 1080)
+                      #:key (id (manager-output-number-next!)) (wl-proxy #f) (wl-ls-proxy #f) (x 0) (y 0) (width 1920) (height 1080)
                       (workspaces '()) (workspace-current #f) (workspace-previous #f) (wl-output #f) (wl-output-proxy #f) (wallpaper #f)
                       (usable-x #f) (usable-y #f) (usable-width #f) (usable-height #f)
                       (statusbar #f) (metadata '()))
@@ -549,7 +557,7 @@ Returns newly created <output> record."
                 x y
                 width height
                 workspaces workspace-current workspace-previous
-                wl-proxy wl-output wl-output-proxy wallpaper
+                wl-proxy wl-ls-proxy wl-output wl-output-proxy wallpaper
                 (or usable-x x)
                 (or usable-y y)
                 (or usable-width width)
@@ -590,6 +598,17 @@ Returns matching <output> record or #f."
     (find (lambda (output)
 			;; equals? can compare foreign pointers
             (equal? (output-wl-proxy output) proxy))
+          (manager-outputs *manager*))))
+
+(define (output-find-by-ls-proxy ls-proxy)
+  "Look up the <output> record by LS-PROXY address.
+Parameters: (LS-PROXY)
+  - LS-PROXY: river_layer_shell_output proxy pointer.
+Returns matching <output> record or #f."
+  (and-let* (((valid-pointer? ls-proxy)))
+    (find (lambda (output)
+			;; equals? can compare foreign pointers
+            (equal? (output-wl-ls-proxy output) ls-proxy))
           (manager-outputs *manager*))))
 
 (define (output-find-by-wl-output proxy)
@@ -668,27 +687,31 @@ Returns currently active <output> record from *manager*, or #f."
 ;;; seat record (<seat>) and helper functions
 ;;  - window-entered: <window> currently under pointer
 ;;  - window-focused: <window> currently holding keyboard focus
+;;  - focus-type: Symbol focus type ('exclusive 'non-exclusive 'none)
 ;;  - pointer-op?: boolean indicating whether an interactive pointer drag/resize operation is active
 ;;  - wl-seat: integer object ID of wl_seat
 ;;  - wl-proxy: river_seat_v1 proxy handle
-;;  - wl-proxy: river_seat_v1 proxy handle
+;;  - wl-ls-proxy: river_layer_shell_seat_v1 proxy handle
 ;;  - metadata: alist for any metadata to be stored by extensions
 (define-record-type <seat>
-  (%make-seat window-entered window-focused wl-proxy wl-seat metadata)
+  (%make-seat window-entered window-focused focus-type wl-proxy wl-seat wl-ls-proxy metadata)
   seat?
   (window-entered     seat-window-entered     %seat-window-entered-set!)
   (window-focused     seat-window-focused     %seat-window-focused-set!)
+  (focus-type         seat-focus-type         %seat-focus-type-set!)
   (pointer-op?        seat-pointer-op?        %seat-pointer-op-set!)
   (wl-seat            seat-wl-seat            %seat-wl-seat-set!)
   (wl-proxy           seat-wl-proxy           %seat-wl-proxy-set!)
+  (wl-ls-proxy        seat-wl-ls-proxy        %seat-wl-ls-proxy-set!)
   (metadata           seat-metadata           %seat-metadata-set!))
 
 (define* (make-seat #:key (wl-proxy #f) (wl-seat #f)
                     (window-entered #f) (window-focused #f)
+					(focus-type 'none) (wl-ls-proxy #f)
 					(metadata '()))
   "Create a new <seat> record.
 Returns newly created <seat> record."
-  (%make-seat window-entered window-focused wl-proxy wl-seat metadata))
+  (%make-seat window-entered window-focused focus-type wl-proxy wl-seat wl-ls-proxy metadata))
 
 (define (seat-find-by-proxy proxy)
   "Look up the <seat> record by PROXY address.
@@ -699,6 +722,17 @@ Returns matching <seat> record or #f."
     (find (lambda (seat)
 			;; equals? can compare foreign pointers
             (equal? (seat-wl-proxy seat) proxy))
+          (manager-seats *manager*))))
+
+(define (seat-find-by-proxy ls-proxy)
+  "Look up the <seat> record by LS-PROXY address.
+Parameters: (LS-PROXY)
+  - LS-PROXY: river_layer_shell_seat_v1 proxy pointer.
+Returns matching <seat> record or #f."
+  (and-let* (((valid-pointer? ls-proxy)))
+    (find (lambda (seat)
+			;; equals? can compare foreign pointers
+            (equal? (seat-wl-ls-proxy seat) ls-proxy))
           (manager-seats *manager*))))
 
 (define (seat-current)
