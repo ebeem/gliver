@@ -145,6 +145,7 @@
 			*seat-seat-op-released-hook*
 			*seat-seat-pointer-position-changed-hook*
 			*seat-window-focused-hook*
+			*seat-focus-type-changed-hook*
 			%keybinding-pressed-hook
 			%keybinding-released-hook
 			%keybinding-repeat-stopped-hook
@@ -158,6 +159,8 @@
 			*config-loaded-hook*
 			*wallpaper-changed-hook*
 			*keyboard-layout-changed-hook*
+			%layer-shell-output-non-exclusive-area-changed-hook
+			%layer-shell-seat-focus-changed-hook
 ))
 
 ;;; hook record definition
@@ -1051,6 +1054,13 @@ Parameters: (SEAT WINDOW)
   - SEAT: The <seat> record.
   - WINDOW: The focused <window> record or #f.")
 
+(define-var *seat-focus-type-changed-hook*
+  (make-gliver-hook 'seat-window-focused 2)
+  "Invoked when a <seat> changes its focus type.
+Parameters: (SEAT TYPE)
+  - SEAT: The <seat> record.
+  - TYPE: Symbol focus type ('exclusive 'non-exclusive 'none).")
+
 (define-var %keybinding-pressed-hook
   (make-gliver-hook '%keybinding-pressed-hook 1)
   "Invoked when key binding is pressed.
@@ -1127,3 +1137,24 @@ Parameters: (PATH-OR-COLOR)
 Parameters: (LAYOUT-INDEX LAYOUT-CODE)
   - LAYOUT-INDEX: Integer layout index (0-indexed).
   - LAYOUT-CODE: Short layout code string (e.g. \"us\", \"ara\").")
+
+(define-var %layer-shell-output-non-exclusive-area-changed-hook
+  (make-gliver-hook '%layer-shell-output-non-exclusive-area-changed-hook 6)
+  "Invoked when non exclusive area of a layer shell output changes.
+Window manager should respect this area and update output available space accordingly.
+The area maybe occupied by layer shell components like statusbar.
+Parameters: (DATA PROXY-LS-OUTPUT X Y WIDTH HEIGHT)
+  - DATA: User context pointer (unused, null in Gliver).
+  - PROXY-LS-OUTPUT: Pointer to river_layer_shell_output_v1 proxy.
+  - X: Remaining usable area top-left corner global x coordinate.
+  - Y: Remaining usable area top-left corner global y coordinate.
+  - WIDTH: Remaining usable area width of the output.
+  - HEIGHT: Remaining usable area height of the output.")
+
+(define-var %layer-shell-seat-focus-changed-hook
+  (make-gliver-hook '%layer-shell-seat-focus-changed-hook 3)
+  "Invoked when seat focus changes between exclusive and non-exclusive areas.
+Parameters: (DATA PROXY-LS-SEAT TYPE)
+  - DATA: User context pointer (unused, null in Gliver).
+  - PROXY-LS-SEAT: Pointer to river_layer_shell_output_v1 proxy.
+  - TYPE: Symbol focus type ('exclusive 'non-exclusive 'none).")
