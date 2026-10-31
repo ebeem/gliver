@@ -67,7 +67,7 @@ Parameters: (DATA PROXY-LS-SEAT TYPE)
   - DATA: User context pointer (unused, null in Gliver).
   - PROXY-LS-SEAT: Pointer to river_layer_shell_seat_v1 proxy.
   - TYPE: Symbol focus type ('exclusive 'non-exclusive 'none)."
-  (and-let* ((seat (seat-find-by-proxy ls-seat-proxy))
+  (and-let* ((seat (seat-find-by-proxy proxy-ls-seat))
 			 (prev-type (seat-focus-type seat)))
 	(%seat-focus-type-set! seat type)
 	(cond
@@ -93,7 +93,8 @@ Parameters: (OUTPUT)
   - OUTPUT: <output> record."
   ;; get the output layer shell
   (unless (output-wl-ls-proxy (output))
-	(let ((ls-proxy (layer-shell-get-output (output-wl-proxy output))))
+	(let ((ls-proxy (layer-shell-get-output *layer-shell*
+											(output-wl-proxy output))))
 	  (%output-wl-ls-proxy-set! output ls-proxy)))
 
   ;; if the output name is *shell-default-output-name*, set as default
@@ -122,7 +123,8 @@ Parameters: (SEAT)
   - SEAT: <seat> record."
   ;; get the seat layer shell
   (unless (seat-wl-ls-proxy (seat))
-	(let ((ls-proxy (layer-shell-get-seat (seat-wl-proxy seat))))
+	(let ((ls-proxy (layer-shell-get-seat *layer-shell*
+										  (seat-wl-proxy seat))))
 	  (%seat-wl-ls-proxy-set! seat ls-proxy))))
 
 (define (shell-on-seat-destroy seat)
