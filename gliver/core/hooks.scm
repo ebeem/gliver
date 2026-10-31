@@ -161,6 +161,24 @@
 			*keyboard-layout-changed-hook*
 			%layer-shell-output-non-exclusive-area-changed-hook
 			%layer-shell-seat-focus-changed-hook
+			%xkb-config-destroyed-hook
+			%xkb-config-keyboard-created-hook
+			%xkb-config-keymap-succeeded-hook
+			%xkb-config-keymap-failed-hook
+			%xkb-config-keyboard-removed
+			%xkb-keyboard-input-device-hook
+			%xkb-keyboard-layout-changed-hook
+			%xkb-keyboard-capslock-enabled-hook
+			%xkb-keyboard-capslock-disabled-hook
+			%xkb-keyboard-numlock-enabled-hook
+			%xkb-keyboard-numlock-disabled-hook
+			%input-manager-finished-hook
+			%input-manager-device-created-hook
+			%input-device-removed-hook
+			%input-device-type-hook
+			%input-device-name-hook
+			%wlr-layer-surface-configure-hook
+			%wlr-layer-surface-closed-hook
 ))
 
 ;;; hook record definition
@@ -1158,3 +1176,143 @@ Parameters: (DATA PROXY-LS-SEAT TYPE)
   - DATA: User context pointer (unused, null in Gliver).
   - PROXY-LS-SEAT: Pointer to river_layer_shell_output_v1 proxy.
   - TYPE: Symbol focus type ('exclusive 'non-exclusive 'none).")
+
+(define-var %xkb-config-destroyed-hook
+  (make-gliver-hook '%xkb-config-destroyed-hook 2)
+  "Invoked when river decides to stop sending events for river_xkb_config_v1 object.
+It will be invoked after sending the stop request and it means that the object should be destroyed.
+Parameters: (DATA PROXY)
+  - DATA: User context pointer (unused, null in Gliver).
+  - PROXY: Pointer to river_xkb_config_v1 proxy.")
+
+(define-var %xkb-config-keyboard-created-hook
+  (make-gliver-hook '%xkb-config-keyboard-created-hook 3)
+  "Invoked when a new river_xkb_keyboard_v1 is advertised by compositor.
+Parameters: (DATA PROXY-CONFIG PROXY-KEYBOARD)
+  - DATA: User context pointer (unused, null in Gliver).
+  - PROXY-CONFIG: Pointer to river_xkb_config_v1 proxy.
+  - PROXY-KEYBOARD: Pointer to river_xkb_keyboard_v1 proxy.")
+
+(define-var %xkb-config-keymap-succeeded-hook
+  (make-gliver-hook '%xkb-config-keymap-succeeded-hook 2)
+  "Invoked when created river_xkb_keymap_v1 via river_xkb_config_v1 succeeded.
+It's possible after the event to set this keymap to a keyboard.
+Parameters: (DATA PROXY)
+  - DATA: User context pointer (unused, null in Gliver).
+  - PROXY: Pointer to river_xkb_keymap_v1 proxy.")
+
+(define-var %xkb-config-keymap-failed-hook
+  (make-gliver-hook '%xkb-config-keymap-failed-hook 3)
+  "Invoked when created river_xkb_keymap_v1 via river_xkb_config_v1 failed.
+This may be error in configuration like incorrect language.
+Parameters: (DATA PROXY ERROR-MSG)
+  - DATA: User context pointer (unused, null in Gliver).
+  - PROXY: Pointer to river_xkb_keymap_v1 proxy.
+  - ERROR-MSG: String of the error message.")
+
+(define-var %xkb-config-keyboard-removed
+  (make-gliver-hook '%xkb-config-keyboard-removed 2)
+  "Invoked when river_xkb_keyboard_v1 is removed from compositor.
+Parameters: (DATA PROXY)
+  - DATA: User context pointer (unused, null in Gliver).
+  - PROXY: Pointer to river_xkb_keyboard_v1 proxy.")
+
+(define-var %xkb-keyboard-input-device-hook
+  (make-gliver-hook '%xkb-keyboard-input-device-hook 3)
+  "Invoked when river_xkb_keyboard_v1 is associated with river_input_device_v1.
+Parameters: (DATA PROXY-KEYBOARD PROXY-DEVICE)
+  - DATA: User context pointer (unused, null in Gliver).
+  - PROXY-KEYBOARD: Pointer to river_xkb_keyboard_v1 proxy.
+  - PROXY-DEVICE: Pointer to river_input_device_v1 proxy.")
+
+(define-var %xkb-keyboard-layout-changed-hook
+  (make-gliver-hook '%xkb-keyboard-layout-changed-hook 4)
+  "Invoked when active layout on river_xkb_keyboard_v1 changes.
+Parameters: (DATA PROXY-KEYBOARD INDEX NAME)
+  - DATA: User context pointer (unused, null in Gliver).
+  - PROXY-KEYBOARD: Pointer to river_xkb_keyboard_v1 proxy.
+  - INDEX: Numeric 0-based layout index.
+  - NAME: String layout name or #f.")
+
+(define-var %xkb-keyboard-capslock-enabled-hook
+  (make-gliver-hook '%xkb-keyboard-capslock-enabled-hook 2)
+  "Invoked when capslock is enabled on river_xkb_keyboard_v1.
+Parameters: (DATA PROXY-KEYBOARD)
+  - DATA: User context pointer (unused, null in Gliver).
+  - PROXY-KEYBOARD: Pointer to river_xkb_keyboard_v1 proxy.")
+
+(define-var %xkb-keyboard-capslock-disabled-hook
+  (make-gliver-hook '%xkb-keyboard-capslock-disabled-hook 2)
+  "Invoked when capslock is disabled on river_xkb_keyboard_v1.
+Parameters: (DATA PROXY-KEYBOARD)
+  - DATA: User context pointer (unused, null in Gliver).
+  - PROXY-KEYBOARD: Pointer to river_xkb_keyboard_v1 proxy.")
+
+(define-var %xkb-keyboard-numlock-enabled-hook
+  (make-gliver-hook '%xkb-keyboard-numlock-enabled-hook 2)
+  "Invoked when numlock is enabled on river_xkb_keyboard_v1.
+Parameters: (DATA PROXY-KEYBOARD)
+  - DATA: User context pointer (unused, null in Gliver).
+  - PROXY-KEYBOARD: Pointer to river_xkb_keyboard_v1 proxy.")
+
+(define-var %xkb-keyboard-numlock-disabled-hook
+  (make-gliver-hook '%xkb-keyboard-numlock-disabled-hook 2)
+  "Invoked when numlock is disabled on river_xkb_keyboard_v1.
+Parameters: (DATA PROXY-KEYBOARD)
+  - DATA: User context pointer (unused, null in Gliver).
+  - PROXY-KEYBOARD: Pointer to river_xkb_keyboard_v1 proxy.")
+
+(define-var %input-manager-finished-hook
+  (make-gliver-hook '%input-manager-finished-hook 2)
+  "Invoked when river compositor has finished sending events for river_input_manager_v1.
+Parameters: (DATA PROXY-MANAGER)
+  - DATA: User context pointer (unused, null in Gliver).
+  - PROXY-MANAGER: Pointer to river_input_manager_v1 proxy.")
+
+(define-var %input-manager-device-created-hook
+  (make-gliver-hook '%input-manager-device-created-hook 3)
+  "Invoked when a new river_input_device_v1 is advertised.
+Parameters: (DATA PROXY-MANAGER PROXY-DEVICE)
+  - DATA: User context pointer (unused, null in Gliver).
+  - PROXY-MANAGER: Pointer to river_input_manager_v1 proxy.
+  - PROXY-DEVICE: Pointer to river_input_device_v1 proxy.")
+
+(define-var %input-device-removed-hook
+  (make-gliver-hook '%input-device-removed-hook 2)
+  "Invoked when river_input_device_v1 is removed from compositor.
+Parameters: (DATA PROXY-DEVICE)
+  - DATA: User context pointer (unused, null in Gliver).
+  - PROXY-DEVICE: Pointer to river_input_device_v1 proxy.")
+
+(define-var %input-device-type-hook
+  (make-gliver-hook '%input-device-type-hook 3)
+  "Invoked when river_input_device_v1 type is advertised.
+Parameters: (DATA PROXY-DEVICE TYPE)
+  - DATA: User context pointer (unused, null in Gliver).
+  - PROXY-DEVICE: Pointer to river_input_device_v1 proxy.
+  - TYPE: Numeric type enum (0=keyboard, 1=pointer, 2=touch, 3=tablet).")
+
+(define-var %input-device-name-hook
+  (make-gliver-hook '%input-device-name-hook 3)
+  "Invoked when river_input_device_v1 name is advertised.
+Parameters: (DATA PROXY-DEVICE NAME)
+  - DATA: User context pointer (unused, null in Gliver).
+  - PROXY-DEVICE: Pointer to river_input_device_v1 proxy.
+  - NAME: String device name.")
+
+(define-var %wlr-layer-surface-configure-hook
+  (make-gliver-hook '%wlr-layer-surface-configure-hook 5)
+  "Invoked when zwlr_layer_surface_v1 is configured by compositor.
+Parameters: (DATA PROXY-LAYER-SURFACE SERIAL WIDTH HEIGHT)
+  - DATA: User context pointer (unused, null in Gliver).
+  - PROXY-LAYER-SURFACE: Pointer to zwlr_layer_surface_v1 proxy.
+  - SERIAL: Serial number from compositor.
+  - WIDTH: Allocated width in pixels.
+  - HEIGHT: Allocated height in pixels.")
+
+(define-var %wlr-layer-surface-closed-hook
+  (make-gliver-hook '%wlr-layer-surface-closed-hook 2)
+  "Invoked when zwlr_layer_surface_v1 is closed by compositor.
+Parameters: (DATA PROXY-LAYER-SURFACE)
+  - DATA: User context pointer (unused, null in Gliver).
+  - PROXY-LAYER-SURFACE: Pointer to zwlr_layer_surface_v1 proxy.")

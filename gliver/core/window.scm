@@ -91,6 +91,7 @@
 			window-on-workspace-switch
 			window-on-fullscreen-requested
 			window-on-fullscreen-exit-requested
+			window-on-minimize-requested
 ))
 
 ;;; window variables and behavior
@@ -904,3 +905,11 @@ Parameters: (DATA PROXY-WINDOW)
     (window-fullscreen-exit! window)
     (gliver-hook-run! *window-fullscreen-exit-requested-hook* window)))
 (gliver-hook-add! %window-fullscreen-exit-requested-hook 'window-on-fullscreen-exit-requested)
+
+(define (window-on-minimize-requested proxy-window)
+  "Invoked when a client requests to be minimized.
+Parameters: (PROXY-WINDOW)
+  - PROXY-WINDOW: Pointer to river_window_v1 proxy."
+  (and-let* ((window (window-find-by-proxy proxy-window)))
+    (gliver-hook-run! *window-minimize-requested-hook* window)))
+(gliver-hook-add! %window-minimize-requested-hook 'window-on-minimize-requested)
