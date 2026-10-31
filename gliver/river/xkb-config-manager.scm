@@ -18,6 +18,7 @@
 (define-module (gliver river xkb-config-manager)
   #:use-module (ice-9 format)
   #:use-module (srfi srfi-1)
+  #:use-module (srfi srfi-2)
   #:use-module (rnrs bytevectors)
   #:use-module (system foreign)
   #:use-module (gliver river connector)
@@ -179,8 +180,8 @@ Parameters: (PROXY-CONFIG)
   "Compile keymap definition from LAYOUT-STR and VARIANT-STR.
 Returns a string representing the kepmap definition or #f on failure."
   (when *log-river-calls*
-	(log-debug "keyboard-manager: compiling keymap (layout=~s, variant=~s)")
-    layout-str variant-str)
+	(log-debug "keyboard-manager: compiling keymap (layout=~s, variant=~s)"
+               layout-str variant-str))
   (call-with-values
       (lambda ()
 		;; NOTE: rules and model can be optionally passed
@@ -267,13 +268,13 @@ Parameters: (PROXY-CONFIG KEYMAP-LAYOUT KEYMAP-VARIANT [FORMAT])
   - VARIANTS: List of variants (e.g. '(\"\" \"digits\")) - can be left empty.
   - FORMAT: Keymap format enum (default text_v1).
 Returns river_xkb_keymap_v1 proxy pointer or #f on failure."
-  ;; layout and variant need to be in comma separated format (e.g. \"en, ara\")
+  ;; layout and variant need to be in comma separated format (e.g. "en, ara")
   (and-let* ((layout-str   (string-join layouts ","))
-             (variant-str  (string-joinf variants ","))
+             (variant-str  (string-join variants ","))
 			 ;; create keymap-def from layout and variant
 			 (keymap-def   (xkb-config-compile-keymap layout-str variant-str)))
 	;; pass the keymap-def string to xkb-config-create-keymap-from-string
-	(xkb-config-create-keymap-from-string proxy-config keymap-str format)))
+	(xkb-config-create-keymap-from-string proxy-config keymap-def format)))
 
 ;;; river_xkb_config_v1 events
 (define (xkb-config-on-finished data proxy-config)
