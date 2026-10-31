@@ -5,10 +5,9 @@
 ;;;
 ;;; This module provides the central logging system for Gliver.
 ;;; It handles:
-;;;  - filtering log levels (debug, info, warn, error)
-;;;  - formatting structured log records with timestamps
-;;;  - logging to configurable log files
-;;;  - syntax macros for logging debug, info, warning, and error messages
+;;;  - Filtering log levels (debug, info, warn, error)
+;;;  - Formatting structured log records with timestamps
+;;;  - Logging to configurable log files
 
 (define-module (gliver core logs)
   #:use-module (ice-9 format)
@@ -114,22 +113,16 @@ Parameters: (FILENAME LEVEL FMT ARGS)
       (force-output (*log-port*)))))
 
 ;;; convenience logging macros
-(define-syntax log-debug
-  (syntax-rules ()
-    ((_ fmt args ...)
-     (log-write (current-filename) 'debug fmt (list args ...)))))
+(define-syntax %log
+  (lambda (x)
+    (syntax-case x ()
+      ((_ level fmt args ...)
+       (let* ((src (syntax-source x))
+              (file (or (and src (assq-ref src 'filename))
+                        (current-filename))))
+         #`(log-write #,file 'level fmt (list args ...)))))))
 
-(define-syntax log-info
-  (syntax-rules ()
-    ((_ fmt args ...)
-     (log-write (current-filename) 'info fmt (list args ...)))))
-
-(define-syntax log-warn
-  (syntax-rules ()
-    ((_ fmt args ...)
-     (log-write (current-filename) 'warn fmt (list args ...)))))
-
-(define-syntax log-error
-  (syntax-rules ()
-    ((_ fmt args ...)
-     (log-write (current-filename) 'error fmt (list args ...)))))
+(define-syntax-rule (log-debug fmt args ...) (%log debug fmt args ...))
+(define-syntax-rule (log-info fmt args ...)  (%log info  fmt args ...))
+(define-syntax-rule (log-warn fmt args ...)  (%log warn  fmt args ...))
+(define-syntax-rule (log-error fmt args ...) (%log error fmt args ...))
