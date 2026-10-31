@@ -82,18 +82,19 @@ Parameters: (REGISTRY PROTOCOL-NAME OBJECT-ID VERSION)
   "Unbind/destroy the layer shell and all associated objects."
   ;; destroy active layer shell outputs
   (for-each (lambda (proxy)
-              (river-layer-shell-output-v1-destroy proxy))
+              (layer-shell-output-destroy proxy))
             *layer-shell-outputs*)
   (set! *layer-shell-outputs* '())
 
   ;; destroy active layer shell seats
   (for-each (lambda (proxy)
-              (river-layer-shell-seat-v1-destroy proxy))
+              (layer-shell-seat-destroy proxy))
             *layer-shell-seats*)
   (set! *layer-shell-seats* '())
 
   (when (valid-pointer? *layer-shell*)
-	(layer-shell-destroy *layer-shell*)))
+	(layer-shell-destroy *layer-shell*)
+	(set! *layer-shell* %null-pointer)))
 
 (define (layer-shell-on-globals-verify)
   "Verify the layer shell global was bound.
