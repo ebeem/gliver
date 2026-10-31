@@ -1,44 +1,28 @@
-;;; gliver/config.scm --- Configuration system for Gliver
+;;; gliver/core/config.scm --- Configuration system for Gliver
 ;;;
 ;;; Copyright (C) 2026 Gliver Contributors
 ;;; SPDX-License-Identifier: GPL-3.0-or-later
+;;;
+;;; This module manages user configuration options.
+;;;
+;;; TODO: this file is expected to have the least amount of configuration
+;;; needed and shared between several modules or components.
+;;; any configuration that's primarily used by one file/module should
+;;; be defined in that file instead.
 
 (define-module (gliver core config)
   #:use-module (ice-9 format)
   #:use-module (gliver core logs)
   #:use-module (gliver core types)
+  #:use-module (gliver core helpers)
   #:declarative? #f
   #:export (
-			*default-workspace-name*
 			*terminal*
 			*startup-message*
 			*wallpaper*
 			*wallpaper-mode*
-			*mode*
-			*running?*
 			*prefix-timeout*
 			*message-timeout*
-			*keyboard-layouts*
-			*keyboard-variants*
-			*keyboard-repeat-rate*
-			*keyboard-repeat-delay*
-			*container-inner-gap*
-			*container-outer-gap*
-			*wm-behavior-focus-mouse-enter*
-			*wm-behavior-focus-clear-mouse-leave*
-			*wm-behavior-focus-mouse-click*
-			*wm-behavior-focus-new-window*
-			*wm-behavior-focus-new-workspace*
-			*wm-behavior-focus-new-container*
-			*wm-behavior-focus-new-output*
-			*wm-behavior-workspace-remove-to*
-			*wm-behavior-workspace-destroyable*
-			*workspace-grid-rows*
-			*workspace-grid-wrap?*
-			*wm-behavior-default-decoration*
-			*wm-behavior-default-capabilties*
-			*wm-behavior-default-edges*
-			*wm-behavior-default-border-edges*
 			*theme-font*
 			*theme-font-size*
 			*theme-rosewater*
@@ -82,36 +66,6 @@
 			*window-border-color-focused*
 			*window-border-color-unfocused*
 			*window-border-color-urgent*
-			*container-border-width*
-			*container-border-color-focused*
-			*container-border-color-unfocused*
-			*container-border-color-urgent*
-			*container-border-radius*
-			*container-border-edges*
-			*container-border-bg-color*
-			*container-tab-indicator-height*
-			*container-tab-indicator-show-single-window?*
-			*container-tab-indicator-show-title?*
-			*container-tab-indicator-active-bg-color*
-			*container-tab-indicator-active-text-color*
-			*container-tab-indicator-inactive-bg-color*
-			*container-tab-indicator-inactive-text-color*
-			*container-tab-indicator-unfocused-active-bg-color*
-			*container-tab-indicator-unfocused-active-text-color*
-			*container-tab-indicator-urgent-bg-color*
-			*container-tab-indicator-urgent-text-color*
-			*container-tab-indicator-border-color*
-			*container-tab-indicator-font*
-			*container-tab-indicator-font-size*
-			*container-tab-indicator-position*
-			*container-tab-indicator-gap*
-			*container-tab-indicator-radius*
-			*container-tab-indicator-border-width*
-			*container-tab-indicator-padding-x*
-			*container-tab-indicator-clickable?*
-			*container-tab-indicator-scrollable?*
-			*container-tab-indicator-scroll-direction*
-			*container-navigation-cycle-stacked-windows?*
 			*palette-font*
 			*palette-font-size*
 			*palette-icon-color*
@@ -211,8 +165,6 @@
 ))
 
 ;;; config variables
-(define-var *default-workspace-name* "Default"
-			"Default workspace name used for initial workspace.")
 (define-var *terminal* "foot"
 			"Terminal emulator to be used when spawning terminals.")
 (define-var *startup-message* #t
@@ -221,38 +173,10 @@
 			"Default wallpaper (image file path or hex color).")
 (define-var *wallpaper-mode* 'fill
 			"Default wallpaper scaling mode: 'fill, 'fit, 'stretch, 'center, or 'tile.")
-(define-var *mode* 'normal
-			"Current input/keybinding mode (e.g. 'normal, 'prefix).")
-(define-var *running?* #f
-			"Whether the window manager main event loop is running.")
 (define-var *prefix-timeout* 1000
 			"Timeout in milliseconds for keybinding prefix sequences.")
 (define-var *message-timeout* 5
 			"Timeout in seconds for notification messages.")
-(define-var *container-inner-gap* 4
-			"Inner gap size between containers in pixels.")
-(define-var *container-outer-gap* 8
-			"Outer gap size around containers in pixels.")
-
-;;; window manager behavior
-(define-var *wm-behavior-focus-mouse-enter* #f)
-(define-var *wm-behavior-focus-clear-mouse-leave* #f)
-(define-var *wm-behavior-focus-mouse-click* #t)
-(define-var *wm-behavior-focus-new-window* #t)
-(define-var *wm-behavior-focus-new-workspace* #t)
-(define-var *wm-behavior-focus-new-container* #t)
-(define-var *wm-behavior-focus-new-output* #f)
-(define-var *wm-behavior-workspace-remove-to* 'focus)    ;; 'focus | 'index
-(define-var *wm-behavior-workspace-destroyable* #f)      ;; whether workspaces can be destroyed
-(define-var *wm-behavior-default-decoration* 'server)    ;; 'server | 'client
-(define-var *wm-behavior-default-capabilties* 4)         ;; fullscreen capability for clients
-(define-var *wm-behavior-default-edges* 15)
-(define-var *wm-behavior-default-border-edges* 15)
-
-(define-var *workspace-grid-rows* 1
-  "Number of rows in the workspace grid.up/down workspace focus moves by this number.")
-(define-var *workspace-grid-wrap?* #t
-  "Whether up/down workspace focus wraps around when moving out of the grid boundaries.")
 
 ;;; theme options
 (define-var *theme-font* "iosevka Bold"
@@ -347,71 +271,6 @@
             "Border color for unfocused windows.")
 (define-var *window-border-color-urgent* "#00000000"
             "Border color for urgent windows.")
-
-(define-var *container-border-width* *theme-border-width*
-            "Default container border width in pixels.")
-(define-var *container-border-color-focused* *theme-border-color*
-            "Border color for focused containers.")
-(define-var *container-border-color-unfocused* *theme-mantle*
-            "Border color for unfocused containers.")
-(define-var *container-border-color-urgent* *theme-urgent-color*
-            "Border color for urgent containers.")
-(define-var *container-border-radius* *theme-border-radius*
-            "Default container corner radius in pixels.")
-(define-var *container-border-edges* *wm-behavior-default-border-edges*
-            "Bitfield of edges on which container borders are drawn.")
-(define-var *container-border-bg-color* "#00000044"
-            "Background color for empty containers.")
-
-(define-var *container-tab-indicator-height* 22
-            "Height of the container window tab indicator in pixels.")
-(define-var *container-tab-indicator-show-single-window?* #t
-            "Whether to display the tab indicator when the container has only 1 window.")
-(define-var *container-tab-indicator-show-title?* #t
-            "Whether to display the title of the window inside each tab.")
-
-(define-var *container-tab-indicator-active-bg-color* *theme-border-color*
-            "Border color for focused containers.")
-(define-var *container-tab-indicator-active-text-color* *theme-base*
-            "Text color for the active window's tab title.")
-(define-var *container-tab-indicator-inactive-bg-color* *theme-mantle*
-            "Text color for the active tab title in an unfocused container.")
-(define-var *container-tab-indicator-inactive-text-color* *theme-text*
-            "Text color for inactive windows' tab titles.")
-(define-var *container-tab-indicator-unfocused-active-bg-color* *theme-mantle*
-            "Text color for the active tab title in an unfocused container.")
-(define-var *container-tab-indicator-unfocused-active-text-color* *theme-text*
-            "Text color for the active tab title in an unfocused container.")
-(define-var *container-tab-indicator-urgent-bg-color* *theme-urgent-color*
-            "Background color for tabs representing urgent windows.")
-(define-var *container-tab-indicator-urgent-text-color* *theme-crust*
-            "Text color for urgent tab titles.")
-(define-var *container-tab-indicator-border-color* *theme-border-color*
-            "Border stroke color for each tab.")
-
-(define-var *container-tab-indicator-font* *theme-font*
-            "Font family string used for tab title labels.")
-(define-var *container-tab-indicator-font-size* 12
-            "Font size in points for tab title labels.")
-(define-var *container-tab-indicator-position* 'top
-            "Position of the indicator bar relative to container ('top or 'bottom).")
-(define-var *container-tab-indicator-gap* 0
-            "Spacing in pixels between adjacent tabs.")
-(define-var *container-tab-indicator-radius* 0
-            "Corner radius in pixels for each tab.")
-(define-var *container-tab-indicator-border-width* 0
-            "Border stroke width in pixels for each tab.")
-(define-var *container-tab-indicator-padding-x* 0
-            "Horizontal padding inside each tab in pixels.")
-(define-var *container-tab-indicator-clickable?* #t
-            "Whether clicking on a tab focuses that window.")
-(define-var *container-tab-indicator-scrollable?* #t
-            "Whether scrolling on the tab indicator switches windows.")
-(define-var *container-tab-indicator-scroll-direction* 'up-prev
-            "Scroll direction for switching windows: 'up-prev (scroll up goes to previous window, down to next) or 'up-next (scroll up goes to next window, down to previous).")
-
-(define-var *container-navigation-cycle-stacked-windows?* #t
-            "When #t, navigating left or right between containers first cycles through stacked windows.")
 
 ;;; palette/launcher options
 (define-var *palette-font* *theme-font*
@@ -608,29 +467,35 @@ following the same order in a keyboard numpad
 ;;; XDG directories
 (define-var *xdg-config-home*
   (or (getenv "XDG_CONFIG_HOME")
-      (string-append (getenv "HOME") "/.config")))
+      (string-append (getenv "HOME") "/.config"))
+  "Directory path where user configuration files reside.")
 
 (define-var *xdg-state-home*
   (or (getenv "XDG_STATE_HOME")
-      (string-append (getenv "HOME") "/.local/state")))
+      (string-append (getenv "HOME") "/.local/state"))
+  "Directory path where persistent state files reside.")
 
 (define-var *xdg-data-home*
   (or (getenv "XDG_DATA_HOME")
-      (string-append (getenv "HOME") "/.local/share")))
+      (string-append (getenv "HOME") "/.local/share"))
+  "Directory path where application data files reside.")
 
 (define-var *gliver-config-dir*
-  (string-append *xdg-config-home* "/gliver"))
+  (string-append *xdg-config-home* "/gliver")
+  "Directory path for Gliver configuration files.")
 
 (define-var *gliver-runtime-dir*
-  (string-append *xdg-state-home* "/gliver"))
+  (string-append *xdg-state-home* "/gliver")
+  "Directory path for Gliver runtime state.")
 
 (define-var *gliver-state-dir*
-  (string-append *xdg-state-home* "/gliver"))
+  (string-append *xdg-state-home* "/gliver")
+  "Directory path for Gliver persistent state.")
 
 ;;; configuration file loading
 (define-var *config-file-path*
   (string-append *gliver-config-dir* "/init.scm")
-  "Return the path to the config file.")
+  "File path to the user's primary configuration file.")
 
 (define-command (config-load!)
   "Load the user configuration file."
