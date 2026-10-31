@@ -116,11 +116,10 @@ Parameters: (REGISTRY PROTOCOL-NAME OBJECT-ID VERSION)
 	(xkb-config-stop *xkb-config*)))
 
 (define (xkb-config-on-globals-verify)
-  "Verify that *xkb-config-xkb-config* was bound successfully, raise a warning if not."
+  "Verify that *xkb-config* was bound successfully, raise a warning if not.
+Parameters: None."
   ;; warn if the protocol is not advertised by the compositor
-  ;; usually this should be a mandatory protocol and not finding it
-  ;; should actually raise an error
-  (when (null-pointer? *xkb-config*)
+  (unless (valid-pointer? *xkb-config*)
     (log-warn "river_xkb_config_v1 not available, keyboard xkb configuration disabled")))
 
 (define (xkb-config-on-listeners-attach)
@@ -178,7 +177,10 @@ Parameters: (PROXY-CONFIG)
 
 (define (xkb-config-compile-keymap layout-str variant-str)
   "Compile keymap definition from LAYOUT-STR and VARIANT-STR.
-Returns a string representing the kepmap definition or #f on failure."
+Parameters: (LAYOUT-STR VARIANT-STR)
+  - LAYOUT-STR: Comma-separated layout string (e.g. \"us,ara\").
+  - VARIANT-STR: Comma-separated variant string (e.g. \",digits\").
+Returns: String representing keymap definition, or #f on failure."
   (when *log-river-calls*
 	(log-debug "Compiling keymap (layout=~s, variant=~s)"
                layout-str variant-str))
@@ -262,7 +264,7 @@ Returns river_xkb_keymap_v1 proxy pointer or #f on failure."
 											   #:optional (format RIVER_XKB_CONFIG_V1_KEYMAP_FORMAT_TEXT_V1))
   "Create a keymap object on PROXY-CONFIG from layer LAYOUTS.
 Allocates a sealed anonymous memory file descriptor (memfd) and sends create_keymap request.
-Parameters: (PROXY-CONFIG KEYMAP-LAYOUT KEYMAP-VARIANT [FORMAT])
+Parameters: (PROXY-CONFIG LAYOUTS VARIANTS [FORMAT])
   - PROXY-CONFIG: Pointer to river_xkb_config_v1 proxy.
   - LAYOUTS: List of layouts (e.g. '(\"us\" \"ara\")).
   - VARIANTS: List of variants (e.g. '(\"\" \"digits\")) - can be left empty.

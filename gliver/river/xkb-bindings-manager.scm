@@ -276,7 +276,7 @@ Parameters: (PROXY)
   - PROXY: Pointer to river_xkb_bindings_seat_v1 proxy."
   (when (valid-pointer? proxy)
 	(when *log-river-calls*
-	  (log-debug "Ate binding on seat ~a" proxy))
+	  (log-debug "Cancel ensure next key eaten on seat ~a" proxy))
 	(river-xkb-bindings-seat-v1-cancel-ensure-next-key-eaten proxy)))
 
 ;;; river_xkb_bindings_seat_v1 events

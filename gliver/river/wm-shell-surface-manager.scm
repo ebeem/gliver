@@ -30,16 +30,17 @@
 cleared from client side and the server should also clear everything.
 Parameters: (PROXY-SHELL-SURFACE)
   - PROXY-SHELL-SURFACE: Pointer to river_shell_surface_v1 proxy."
-  (when proxy-shell-surface
+  (when (valid-pointer? proxy-shell-surface)
     (when *log-river-calls*
 	  (log-debug "destroying shell-surface proxy: ~a" proxy-shell-surface))
-	(river-shell-surface-v1-destroy proxy-shell-surface)))
+    (river-shell-surface-v1-destroy proxy-shell-surface)))
 
 (define (wm-shell-surface-node-get! proxy-shell-surface)
   "Get node corresponding to the shell surface (called once per surface).
 Parameters: (PROXY-SHELL-SURFACE)
-  - PROXY-SHELL-SURFACE: Pointer to river_shell_surface_v1 proxy."
-  (when proxy-shell-surface
+  - PROXY-SHELL-SURFACE: Pointer to river_shell_surface_v1 proxy.
+Returns: river_node_v1 proxy pointer."
+  (when (valid-pointer? proxy-shell-surface)
     (when *log-river-calls*
 	  (log-debug "getting node of shell-surface ~a" proxy-shell-surface))
     (river-shell-surface-v1-get-node proxy-shell-surface)))
@@ -50,7 +51,7 @@ with the next render sequence.
 Must be called in a render sequence.
 Parameters: (PROXY-SHELL-SURFACE)
   - PROXY-SHELL-SURFACE: Pointer to river_shell_surface_v1 proxy."
-  (when proxy-shell-surface
+  (when (valid-pointer? proxy-shell-surface)
     (when *log-river-calls*
 	  (log-debug "syncing shell-surface ~a" proxy-shell-surface))
     (river-shell-surface-v1-sync-next-commit proxy-shell-surface)))

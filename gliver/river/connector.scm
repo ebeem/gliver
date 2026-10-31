@@ -150,16 +150,16 @@ Parameters: None."
     (log-info "Disconnecting from Wayland display...")
     (gliver-hook-run! *gliver-globals-unbind-hook*)
     ;; destroy zwlr layer shell
-    (unless (null-pointer? *zwlr-layer-shell*)
+    (when (valid-pointer? *zwlr-layer-shell*)
       (zwlr-layer-shell-v1-destroy *zwlr-layer-shell*)
       (set! *zwlr-layer-shell* %null-pointer))
     ;; note: wl_compositor and wl_shm have no destroy request,
     ;; they are cleaned up when the display disconnects
 
     ;; disconnect display
-    (when *wl-display*
+    (when (valid-pointer? *wl-display*)
       (wl-display-disconnect *wl-display*)
-      (set! *wl-display* #f))
+      (set! *wl-display* %null-pointer))
     (set! *river-connected?* #f)
     (log-info "Disconnected.")))
 

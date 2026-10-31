@@ -68,9 +68,9 @@ Parameters: (DATA MANAGER PROXY-OUTPUT)
 cleared from client side and the server should also clear everything.
 Parameters: (PROXY-OUTPUT)
   - PROXY-OUTPUT: Pointer to river_output_v1 proxy."
-  (when *log-river-calls*
-	(log-debug "destroying output proxy: ~a" proxy-output))
-  (when proxy-output
+  (when (valid-pointer? proxy-output)
+    (when *log-river-calls*
+	  (log-debug "Destroying output proxy: ~a" proxy-output))
     (river-output-v1-destroy proxy-output)))
 
 (define (wm-output-presentation-mode-set proxy-output mode)
@@ -80,7 +80,7 @@ Parameters: (PROXY-OUTPUT MODE)
   - PROXY-OUTPUT: Pointer to river_output_v1 proxy.
   - MODE: Presentation mode enum RIVER_OUTPUT_V1_PRESENTATION_MODE_VSYNC,
 or RIVER_OUTPUT_V1_PRESENTATION_MODE_ASYNC."
-  (when proxy-output
+  (when (valid-pointer? proxy-output)
     (when *log-river-calls*
 	  (log-debug "Setting output ~a presentation mode to ~a" proxy-output mode))
     (river-output-v1-set-presentation-mode proxy-output mode)))
@@ -90,7 +90,7 @@ or RIVER_OUTPUT_V1_PRESENTATION_MODE_ASYNC."
 Parameters: (OBJECT-ID [VERSION])
   - OBJECT-ID: Numeric Wayland object ID.
   - VERSION: Interface version (default 4).
-Returns wl_output proxy pointer, or #f if registry is unavailable or invalid."
+Returns: wl_output proxy pointer, or #f if registry is unavailable or invalid."
   (when (number? object-id)
     (when *log-river-calls*
       (log-debug "Binding wl_output object ~a (version ~a)" object-id version))

@@ -442,10 +442,10 @@ Parameters: (DATA PROXY-WINDOW TITLE-PTR)
 Parameters: (DATA PROXY-WINDOW PARENT-PROXY)
   - DATA: User context pointer (unused, null in Gliver).
   - PROXY-WINDOW: Pointer to child river_window_v1 proxy.
-  - PARENT-PROXY: Pointer to parent river_window_v1 proxy."
-  (let ((parent (if (or (not (pointer? parent-proxy)) (null-pointer? parent-proxy))
-                    ""
-                    parent-proxy)))
+  - PARENT-PROXY: Pointer to parent river_window_v1 proxy (or null for top-level)."
+  (let ((parent (if (valid-pointer? parent-proxy)
+                    parent-proxy
+                    #f)))
     (when *log-river-calls*
 	  (log-debug "Window ~a updated its parent to ~a" proxy-window parent))
     (gliver-hook-run! %window-parent-changed-hook proxy-window parent)))
@@ -537,7 +537,7 @@ Parameters: (DATA PROXY-WINDOW)
   - PROXY-WINDOW: Pointer to river_window_v1 proxy."
   (when *log-river-calls*
 	(log-debug "Window ~a requested to be minimized" proxy-window))
-  (gliver-hook-run! *window-minimize-requested-hook* proxy-window))
+  (gliver-hook-run! %window-minimize-requested-hook proxy-window))
 
 (define (wm-window-on-window-unreliable-pid data proxy-window pid)
   "Invoke when window's process PID is advertised.

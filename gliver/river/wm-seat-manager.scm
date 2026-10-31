@@ -88,7 +88,7 @@ Parameters: (DATA MANAGER SEAT-PROXY)
 cleared from client side and the server should also clear everything.
 Parameters: (PROXY-SEAT)
   - PROXY-SEAT: Pointer to river_seat_v1 proxy."
-  (when proxy-seat
+  (when (valid-pointer? proxy-seat)
     (when *log-river-calls*
 	  (log-debug "destroying seat proxy: ~a" proxy-seat))
     (river-seat-v1-destroy proxy-seat)))
@@ -99,7 +99,7 @@ Must be called in a manage sequence.
 Parameters: (PROXY-SEAT PROXY-WINDOW)
   - PROXY-SEAT: Pointer to river_seat_v1 proxy.
   - PROXY-WINDOW: Pointer to river_window_v1 proxy."
-  (when (and proxy-seat proxy-window)
+  (when (and (valid-pointer? proxy-seat) (valid-pointer? proxy-window))
     (when *log-river-calls*
 	  (log-debug "Seat ~a focusing window ~a" proxy-seat proxy-window))
     (river-seat-v1-focus-window proxy-seat proxy-window)))
@@ -110,7 +110,7 @@ Must be called in a manage sequence.
 Parameters: (PROXY-SEAT PROXY-SURFACE)
   - PROXY-SEAT: Pointer to river_seat_v1 proxy.
   - PROXY-SURFACE: Pointer to river_shell_surface_v1 proxy."
-  (when (and proxy-seat proxy-surface)
+  (when (and (valid-pointer? proxy-seat) (valid-pointer? proxy-surface))
     (when *log-river-calls*
 	  (log-debug "Seat ~a focusing surface ~a" proxy-seat proxy-surface))
     (river-seat-v1-focus-shell-surface proxy-seat proxy-surface)))
@@ -120,7 +120,7 @@ Parameters: (PROXY-SEAT PROXY-SURFACE)
 Must be called in a manage sequence.
 Parameters: (PROXY-SEAT)
   - PROXY-SEAT: Pointer to river_seat_v1 proxy."
-  (when proxy-seat
+  (when (valid-pointer? proxy-seat)
     (when *log-river-calls*
 	  (log-debug "Seat ~a clearing focus" proxy-seat))
     (river-seat-v1-clear-focus proxy-seat)))
@@ -130,7 +130,7 @@ Parameters: (PROXY-SEAT)
 Must be called in a manage sequence.
 Parameters: (PROXY-SEAT)
   - PROXY-SEAT: Pointer to river_seat_v1 proxy."
-  (when proxy-seat
+  (when (valid-pointer? proxy-seat)
     (when *log-river-calls*
 	  (log-debug "Seat ~a pointer operation started" proxy-seat))
     (river-seat-v1-op-start-pointer proxy-seat)))
@@ -140,7 +140,7 @@ Parameters: (PROXY-SEAT)
 Must be called in a manage sequence.
 Parameters: (PROXY-SEAT)
   - PROXY-SEAT: Pointer to river_seat_v1 proxy."
-  (when proxy-seat
+  (when (valid-pointer? proxy-seat)
     (when *log-river-calls*
 	  (log-debug "Seat ~a pointer operation ended" proxy-seat))
     (river-seat-v1-op-end proxy-seat)))
@@ -152,7 +152,7 @@ Parameters: (PROXY-SEAT BUTTON MODIFIERS)
   - PROXY-SEAT: Pointer to river_seat_v1 proxy.
   - BUTTON: Input event button code (e.g. BTN_LEFT from input-event-codes.h).
   - MODIFIERS: Modifier bitmask flags (same as keyboard modifiers)."
-  (when proxy-seat
+  (when (valid-pointer? proxy-seat)
     (when *log-river-calls*
 	  (log-debug "Getting binding for seat ~a with button ~a and modifiers ~a" proxy-seat button modifiers))
     (river-seat-v1-get-pointer-binding proxy-seat button modifiers)))
@@ -163,7 +163,7 @@ Parameters: (PROXY-SEAT NAME SIZE)
   - PROXY-SEAT: Pointer to river_seat_v1 proxy.
   - NAME: String cursor theme name.
   - SIZE: Integer cursor size in pixels."
-  (when proxy-seat
+  (when (valid-pointer? proxy-seat)
     (when *log-river-calls*
 	  (log-debug "Seat ~a cursor theme changed to ~a size ~a" proxy-seat name size))
     (river-seat-v1-set-xcursor-theme proxy-seat name size)))
@@ -175,7 +175,7 @@ Parameters: (PROXY-SEAT X Y)
   - PROXY-SEAT: Pointer to river_seat_v1 proxy.
   - X: Horizontal logical coordinate.
   - Y: Vertical logical coordinate."
-  (when proxy-seat
+  (when (valid-pointer? proxy-seat)
     (when *log-river-calls*
 	  (log-debug "Seat ~a pointer position moved to ~ax~a" proxy-seat x y))
     (river-seat-v1-pointer-warp proxy-seat x y)))
@@ -232,7 +232,7 @@ Parameters: (DATA PROXY-SEAT PROXY-WIN)
 
 (define (wm-seat-on-seat-shell-interaction data proxy-seat proxy-shell)
   "Invoked when a seat interacts (click or input) with a shell surface.
-Parameters: (DATA PROXY-SEAT SHELL-PROXY)
+Parameters: (DATA PROXY-SEAT PROXY-SHELL)
   - DATA: User context pointer (unused, null in Gliver).
   - PROXY-SEAT: Pointer to river_seat_v1 proxy.
   - PROXY-SHELL: Pointer to river_shell_surface_v1 proxy."
@@ -261,7 +261,7 @@ Parameters: (DATA PROXY-SEAT)
   (gliver-hook-run! %seat-op-released-hook data proxy-seat))
 
 (define (wm-seat-on-seat-pointer-position data proxy-seat x y)
-  "Invoked when a pointer position update in compositor logical coordinates.
+  "Invoked when pointer position updates in compositor logical coordinates.
 Parameters: (DATA PROXY-SEAT X Y)
   - DATA: User context pointer (unused, null in Gliver).
   - PROXY-SEAT: Pointer to river_seat_v1 proxy.

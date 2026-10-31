@@ -22,7 +22,7 @@
   #:use-module (system foreign)
   #:export (
 			wm-decoration-destroy!
-			wm-docoration-offset-set!
+			wm-decoration-offset-set!
 			wm-decoration-sync-next-commit!
 ))
 
@@ -37,17 +37,17 @@ Parameters: (PROXY-DECORATION)
 	  (log-debug "destroying decoration proxy: ~a" proxy-decoration))
 	(river-decoration-v1-destroy proxy-decoration)))
 
-(define (wm-docoration-offset-set! proxy-docoration x y)
+(define (wm-decoration-offset-set! proxy-decoration x y)
   "Set the offset of the decoration surface from the top-left corner.
 Must be called in a render sequence.
-Parameters: (PROXY-DOCORATION X Y)
-  - PROXY-DOCORATION: Pointer to river_decoration_v1 proxy.
+Parameters: (PROXY-DECORATION X Y)
+  - PROXY-DECORATION: Pointer to river_decoration_v1 proxy.
   - X: Horizontal offset in compositor coordinates.
   - Y: Vertical offset in compositor coordinates."
-  (when proxy-docoration
+  (when proxy-decoration
     (when *log-river-calls*
-	  (log-debug "setting offset of docoration ~a to ~ax~a" proxy-docoration x y))
-    (river-decoration-v1-set-offset proxy-docoration x y)))
+	  (log-debug "setting offset of decoration ~a to ~ax~a" proxy-decoration x y))
+    (river-decoration-v1-set-offset proxy-decoration x y)))
 
 (define (wm-decoration-sync-next-commit! proxy-decoration)
   "Synchronize application of the next wl_surface commit

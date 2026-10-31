@@ -149,9 +149,9 @@ event from server. Should be used if changes need to be made
 in manage sequence outside the river flow (like statusbar modules).
 Parameters: (PROXY-MANAGER)
   - PROXY-MANAGER: Pointer to river_window_manager_v1 proxy."
-  (when *log-river-calls*
-	(log-debug "Dirty manage sequence ~a" proxy-manager))
-  (when (and proxy-manager *in-manage-sequence*)
+  (when (valid-pointer? proxy-manager)
+    (when *log-river-calls*
+	  (log-debug "Dirty manage sequence ~a" proxy-manager))
 	(river-window-manager-v1-manage-dirty proxy-manager)))
 
 (define (wm-manager-render-finish proxy-manager)
@@ -310,7 +310,7 @@ Parameters: (DATA PROXY-MANAGER)
 	  (gliver-hook-run! *manager-render-start-hook*)
 	  (process-queue!))
     (lambda (key . args)
-      (log-error "Error in manage sequence: ~a ~a" key args)))
+      (log-error "Error in render sequence: ~a ~a" key args)))
 
   ;; always finish the render sequence
   (wm-manager-render-finish proxy-manager)

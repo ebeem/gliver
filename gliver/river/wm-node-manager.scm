@@ -41,7 +41,7 @@ Parameters: (PROXY-NODE)
   "Set the absolute position of the node in the compositor's logical
 coordinate space. The x and y coordinates may be positive or negative.
 Must be called in a render sequence.
-Parameters: (PROXY-DOCORATION X Y)
+Parameters: (PROXY-NODE X Y)
   - PROXY-NODE: Pointer to river_node_v1 proxy.
   - X: Horizontal offset in compositor coordinates.
   - Y: Vertical offset in compositor coordinates."
@@ -53,7 +53,7 @@ Parameters: (PROXY-DOCORATION X Y)
 (define (wm-node-place-top! proxy-node)
   "Request that the node is placed above all other nodes in the render list
 Must be called in a render sequence.
-Parameters: (PROXY-DOCORATION X Y)
+Parameters: (PROXY-NODE)
   - PROXY-NODE: Pointer to river_node_v1 proxy."
   (when proxy-node
     (when *log-river-calls*
@@ -63,7 +63,7 @@ Parameters: (PROXY-DOCORATION X Y)
 (define (wm-node-place-bottom! proxy-node)
   "Request that the node is placed below all other nodes in the render list
 Must be called in a render sequence.
-Parameters: (PROXY-DOCORATION X Y)
+Parameters: (PROXY-NODE)
   - PROXY-NODE: Pointer to river_node_v1 proxy."
   (when proxy-node
     (when *log-river-calls*
@@ -73,8 +73,9 @@ Parameters: (PROXY-DOCORATION X Y)
 (define (wm-node-place-above! proxy-node proxy-other)
   "Request that the node is placed above the other node in the render list
 Must be called in a render sequence.
-Parameters: (PROXY-DOCORATION X Y)
-  - PROXY-NODE: Pointer to river_node_v1 proxy."
+Parameters: (PROXY-NODE PROXY-OTHER)
+  - PROXY-NODE: Pointer to river_node_v1 proxy to place above.
+  - PROXY-OTHER: Pointer to reference river_node_v1 proxy."
   (when (and proxy-node proxy-other)
     (when *log-river-calls*
 	  (log-debug "placing node ~a above node ~a" proxy-node proxy-other))
@@ -83,8 +84,9 @@ Parameters: (PROXY-DOCORATION X Y)
 (define (wm-node-place-below! proxy-node proxy-other)
   "Request that the node is placed below the other node in the render list
 Must be called in a render sequence.
-Parameters: (PROXY-DOCORATION X Y)
-  - PROXY-NODE: Pointer to river_node_v1 proxy."
+Parameters: (PROXY-NODE PROXY-OTHER)
+  - PROXY-NODE: Pointer to river_node_v1 proxy to place below.
+  - PROXY-OTHER: Pointer to reference river_node_v1 proxy."
   (when (and proxy-node proxy-other)
     (when *log-river-calls*
 	  (log-debug "placing node ~a below node ~a" proxy-node proxy-other))
