@@ -180,7 +180,7 @@ Parameters: (PROXY-CONFIG)
   "Compile keymap definition from LAYOUT-STR and VARIANT-STR.
 Returns a string representing the kepmap definition or #f on failure."
   (when *log-river-calls*
-	(log-debug "keyboard-manager: compiling keymap (layout=~s, variant=~s)"
+	(log-debug "Compiling keymap (layout=~s, variant=~s)"
                layout-str variant-str))
   (call-with-values
       (lambda ()
@@ -196,10 +196,10 @@ Returns a string representing the kepmap definition or #f on failure."
         (when (valid-pointer? ctx) (xkb-context-unref ctx))
         (cond
          ((not (valid-pointer? km))
-          (log-error "keyboard-manager: failed to compile keymap for layout ~s" layout-str)
+          (log-error "Failed to compile keymap for layout ~s" layout-str)
           #f)
          ((not keymap-def)
-          (log-error "keyboard-manager: failed to convert keymap to string")
+          (log-error "Failed to convert keymap to string")
           #f)
          (else keymap-def))))))
 
