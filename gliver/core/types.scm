@@ -138,6 +138,7 @@
 			%make-seat
 			make-seat
 			seat-find-by-proxy
+			seat-find-by-ls-proxy
 			seat-current
 			%workspace-metadata-set!
 			workspace-metadata
@@ -252,8 +253,6 @@
 			window-height-max
 			%window-height-min-set!
 			window-height-min
-			%window-user-props-set!
-			window-user-props
 			%window-urgent-set!
 			window-urgent?
 			%window-marked-set!
@@ -379,19 +378,21 @@ Parameters: (NAME . ARGS)
   - NAME: Command name symbol or string.
   - ARGS: Arguments passed to the command procedure.
 Returns procedure result or #f if command is unknown or fails."
-  (or
-   ;; if command is found by name, run it
-   (and-let* ((cmd (command-find name)))
-     (apply command-run cmd args))
-   ;; if command is a space-separated string with arguments
-   ;; run it by string
-   (and-let* (((string? name))
-			  ((> (length (string-tokenize name)) 1)))
-	 (apply %command-run-by-string name args))
-   ;; otherwise, log a warning and return #f
-   (begin
-     (log-warn "command: unknown or failed command ~s" name)
-     #f)))
+  (let ((cmd (command-find name))
+		(tokens? (and (string? name)
+					  (> (length (string-tokenize name)) 1))))
+    (cond
+	 ;; if command is found by name, run it
+     (cmd
+      (apply command-run cmd args))
+	 ;; if command is a space-separated string with arguments
+	 ;; run it by string
+     (tokens?
+      (apply %command-run-by-string name args))
+	 ;; otherwise, log a warning and return #f
+     (else
+      (log-warn "command: unknown command ~s" name)
+      #f))))
 
 ;;; window manager global state (<manager-state>)
 ;;  - outputs: list of all <output> records representing connected screens
@@ -411,12 +412,6 @@ Returns procedure result or #f if command is unknown or fails."
   (windows                manager-windows                %manager-windows-set!)
   (wl-proxy               manager-wl-proxy               %manager-wl-proxy-set!))
 
-(set-record-type-printer!
- <manager-state>
- (lambda (out port)
-   (format port "#<manager proxy=~s outputs=~a>"
-           (manager-wl-proxy out)
-           (length (manager-outputs out)))))
 
 (define* (manager-print-tree #:optional (manager *manager*))
   "Return the MANAGER state tree in a hierarchical formatted string.
@@ -454,7 +449,6 @@ Returns formatted string hierarchy of the manager state tree."
 					   '()				; windows
 					   %null-pointer)   ; wl-proxy
   "Global Gliver window manager state.")
-
 
 ;;; ID generation counters
 (define-var *window-number-next* 0
@@ -671,19 +665,6 @@ Parameters: None.
 Returns currently active <output> record from *manager*, or #f."
   (manager-output-current *manager*))
 
-(set-record-type-printer!
- <output>
- (lambda (out port)
-   (format port "#<output name=~s pos=~ax~a+~a+~a usable=~ax~a+~a+~a workspaces=~a current-workspace=~a prev-workspace=~a>"
-		   (output-name out)
-		   (output-width out) (output-height out)
-		   (output-x out) (output-y out)
-		   (output-usable-width out) (output-usable-height out)
-		   (output-usable-x out) (output-usable-y out)
-		   (length (output-workspaces out))
-		   (if (output-workspace-current out) (workspace-id (output-workspace-current out)) #f)
-		   (if (output-workspace-previous out) (workspace-id (output-workspace-previous out)) #f))))
-
 ;;; seat record (<seat>) and helper functions
 ;;  - window-entered: <window> currently under pointer
 ;;  - window-focused: <window> currently holding keyboard focus
@@ -724,7 +705,7 @@ Returns matching <seat> record or #f."
             (equal? (seat-wl-proxy seat) proxy))
           (manager-seats *manager*))))
 
-(define (seat-find-by-proxy ls-proxy)
+(define (seat-find-by-ls-proxy ls-proxy)
   "Look up the <seat> record by LS-PROXY address.
 Parameters: (LS-PROXY)
   - LS-PROXY: river_layer_shell_seat_v1 proxy pointer.
@@ -743,13 +724,6 @@ Returns active <seat> record, or #f if no seats exist."
     (if (pair? seats)
         (car seats)
         #f)))
-
-(set-record-type-printer!
- <seat>
- (lambda (s port)
-   (format port "#<seat ~a (~a window)>"
-		   (seat-wl-proxy s)
-		   (seat-window-focused s))))
 
 ;;; workspace record (<workspace>) and helpers
 ;;  - id: unique integer workspace identifier
@@ -790,17 +764,6 @@ Returns active <seat> record, or #f if no seats exist."
 Returns newly created <workspace> record."
   (%make-workspace id name tag-mask containers
                    output layout #f #f wallpaper metadata))
-
-(set-record-type-printer!
- <workspace>
- (lambda (g port)
-   (format port "#<workspace id=~a name=~s container-current-id=~a, container-previous-id=~a tag=~a layout=~a>"
-           (workspace-id g)
-           (workspace-name g)
-           (if (workspace-container-current g) (container-id (workspace-container-current g)) #f)
-           (if (workspace-container-previous g) (container-id (workspace-container-previous g)) #f)
-           (workspace-tag-mask g)
-           (assq-ref (workspace-layout g) 'layout))))
 
 (define (workspace-find-by-name name)
   "Find a workspace by NAME on the current output.
@@ -904,19 +867,6 @@ Returns newly created <container> record."
                    (or usable-height height)
 				   metadata))
 
-(set-record-type-printer!
- <container>
- (lambda (f port)
-   (format port "#<container id=~a pos=~ax~a+~a+~a usable=~ax~a+~a+~a wins=~a current-win=~a prev-win=~a>"
-           (container-id f)
-           (container-width f) (container-height f)
-           (container-x f) (container-y f)
-           (container-usable-width f) (container-usable-height f)
-           (container-usable-x f) (container-usable-y f)
-           (length (container-windows f))
-           (if (container-window-current f) (window-id (container-window-current f)) #f)
-           (if (container-window-previous f) (window-id (container-window-previous f)) #f))))
-
 (define (container-find-by-number n workspace)
   "Find container with ID integer N in WORKSPACE.
 Parameters: (N WORKSPACE)
@@ -959,11 +909,11 @@ Returns currently focused <container> in active workspace, or #f."
 ;;  - metadata: alist for any metadata to be stored by extensions
 (define-record-type <window>
   (%make-window id title app-id class instance container
-                floating? transient? marked? urgent? user-props
+                floating? transient? marked? urgent?
                 height-min height-max height width-min width-max width x y
                 decoration-hint is-resizing capabilities destroyed? fullscreen?
                 maximized? visible? pid parent presentation-hint identifier
-                wl-proxy wl-node-proxy wl-decoration-above wl-decoration-below)
+                wl-proxy wl-node-proxy wl-decoration-above wl-decoration-below metadata)
   window?
   (id					window-id							%window-id-set!)
   (title				window-title						%window-title-set!)
@@ -975,7 +925,6 @@ Returns currently focused <container> in active workspace, or #f."
   (transient?			window-transient?					%window-transient-set!)
   (marked?				window-marked?						%window-marked-set!)
   (urgent?				window-urgent?						%window-urgent-set!)
-  (user-props			window-user-props					%window-user-props-set!)
   (height-min			window-height-min					%window-height-min-set!)
   (height-max			window-height-max					%window-height-max-set!)
   (height				window-height						%window-height-set!)
@@ -1065,6 +1014,57 @@ Returns parent <output> of WINDOW, or #f."
   (workspace-output (window-workspace window)))
 
 (set-record-type-printer!
+ <manager-state>
+ (lambda (out port)
+   (format port "#<manager proxy=~s outputs=~a>"
+           (manager-wl-proxy out)
+           (length (manager-outputs out)))))
+
+(set-record-type-printer!
+ <output>
+ (lambda (out port)
+   (format port "#<output name=~s pos=~ax~a+~a+~a usable=~ax~a+~a+~a workspaces=~a current-workspace=~a prev-workspace=~a>"
+		   (output-name out)
+		   (output-width out) (output-height out)
+		   (output-x out) (output-y out)
+		   (output-usable-width out) (output-usable-height out)
+		   (output-usable-x out) (output-usable-y out)
+		   (length (output-workspaces out))
+		   (if (output-workspace-current out) (workspace-id (output-workspace-current out)) #f)
+		   (if (output-workspace-previous out) (workspace-id (output-workspace-previous out)) #f))))
+
+(set-record-type-printer!
+ <seat>
+ (lambda (s port)
+   (format port "#<seat ~a (~a window)>"
+		   (seat-wl-proxy s)
+		   (seat-window-focused s))))
+
+(set-record-type-printer!
+ <workspace>
+ (lambda (g port)
+   (format port "#<workspace id=~a name=~s container-current-id=~a, container-previous-id=~a tag=~a layout=~a>"
+           (workspace-id g)
+           (workspace-name g)
+           (if (workspace-container-current g) (container-id (workspace-container-current g)) #f)
+           (if (workspace-container-previous g) (container-id (workspace-container-previous g)) #f)
+           (workspace-tag-mask g)
+           (assq-ref (workspace-layout g) 'layout))))
+
+(set-record-type-printer!
+ <container>
+ (lambda (f port)
+   (format port "#<container id=~a pos=~ax~a+~a+~a usable=~ax~a+~a+~a wins=~a current-win=~a prev-win=~a>"
+           (container-id f)
+           (container-width f) (container-height f)
+           (container-x f) (container-y f)
+           (container-usable-width f) (container-usable-height f)
+           (container-usable-x f) (container-usable-y f)
+           (length (container-windows f))
+           (if (container-window-current f) (window-id (container-window-current f)) #f)
+           (if (container-window-previous f) (window-id (container-window-previous f)) #f))))
+
+(set-record-type-printer!
  <window>
  (lambda (window port)
    (format port "#<window id=~a proxy=~a app-id=~s visible=~a pos=~ax~a@~ax~a container=~a>"
@@ -1077,3 +1077,4 @@ Returns parent <output> of WINDOW, or #f."
            (window-x window)
            (window-y window)
            (if (window-container window) (container-id (window-container window)) #f))))
+

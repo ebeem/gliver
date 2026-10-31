@@ -67,7 +67,7 @@ Parameters: (DATA PROXY-LS-SEAT TYPE)
   - DATA: User context pointer (unused, null in Gliver).
   - PROXY-LS-SEAT: Pointer to river_layer_shell_seat_v1 proxy.
   - TYPE: Symbol focus type ('exclusive 'non-exclusive 'none)."
-  (and-let* ((seat (seat-find-by-proxy proxy-ls-seat))
+  (and-let* ((seat (seat-find-by-ls-proxy proxy-ls-seat))
 			 (prev-type (seat-focus-type seat)))
 	(%seat-focus-type-set! seat type)
 	(cond
@@ -92,7 +92,7 @@ Parameters: (DATA PROXY-LS-SEAT TYPE)
 Parameters: (OUTPUT)
   - OUTPUT: <output> record."
   ;; get the output layer shell
-  (unless (output-wl-ls-proxy (output))
+  (unless (output-wl-ls-proxy output)
 	(let ((ls-proxy (layer-shell-get-output *layer-shell*
 											(output-wl-proxy output))))
 	  (%output-wl-ls-proxy-set! output ls-proxy)))
@@ -107,7 +107,7 @@ Parameters: (OUTPUT)
 Parameters: (OUTPUT)
   - OUTPUT: <output> record."
   ;; destroy the output's wl-ls-proxy
-  (and-let* ((proxy (output-wl-ls-proxy (output)))
+  (and-let* ((proxy (output-wl-ls-proxy output))
 			 ((valid-pointer? proxy)))
 	(layer-shell-output-destroy proxy)
 
@@ -122,7 +122,7 @@ Parameters: (OUTPUT)
 Parameters: (SEAT)
   - SEAT: <seat> record."
   ;; get the seat layer shell
-  (unless (seat-wl-ls-proxy (seat))
+  (unless (seat-wl-ls-proxy seat)
 	(let ((ls-proxy (layer-shell-get-seat *layer-shell*
 										  (seat-wl-proxy seat))))
 	  (%seat-wl-ls-proxy-set! seat ls-proxy))))
@@ -132,13 +132,13 @@ Parameters: (SEAT)
 Parameters: (SEAT)
   - SEAT: <seat> record."
   ;; destroy the seat's wl-ls-proxy
-  (and-let* ((proxy (seat-wl-ls-proxy (seat)))
+  (and-let* ((proxy (seat-wl-ls-proxy seat))
 			 ((valid-pointer? proxy)))
 	(layer-shell-seat-destroy proxy)))
 
 (gliver-hook-add! %layer-shell-output-non-exclusive-area-changed-hook
 				  'shell-on-output-non-exclusive-area 0)
-(gliver-hook-add! %layer-shell-seat-focus-changed-hook 'shell-on-output-non-exclusive-area 0)
+(gliver-hook-add! %layer-shell-seat-focus-changed-hook 'shell-on-seat-focus-change 0)
 (gliver-hook-add! *output-created-hook* 'shell-on-output-created 0)
 (gliver-hook-add! *output-destroy-hook* 'shell-on-output-destroy 0)
 (gliver-hook-add! *seat-created-hook* 'shell-on-seat-created 0)
