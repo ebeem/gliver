@@ -34,7 +34,7 @@ Parameters: (PROXY-NODE)
   - PROXY-NODE: Pointer to river_node_v1 proxy."
   (when proxy-node
     (when *log-river-calls*
-	  (log-debug "destroying node proxy: ~a" proxy-node))
+	  (log-debug "Destroying node proxy: ~a" proxy-node))
 	(river-node-v1-destroy proxy-node)))
 
 (define (wm-node-position-set! proxy-node x y)
@@ -47,7 +47,7 @@ Parameters: (PROXY-NODE X Y)
   - Y: Vertical offset in compositor coordinates."
   (when proxy-node
     (when *log-river-calls*
-	  (log-debug "setting position of node ~a to ~ax~a" proxy-node x y))
+	  (log-debug "Setting position of node ~a to ~ax~a" proxy-node x y))
     (river-node-v1-set-position proxy-node x y)))
 
 (define (wm-node-place-top! proxy-node)
@@ -57,7 +57,7 @@ Parameters: (PROXY-NODE)
   - PROXY-NODE: Pointer to river_node_v1 proxy."
   (when proxy-node
     (when *log-river-calls*
-	  (log-debug "placing node ~a at top" proxy-node))
+	  (log-debug "Placing node ~a at top" proxy-node))
     (river-node-v1-place-top proxy-node)))
 
 (define (wm-node-place-bottom! proxy-node)
@@ -67,7 +67,7 @@ Parameters: (PROXY-NODE)
   - PROXY-NODE: Pointer to river_node_v1 proxy."
   (when proxy-node
     (when *log-river-calls*
-	  (log-debug "placing node ~a at bottom" proxy-node))
+	  (log-debug "Placing node ~a at bottom" proxy-node))
     (river-node-v1-place-bottom proxy-node)))
 
 (define (wm-node-place-above! proxy-node proxy-other)
@@ -78,7 +78,7 @@ Parameters: (PROXY-NODE PROXY-OTHER)
   - PROXY-OTHER: Pointer to reference river_node_v1 proxy."
   (when (and proxy-node proxy-other)
     (when *log-river-calls*
-	  (log-debug "placing node ~a above node ~a" proxy-node proxy-other))
+	  (log-debug "Placing node ~a above node ~a" proxy-node proxy-other))
     (river-node-v1-place-above proxy-node proxy-other)))
 
 (define (wm-node-place-below! proxy-node proxy-other)
@@ -89,5 +89,5 @@ Parameters: (PROXY-NODE PROXY-OTHER)
   - PROXY-OTHER: Pointer to reference river_node_v1 proxy."
   (when (and proxy-node proxy-other)
     (when *log-river-calls*
-	  (log-debug "placing node ~a below node ~a" proxy-node proxy-other))
+	  (log-debug "Placing node ~a below node ~a" proxy-node proxy-other))
     (river-node-v1-place-below proxy-node proxy-other)))

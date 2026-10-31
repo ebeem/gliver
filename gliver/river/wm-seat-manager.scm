@@ -90,7 +90,7 @@ Parameters: (PROXY-SEAT)
   - PROXY-SEAT: Pointer to river_seat_v1 proxy."
   (when (valid-pointer? proxy-seat)
     (when *log-river-calls*
-	  (log-debug "destroying seat proxy: ~a" proxy-seat))
+	  (log-debug "Destroying seat proxy: ~a" proxy-seat))
     (river-seat-v1-destroy proxy-seat)))
 
 (define (wm-seat-window-focus proxy-seat proxy-window)
@@ -227,7 +227,7 @@ Parameters: (DATA PROXY-SEAT PROXY-WIN)
   - PROXY-SEAT: Pointer to river_seat_v1 proxy.
   - PROXY-WIN: Pointer to river_window_v1 proxy."
   (when *log-river-calls*
-	(log-debug "seat ~a interacting with window ~a" proxy-seat proxy-win))
+	(log-debug "Seat ~a interacting with window ~a" proxy-seat proxy-win))
   (gliver-hook-run! %seat-window-interacted-hook data proxy-seat proxy-win))
 
 (define (wm-seat-on-seat-shell-interaction data proxy-seat proxy-shell)

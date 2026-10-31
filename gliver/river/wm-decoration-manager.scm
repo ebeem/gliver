@@ -34,7 +34,7 @@ Parameters: (PROXY-DECORATION)
   - PROXY-DECORATION: Pointer to river_decoration_v1 proxy."
   (when proxy-decoration
     (when *log-river-calls*
-	  (log-debug "destroying decoration proxy: ~a" proxy-decoration))
+	  (log-debug "Destroying decoration proxy: ~a" proxy-decoration))
 	(river-decoration-v1-destroy proxy-decoration)))
 
 (define (wm-decoration-offset-set! proxy-decoration x y)
@@ -46,7 +46,7 @@ Parameters: (PROXY-DECORATION X Y)
   - Y: Vertical offset in compositor coordinates."
   (when proxy-decoration
     (when *log-river-calls*
-	  (log-debug "setting offset of decoration ~a to ~ax~a" proxy-decoration x y))
+	  (log-debug "Setting offset of decoration ~a to ~ax~a" proxy-decoration x y))
     (river-decoration-v1-set-offset proxy-decoration x y)))
 
 (define (wm-decoration-sync-next-commit! proxy-decoration)
@@ -57,7 +57,7 @@ Parameters: (PROXY-DECORATION)
   - PROXY-DECORATION: Pointer to river_decoration_v1 proxy."
   (when proxy-decoration
     (when *log-river-calls*
-	  (log-debug "syncing decoration ~a" proxy-decoration))
+	  (log-debug "Syncing decoration ~a" proxy-decoration))
     (river-decoration-v1-sync-next-commit proxy-decoration)))
 
 ;;; NOTE: this interface has no events/listeners

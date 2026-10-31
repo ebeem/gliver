@@ -115,7 +115,7 @@ Parameters: (PROXY-WINDOW)
   - PROXY-WINDOW: Pointer to river_window_v1 proxy."
   (when proxy-window
     (when *log-river-calls*
-	  (log-debug "closing window ~a" proxy-window))
+	  (log-debug "Closing window ~a" proxy-window))
     (river-window-v1-close proxy-window)))
 
 (define (wm-window-destroy proxy-window)
@@ -125,7 +125,7 @@ Parameters: (PROXY-WINDOW)
   - PROXY-WINDOW: Pointer to river_window_v1 proxy."
   (when proxy-window
     (when *log-river-calls*
-	  (log-debug "destroying window proxy: ~a" proxy-window))
+	  (log-debug "Destroying window proxy: ~a" proxy-window))
     (river-window-v1-destroy proxy-window)))
 
 (define (wm-window-node-get proxy-window)
@@ -134,7 +134,7 @@ Parameters: (PROXY-WINDOW)
   - PROXY-WINDOW: Pointer to river_window_v1 proxy."
   (when proxy-window
 	(when *log-river-calls*
-	  (log-debug "getting node of window: ~a" proxy-window))
+	  (log-debug "Getting node of window: ~a" proxy-window))
 	(river-window-v1-get-node proxy-window)))
 
 (define (wm-window-dimensions-propose proxy-window width height)
@@ -146,7 +146,7 @@ Parameters: (PROXY-WINDOW WIDTH HEIGHT)
   - HEIGHT: Proposed window height in pixels."
   (when proxy-window
     (when *log-river-calls*
-	  (log-debug "proposing dimensions ~ax~a for window: ~a" width height proxy-window))
+	  (log-debug "Proposing dimensions ~ax~a for window: ~a" width height proxy-window))
     (river-window-v1-propose-dimensions proxy-window width height)))
 
 (define (wm-window-hide proxy-window)
@@ -156,7 +156,7 @@ Parameters: (PROXY-WINDOW)
   - PROXY-WINDOW: Pointer to river_window_v1 proxy."
   (when proxy-window  
     (when *log-river-calls*
-	  (log-debug "hiding window: ~a" proxy-window))
+	  (log-debug "Hiding window: ~a" proxy-window))
     (river-window-v1-hide proxy-window)))
 
 (define (wm-window-show proxy-window)
@@ -166,7 +166,7 @@ Parameters: (PROXY-WINDOW)
   - PROXY-WINDOW: Pointer to river_window_v1 proxy."
   (when proxy-window  
     (when *log-river-calls*
-	  (log-debug "showing window: ~a" proxy-window))
+	  (log-debug "Showing window: ~a" proxy-window))
     (river-window-v1-show proxy-window)))
 
 (define (wm-window-decoration-client proxy-window)
@@ -176,7 +176,7 @@ Parameters: (PROXY-WINDOW)
   - PROXY-WINDOW: Pointer to river_window_v1 proxy."
   (when proxy-window  
 	(when *log-river-calls*
-	  (log-debug "using client side decoration for window: ~a" proxy-window))
+	  (log-debug "Using client side decoration for window: ~a" proxy-window))
 	(river-window-v1-use-csd proxy-window)))
 
 (define (wm-window-decoration-server proxy-window)
@@ -186,7 +186,7 @@ Parameters: (PROXY-WINDOW)
   - PROXY-WINDOW: Pointer to river_window_v1 proxy."
   (when proxy-window  
 	(when *log-river-calls*
-	  (log-debug "using server side decoration for window: ~a" proxy-window))
+	  (log-debug "Using server side decoration for window: ~a" proxy-window))
 	(river-window-v1-use-ssd proxy-window)))
 
 (define (wm-window-borders-set proxy-window edges width r g b a)
@@ -202,7 +202,7 @@ Parameters: (PROXY-WINDOW EDGES WIDTH R G B A)
   - A: Alpha opacity component (0 - 4294967295)."
   (when proxy-window  
 	(when *log-river-calls*
-	  (log-debug "setting borders for window: ~a to width ~a, edges: ~a, and rgba(~a, ~a, ~a, ~a)" proxy-window width edges r g b a))
+	  (log-debug "Setting borders for window: ~a to width ~a, edges: ~a, and rgba(~a, ~a, ~a, ~a)" proxy-window width edges r g b a))
 	(river-window-v1-set-borders proxy-window edges width 
                                  r g b a)))
 
@@ -214,7 +214,7 @@ Parameters: (PROXY-WINDOW EDGES)
   - EDGES: Tiled edge bitmask flags (e.g. RIVER_WINDOW_V1_EDGES_TOP)."
   (when proxy-window  
 	(when *log-river-calls*
-	  (log-debug "setting tiled state for window: ~a" proxy-window))
+	  (log-debug "Setting tiled state for window: ~a" proxy-window))
 	(river-window-v1-set-tiled proxy-window edges)))
 
 (define (wm-window-decoration-above-get proxy-window proxy-surface)
@@ -225,7 +225,7 @@ Parameters: (PROXY-WINDOW PROXY-SURFACE)
   - PROXY-SURFACE: Pointer to unmapped wl_surface proxy."
   (when proxy-window  
 	(when *log-river-calls*
-	  (log-debug "creating decoration surface ~a above window: ~a" proxy-surface proxy-window))
+	  (log-debug "Creating decoration surface ~a above window: ~a" proxy-surface proxy-window))
     (river-window-v1-get-decoration-above proxy-window proxy-surface)))
 
 (define (wm-window-decoration-below-get proxy-window proxy-surface)
@@ -236,7 +236,7 @@ Parameters: (PROXY-WINDOW PROXY-SURFACE)
   - PROXY-SURFACE: Pointer to unmapped wl_surface proxy."
   (when proxy-window  
 	(when *log-river-calls*
-	  (log-debug "creating decoration surface ~a below window: ~a" proxy-surface proxy-window))
+	  (log-debug "Creating decoration surface ~a below window: ~a" proxy-surface proxy-window))
     (river-window-v1-get-decoration-below proxy-window proxy-surface)))
 
 (define (wm-window-resize-started-inform proxy-window)
@@ -246,7 +246,7 @@ Parameters: (PROXY-WINDOW)
   - PROXY-WINDOW: Pointer to river_window_v1 proxy."
   (when proxy-window  
 	(when *log-river-calls*
-	  (log-debug "resizing window ~a started" proxy-window))
+	  (log-debug "Resizing window ~a started" proxy-window))
 	(river-window-v1-inform-resize-start proxy-window)))
 
 (define (wm-window-resize-ended-inform proxy-window)
@@ -256,7 +256,7 @@ Parameters: (PROXY-WINDOW)
   - PROXY-WINDOW: Pointer to river_window_v1 proxy."
   (when proxy-window  
 	(when *log-river-calls*
-	  (log-debug "resizing window ~a ended" proxy-window))
+	  (log-debug "Resizing window ~a ended" proxy-window))
 	(river-window-v1-inform-resize-end proxy-window)))
 
 (define (wm-window-capabilities-inform proxy-window caps)
@@ -267,7 +267,7 @@ Parameters: (PROXY-WINDOW CAPS)
   - CAPS: Capabilities bitmask flags (e.g. RIVER_WINDOW_V1_CAPABILITIES_MAXIMIZE)."
   (when proxy-window  
     (when *log-river-calls*
-	  (log-debug "set capabilities of window ~a to ~a" proxy-window caps))
+	  (log-debug "Set capabilities of window ~a to ~a" proxy-window caps))
     (river-window-v1-set-capabilities proxy-window caps)))
 
 (define (wm-window-maximized-inform proxy-window)

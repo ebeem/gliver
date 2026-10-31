@@ -43,7 +43,7 @@
 Parameters: (OUTPUT [#:focus #t])
   - OUTPUT: <output> record to register.
   - FOCUS: Boolean that indicates whether to focus OUTPUT if allowed (default #t)."
-  (log-info "adding output ~a" output)
+  (log-info "Adding output ~a" output)
   ;; each output must at least have one workspace in `output-workspaces`
   ;; if it doesn't have any workspaces, one will be created and focused automatically
   (when (null? (output-workspaces output))
@@ -191,7 +191,7 @@ Parameters: (DATA PROXY-OUTPUT OBJECT-ID)
   (log-debug "Output wl_output object-id: ~a = ~a" proxy-output object-id)
   (let ((output (output-find-by-proxy proxy-output)))
     (when output
-	  (log-debug "setting output ~a object-id to ~a" output object-id)
+	  (log-debug "Setting output ~a object-id to ~a" output object-id)
 	  (%output-wl-output-set! output object-id)
 	  (when (number? object-id)
 		;; NOTE: no need to ensure the previous wl-output is cleaned

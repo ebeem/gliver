@@ -60,13 +60,13 @@
 Parameters: (WORKSPACE [#:focus #t])
   - WORKSPACE: <workspace> record to register.
   - FOCUS: Boolean, whether to focus WORKSPACE if allowed (default #t)."
-  (log-info "adding workspace ~a" workspace)
+  (log-info "Adding workspace ~a" workspace)
   (let* ((output (workspace-output workspace))
 		 (output-focused-workspace (output-workspace-current output)))
 	;; each workspace must at least have one container in `workspace-containers`
 	;; if it doesn't have any workspaces, one will be created and focused automatically
 	(when (null? (workspace-containers workspace))
-	  (log-debug "adding empty container to workspace")
+	  (log-debug "Adding empty container to workspace")
 	  (let* ((container
 			  (make-container #:workspace workspace
 							  #:x (output-usable-x output)
@@ -202,7 +202,7 @@ Parameters: (WORKSPACE [#:focus-child #t] [#:focus-parent #t])
   - WORKSPACE: <workspace> record to focus.
   - FOCUS-CHILD: Boolean, whether to focus active container within WORKSPACE (default #t).
   - FOCUS-PARENT: Boolean, whether to ensure output is focused (default #t)."
-  (log-debug "focusing workspace ~a, is focused? = ~a" workspace
+  (log-debug "Focusing workspace ~a, is focused? = ~a" workspace
 			 (workspace-focused? workspace))
   (unless (workspace-focused? workspace)
 	(let* ((containers (workspace-containers workspace))

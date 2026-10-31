@@ -220,7 +220,7 @@ Parameters: (CONTAINER [#:focus #t])
   - CONTAINER: <container> record to register.
   - FOCUS: Boolean, whether to focus CONTAINER (default #t)."
   (and-let* ((workspace (container-workspace container)))
-	(log-debug "adding container ~a to " container)
+	(log-debug "Adding container ~a to " container)
 	;; add the container to the back referenced workspace containers
 	(%workspace-containers-set! workspace
 								(append (workspace-containers workspace) (list container)))
@@ -309,7 +309,7 @@ Parameters: (CONTAINER [#:focus-child #t] [#:focus-parent #t])
   - FOCUS-CHILD: Boolean, whether to focus the active child window (default #t).
   - FOCUS-PARENT: Boolean, whether to focus the parent workspace (default #t)."
   (when (and container (container? container))
-    (log-debug "focusing container ~a, is focused? = ~a" container
+    (log-debug "Focusing container ~a, is focused? = ~a" container
 			   (container-focused? container))
 	(let* ((windows (container-windows container))
 		   (window (or (container-window-current container)

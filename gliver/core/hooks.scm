@@ -150,7 +150,7 @@
 			%keybinding-released-hook
 			%keybinding-repeat-stopped-hook
 			%keybinding-eaten-hook
-			*submap-change-hook**
+			*submap-change-hook*
 			*command-pre-hook*
 			*command-post-hook*
 			*startup-hook*
@@ -1103,7 +1103,7 @@ Parameters: (PROXY-BINDING)
 Parameters: (PROXY-SEAT)
   - PROXY-SEAT: Pointer to river_xkb_bindings_seat_v1 proxy.")
 
-(define-var *submap-change-hook**
+(define-var *submap-change-hook*
   (make-gliver-hook 'keymap-change 1)
   "Invoked when active submap changes.
 Parameters: (TARGET-MODE)

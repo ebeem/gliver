@@ -149,7 +149,7 @@ Returns previous <window> record, or #f if not found."
   "Register WINDOW in Gliver's manager hierarchy.
 Parameters: (WINDOW)
   - WINDOW: <window> record to register."
-  (log-info "adding window ~a" window)
+  (log-info "Adding window ~a" window)
   (let* ((proxy-window (window-wl-proxy window))
 		 (container (or (window-container window)
 						(container-current)))
@@ -228,12 +228,12 @@ Parameters: (WINDOW [#:focus #t])
 		(cond
 		 ;; if we have a target window, focus it
 		 (window-target
-		  (log-debug "current window deleted, focusing next window in same container: ~a" window-target)
+		  (log-debug "Current window deleted, focusing next window in same container: ~a" window-target)
 		  (when focus
 			(window-focus! window-target)))
 		 ;; in manual layout, keep container focused as it won't be removed
 		 ((workspace-manual? workspace)
-		  (log-debug "all windows removed from container ~a in manual layout, keeping container focused"
+		  (log-debug "All windows removed from container ~a in manual layout, keeping container focused"
 					 (container-id container)))
 		 ;; in automatic layout, focus next container's window if available
 		 (else
@@ -310,11 +310,11 @@ Parameters: (WINDOW CONTAINER [#:focus #t])
   - CONTAINER: Target <container> record.
   - FOCUS: Boolean, whether to focus WINDOW in the new container (default #t)."
   (let ((container-current (window-container window)))
-	(log-debug "moving window ~a to container ~a with focus=~a" window container focus)
+	(log-debug "Moving window ~a to container ~a with focus=~a" window container focus)
 	;; moves the window to the new container
 	(unless (eq? container-current container)
 	  (%window-container-add! window container #:focus focus))
-	(log-debug "set window=~a geometry to ~ax~a+~a+~a"
+	(log-debug "Set window=~a geometry to ~ax~a+~a+~a"
 			   window
 			   (container-usable-width container)
 			   (container-usable-height container)
@@ -746,7 +746,7 @@ Parameters: (WINDOW)
 Parameters: (WINDOW)
   - WINDOW: <window> record."
   ;; colorize the window border with inactive window border color
-  (log-debug "unfocusing window ~a" window)
+  (log-debug "Unfocusing window ~a" window)
   (window-borders-set! window *window-default-border-edges*
 					   *window-border-width*
 					   *window-border-color-unfocused*))
@@ -859,7 +859,7 @@ Parameters: (PROXY-WINDOW HINT)
 Parameters: (SEAT WINDOW)
   - SEAT: <seat> record.
   - WINDOW: <window> record being focused."
-  (log-debug "window seat has focused ~a" window)
+  (log-debug "Window seat has focused ~a" window)
   (if (and window (window? window) (not (window-destroyed? window)))
 	  ;; just try to focus window, window-check! already has guard checks
 	  (window-focus! window #:seat (or seat (seat-current)))

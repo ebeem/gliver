@@ -32,7 +32,7 @@ Parameters: (PROXY-SHELL-SURFACE)
   - PROXY-SHELL-SURFACE: Pointer to river_shell_surface_v1 proxy."
   (when (valid-pointer? proxy-shell-surface)
     (when *log-river-calls*
-	  (log-debug "destroying shell-surface proxy: ~a" proxy-shell-surface))
+	  (log-debug "Destroying shell-surface proxy: ~a" proxy-shell-surface))
     (river-shell-surface-v1-destroy proxy-shell-surface)))
 
 (define (wm-shell-surface-node-get! proxy-shell-surface)
@@ -42,7 +42,7 @@ Parameters: (PROXY-SHELL-SURFACE)
 Returns: river_node_v1 proxy pointer."
   (when (valid-pointer? proxy-shell-surface)
     (when *log-river-calls*
-	  (log-debug "getting node of shell-surface ~a" proxy-shell-surface))
+	  (log-debug "Getting node of shell-surface ~a" proxy-shell-surface))
     (river-shell-surface-v1-get-node proxy-shell-surface)))
 
 (define (wm-shell-surface-sync-next-commit! proxy-shell-surface)
@@ -53,5 +53,5 @@ Parameters: (PROXY-SHELL-SURFACE)
   - PROXY-SHELL-SURFACE: Pointer to river_shell_surface_v1 proxy."
   (when (valid-pointer? proxy-shell-surface)
     (when *log-river-calls*
-	  (log-debug "syncing shell-surface ~a" proxy-shell-surface))
+	  (log-debug "Syncing shell-surface ~a" proxy-shell-surface))
     (river-shell-surface-v1-sync-next-commit proxy-shell-surface)))

@@ -63,7 +63,7 @@ Parameters: (DATA REGISTRY OBJECT-ID PROTOCOL-PTR VERSION)
   - VERSION: Maximum interface version supported by compositor."
   (let ((protocol-name (pointer->string protocol-ptr)))
     ;; any interface should start binding with this hook
-    (log-debug "binding ~a..." protocol-name)
+    (log-debug "Binding ~a..." protocol-name)
     (gliver-hook-run! *gliver-globals-bind-hook*
                       registry protocol-name object-id version)))
 

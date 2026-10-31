@@ -286,7 +286,7 @@ Parameters: (DATA PROXY-CONFIG)
   - DATA: User context pointer (unused, null in Gliver).
   - PROXY-CONFIG: Pointer to river_xkb_config_v1 proxy."
   (when *log-river-calls*
-	(log-debug "river_xkb_config_v1 ~a finished" proxy-config))
+	(log-debug "River_xkb_config_v1 ~a finished" proxy-config))
   (gliver-hook-run! %xkb-config-destroyed-hook data proxy-config)
   (xkb-config-destroy proxy-config))
 
@@ -434,7 +434,7 @@ Parameters: (DATA PROXY-KEYBOARD)
   - DATA: User context pointer (unused, null in Gliver).
   - PROXY-KEYBOARD: Pointer to river_xkb_keyboard_v1 proxy."
   (when *log-river-calls*
-	(log-debug "xkb keyboard removed: ~a" proxy-keyboard))
+	(log-debug "Xkb keyboard removed: ~a" proxy-keyboard))
   (gliver-hook-run! %xkb-config-keyboard-removed data proxy-keyboard)
   (xkb-keyboard-destroy proxy-keyboard))
 
@@ -446,7 +446,7 @@ Parameters: (DATA PROXY-KEYBOARD PROXY-DEVICE)
   - PROXY-KEYBOARD: Pointer to river_xkb_keyboard_v1 proxy.
   - PROXY-DEVICE: Pointer to river_input_device_v1 proxy."
   (when *log-river-calls*
-	(log-debug "xkb keyboard ~a associated with input device ~a"
+	(log-debug "Xkb keyboard ~a associated with input device ~a"
 			   proxy-keyboard proxy-device))
   (gliver-hook-run! %xkb-keyboard-input-device-hook
 					data proxy-keyboard proxy-device))
@@ -462,7 +462,7 @@ Parameters: (DATA PROXY-KEYBOARD INDEX NAME-PTR)
 				  (pointer->string name-ptr)
 				  #f)))
 	(when *log-river-calls*
-	  (log-debug "xkb keyboard ~a layout changed: index=~a name=~a"
+	  (log-debug "Xkb keyboard ~a layout changed: index=~a name=~a"
 				 proxy-keyboard index name))
 	(gliver-hook-run! %xkb-keyboard-layout-changed-hook
 					  data proxy-keyboard index name)))
@@ -473,7 +473,7 @@ Parameters: (DATA PROXY-KEYBOARD)
   - DATA: User context pointer (unused, null in Gliver).
   - PROXY-KEYBOARD: Pointer to river_xkb_keyboard_v1 proxy."
   (when *log-river-calls*
-	(log-debug "xkb keyboard ~a capslock enabled" proxy-keyboard))
+	(log-debug "Xkb keyboard ~a capslock enabled" proxy-keyboard))
   (gliver-hook-run! %xkb-keyboard-capslock-enabled-hook
 					data proxy-keyboard))
 
@@ -483,7 +483,7 @@ Parameters: (DATA PROXY-KEYBOARD)
   - DATA: User context pointer (unused, null in Gliver).
   - PROXY-KEYBOARD: Pointer to river_xkb_keyboard_v1 proxy."
   (when *log-river-calls*
-	(log-debug "xkb keyboard ~a capslock disabled" proxy-keyboard))
+	(log-debug "Xkb keyboard ~a capslock disabled" proxy-keyboard))
   (gliver-hook-run! %xkb-keyboard-capslock-disabled-hook
 					data proxy-keyboard))
 
@@ -493,7 +493,7 @@ Parameters: (DATA PROXY-KEYBOARD)
   - DATA: User context pointer (unused, null in Gliver).
   - PROXY-KEYBOARD: Pointer to river_xkb_keyboard_v1 proxy."
   (when *log-river-calls*
-	(log-debug "xkb keyboard ~a numlock enabled" proxy-keyboard))
+	(log-debug "Xkb keyboard ~a numlock enabled" proxy-keyboard))
   (gliver-hook-run! %xkb-keyboard-numlock-enabled-hook
 					data proxy-keyboard))
 
@@ -503,7 +503,7 @@ Parameters: (DATA PROXY-KEYBOARD)
   - DATA: User context pointer (unused, null in Gliver).
   - PROXY-KEYBOARD: Pointer to river_xkb_keyboard_v1 proxy."
   (when *log-river-calls*
-	(log-debug "xkb keyboard ~a numlock disabled" proxy-keyboard))
+	(log-debug "Xkb keyboard ~a numlock disabled" proxy-keyboard))
   (gliver-hook-run! %xkb-keyboard-numlock-disabled-hook
 					data proxy-keyboard))
 
