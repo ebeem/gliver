@@ -10,27 +10,20 @@
 ;;;  - Executing main Gliver/River event loop
 ;;;
 ;;; This module implements the Wayland protocols
-;;;  - zwlr_layer_shell_v1
 ;;;  - wl_compositor
 ;;;  - wl_shm
-;;;
-;;; TODO: move zwlr_layer_shell_v1 away from connector
-;;; it should have its own module or be part of another one
-;;; that's more related to it
 
 (define-module (gliver river connector)
   #:use-module (system foreign)
   #:use-module (gliver core-base)
   #:use-module (gliver wayland client)
   #:use-module (gliver wayland gen wayland)
-  #:use-module (gliver wayland gen wlr-layer-shell-unstable-v1)
   #:declarative? #f
   #:export (
 			*wl-display*
 			*wl-registry*
 			*wl-compositor*
 			*wl-shm*
-			*zwlr-layer-shell*
 			*river-connected?*
 			river-on-registry-global
 			river-on-registry-global-remove
@@ -55,8 +48,6 @@
 			"Proxy for wl_compositor, used to create Wayland surfaces and regions.")
 (define-var *wl-shm* %null-pointer
 			"Proxy for wl_shm, used to allocate pixel buffers.")
-(define-var *zwlr-layer-shell* %null-pointer
-			"Proxy for zwlr_layer_shell_v1, used for UI roles and layers.")
 (define-var *river-connected?* #f
 			"Flag indicating whether Gliver is currently connected to the Wayland display.")
 
@@ -149,10 +140,6 @@ Parameters: None."
   (when *river-connected?*
     (log-info "Disconnecting from Wayland display...")
     (gliver-hook-run! *gliver-globals-unbind-hook*)
-    ;; destroy zwlr layer shell
-    (when (valid-pointer? *zwlr-layer-shell*)
-      (zwlr-layer-shell-v1-destroy *zwlr-layer-shell*)
-      (set! *zwlr-layer-shell* %null-pointer))
     ;; note: wl_compositor and wl_shm have no destroy request,
     ;; they are cleaned up when the display disconnects
 
@@ -218,7 +205,7 @@ Parameters: None."
   (log-info "Main event loop exited."))
 
 (define (river-on-globals-bind registry protocol-name object-id version)
-  "Bind Wayland compositor, shm, and layer-shell globals from REGISTRY.
+  "Bind Wayland compositor and shm globals from REGISTRY.
 Parameters: (REGISTRY PROTOCOL-NAME OBJECT-ID VERSION)
   - REGISTRY: Pointer to wl_registry proxy.
   - PROTOCOL-NAME: Interface name string.
@@ -239,22 +226,13 @@ Parameters: (REGISTRY PROTOCOL-NAME OBJECT-ID VERSION)
     (set! *wl-shm*
           (gliver-wl-registry-bind registry object-id
                                    *wl-shm-interface*
-                                   (min version 1))))
-
-   ;; binding *zwlr-layer-shell*
-   ((string=? protocol-name ZWLR_LAYER_SHELL_V1_NAME)
-    (log-info "Binding ~a..." protocol-name)
-    (set! *zwlr-layer-shell*
-          (gliver-wl-registry-bind registry object-id
-                                   *zwlr-layer-shell-v1-interface*
-                                   (min version 4))))))
+                                   (min version 1))))))
 
 (define (river-on-globals-unbind)
   "Reset connector global Wayland proxies on compositor disconnect.
 Parameters: None."
   (set! *wl-compositor* %null-pointer)
-  (set! *wl-shm* %null-pointer)
-  (set! *zwlr-layer-shell* %null-pointer))
+  (set! *wl-shm* %null-pointer))
 
 (define (river-on-globals-verify)
   "Verify availability of connector globals and raise error if mandatory interfaces are missing.
@@ -263,10 +241,7 @@ Parameters: None."
 			   (valid-pointer? *wl-registry*)
 			   (valid-pointer? *wl-compositor*))
     (log-error "Wayland display, registry, or compositor wasn't found")
-	(error "Wayland display, registry, or compositor wasn't found"))
-
-  (unless (valid-pointer? *zwlr-layer-shell*)
-    (log-warn "zwlr_layer_shell_v1 not available, layer shell features may be disabled")))
+	(error "Wayland display, registry, or compositor wasn't found")))
 
 (gliver-hook-add! *gliver-globals-bind-hook* 'river-on-globals-bind)
 (gliver-hook-add! *gliver-globals-unbind-hook* 'river-on-globals-unbind)
