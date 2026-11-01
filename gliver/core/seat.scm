@@ -187,11 +187,11 @@ Parameters: (DATA PROXY-SEAT OBJECT-ID)
   - DATA: User context pointer (unused, null in Gliver).
   - PROXY-SEAT: Pointer to river_seat_v1 proxy.
   - OBJECT-ID: Numeric Wayland object ID of the wl_seat global."
-  (and-let* ((seat (seat-find-by-proxy proxy-seat))
-			 (prev-object-id (seat-wl-seat seat)))
-	(%seat-wl-seat-set! seat object-id)
-	(log-debug "Seat ~a object-id updated to ~a" seat object-id)
-	(gliver-hook-run! *seat-object-id-changed-hook* seat prev-object-id)))
+  (and-let* ((seat (seat-find-by-proxy proxy-seat)))
+    (let ((prev-object-id (seat-wl-seat seat)))
+      (%seat-wl-seat-set! seat object-id)
+      (log-debug "Seat ~a object-id updated to ~a" seat object-id)
+      (gliver-hook-run! *seat-object-id-changed-hook* seat prev-object-id))))
 
 (define (seat-on-pointer-enter data proxy-seat proxy-window)
   "Invoked when a seat pointer enters a window area.
