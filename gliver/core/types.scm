@@ -52,7 +52,6 @@
 			manager-outputs
 			manager-state?
 			%make-manager-state
-			manager-print-tree
 			*manager*
 			*window-number-next*
 			*container-id-next*
@@ -115,7 +114,6 @@
 			output-find-by-name
 			output-find-by-id
 			output-wallpaper-set!
-			output-effective-wallpaper
 			output-statusbar-set!
 			output-current
 			%seat-metadata-set!
@@ -281,6 +279,7 @@
 			window-current
 			window-workspace
 			window-output
+			manager-print-tree
 ))
 
 ;;; command record & registry
@@ -412,33 +411,6 @@ Returns procedure result or #f if command is unknown or fails."
   (windows                manager-windows                %manager-windows-set!)
   (wl-proxy               manager-wl-proxy               %manager-wl-proxy-set!))
 
-
-(define* (manager-print-tree #:optional (manager *manager*))
-  "Return the MANAGER state tree in a hierarchical formatted string.
-Parameters: ([MANAGER])
-  - MANAGER: <manager-state> record (default *manager*).
-Returns formatted string hierarchy of the manager state tree."
-  (with-output-to-string
-    (lambda ()
-      (define (print-branch prefix item)
-        (format #t "~a▸ ~a~%" prefix item))
-      (print-branch "" manager)
-      (for-each
-       (lambda (output)
-         (print-branch "  └─" output)
-         (for-each
-          (lambda (workspace)
-            (print-branch "    └─" workspace)
-            (for-each
-             (lambda (container)
-               (print-branch "      └─" container)
-               (for-each
-                (lambda (window)
-                  (print-branch "        └─" window))
-                (container-windows container)))
-             (workspace-containers workspace)))
-          (output-workspaces output)))
-       (manager-outputs manager)))))
 
 ;; singleton global window manager state
 (define-var *manager*
@@ -638,18 +610,6 @@ Parameters: (OUTPUT WALLPAPER)
   - WALLPAPER: Path string or hex color."
   (%output-wallpaper-set! output wallpaper)
   (gliver-hook-run! *output-wallpaper-changed-hook* output wallpaper))
-
-(define (output-effective-wallpaper output)
-  "Resolve the effective wallpaper path or color for OUTPUT.
-Priority: workspace -> output -> global *wallpaper* -> #f.
-Parameters: (OUTPUT)
-  - OUTPUT: Target <output> record.
-Returns effective wallpaper path or color for OUTPUT, or #f."
-  (let* ((ws (output-workspace-current output))
-         (ws-wp (and ws (workspace-wallpaper ws)))
-         (out-wp (output-wallpaper output))
-         (global-wp (var-get '*wallpaper*)))
-    (or ws-wp out-wp global-wp #f)))
 
 (define (output-statusbar-set! output statusbar)
   "Set the statusbar for OUTPUT.
@@ -1078,3 +1038,29 @@ Returns parent <output> of WINDOW, or #f."
            (window-y window)
            (if (window-container window) (container-id (window-container window)) #f))))
 
+(define* (manager-print-tree #:optional (manager *manager*))
+  "Return the MANAGER state tree in a hierarchical formatted string.
+Parameters: ([MANAGER])
+  - MANAGER: <manager-state> record (default *manager*).
+Returns formatted string hierarchy of the manager state tree."
+  (with-output-to-string
+    (lambda ()
+      (define (print-branch prefix item)
+        (format #t "~a▸ ~a~%" prefix item))
+      (print-branch "" manager)
+      (for-each
+       (lambda (output)
+         (print-branch "  └─" output)
+         (for-each
+          (lambda (workspace)
+            (print-branch "    └─" workspace)
+            (for-each
+             (lambda (container)
+               (print-branch "      └─" container)
+               (for-each
+                (lambda (window)
+                  (print-branch "        └─" window))
+                (container-windows container)))
+             (workspace-containers workspace)))
+          (output-workspaces output)))
+       (manager-outputs manager)))))
