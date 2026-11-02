@@ -32,7 +32,7 @@ BACKEND defaults to the globally configured `*toast-backend*`."
   (let ((toast (or backend *toast-backend*)))
     (if (procedure? toast)
         (toast message #:timeout timeout #:name name #:icon icon #:theme-overrides theme-overrides #:output output)
-        (log-debug "toast: No toast backend configured for toast-show"))))
+        (log-debug "No toast backend configured for toast-show"))))
 
 (define* (toast-make-span text #:key color weight)
   "Creates a text span with formatting attributes."

@@ -16,20 +16,22 @@
 ;;; prefix mode commands
 (define-command (prefix-activated)
   "Handle prefix key activation."
-  (var-set! *mode* '*root-map*)
+  (keybindings-switch-to-mode! '*root-map*)
   (log-debug "Prefix mode activated."))
 
 (define-command (prefix-abort)
   "Abort prefix mode."
-  (var-set! *mode* 'normal)
+  (keybindings-switch-to-mode! 'normal)
   (log-debug "Aborted."))
 
 (define-command (enter-submap name)
   #:interactive (symbol)
   "Enter a sub-keymap by symbol."
-  (log-debug "Entering submap: ~a" name))
+  (let ((mode (if (gliver-keymap? name) (gliver-keymap-name name) name)))
+    (keybindings-switch-to-mode! mode)
+    (log-debug "Entering submap: ~a" mode)))
 
 (define-command (keybindings-clear!)
   "Clear all keybindings from all standard and registered keymaps."
   (for-each gliver-keymap-clear! (registered-keymaps))
-  (gliver-hook-run! *keybinding-sync-request-hook*))
+  (keybindings-sync!))

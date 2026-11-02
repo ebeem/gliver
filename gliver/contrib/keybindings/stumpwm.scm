@@ -88,4 +88,4 @@
 
   ;; prefix
   (define-key *top-map* "C-t" '(enter-submap *root-map*))
-  (gliver-hook-run! *keybinding-sync-request-hook*))
+  (keybindings-sync!))

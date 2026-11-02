@@ -253,18 +253,18 @@ Results are cached and only refreshed if forced or if older than *desktop-apps-c
 (define-command (gleui-launcher-rescan-applications!)
   "Refresh desktop applications cache."
   (desktop-applications-scan #:force-rescan? #t)
-  (log-info "gleui-launcher: Desktop applications refreshed."))
+  (log-info "Desktop applications refreshed."))
 
 (define (gleui-launcher-launch-command cmd)
   "Spawn CMD as a detached background process."
   (when (and (string? cmd) (not (string-null? (string-trim-both cmd))))
     (let ((trimmed (string-trim-both cmd)))
-      (log-info "gleui-launcher: Launching ~a" trimmed)
+      (log-info "Launching ~a" trimmed)
       (catch #t
         (lambda ()
           (system (string-append trimmed " >/dev/null 2>&1 &")))
         (lambda (key . args)
-          (log-error "gleui-launcher: Error executing ~a: ~a ~a" trimmed key args))))))
+          (log-error "Error executing ~a: ~a ~a" trimmed key args))))))
 
 (define* (gleui-launcher-show #:key (theme-overrides '()) (command #f))
   "Show the application launcher prompt and launch the selected application."
@@ -296,4 +296,4 @@ Results are cached and only refreshed if forced or if older than *desktop-apps-c
   "Install gleui-launcher as the application launcher backend."
   (set! *launcher-backend* gleui-launcher-show)
   (set! *launcher-backend-kill* gleui-palette-kill)
-  (log-info "gleui-launcher installed as application launcher."))
+  (log-info "Installed as application launcher."))

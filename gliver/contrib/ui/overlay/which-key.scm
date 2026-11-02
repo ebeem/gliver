@@ -193,21 +193,21 @@
                         #:name *which-key-identifier-name*
                         #:theme-overrides (%which-key-theme-overrides)))
           (begin
-            (log-debug "which-key: no keymap found for mode ~a"
+            (log-debug "No keymap found for mode ~a"
                        mode-name)
             (toast-kill #:name *which-key-identifier-name*)))))))
 
 (define (which-key-enable!)
   "Enable which-key: show available keys when entering submaps."
   (unless *%which-key-enabled*
-    (gliver-hook-add! *keymap-change-hook* 'which-key-on-keymap-change)
+    (gliver-hook-add! *submap-change-hook* 'which-key-on-keymap-change)
     (set! *%which-key-enabled* #t)
-    (log-info "which-key enabled.")))
+    (log-info "Which key enabled.")))
 
 (define (which-key-disable!)
   "Disable which-key."
   (when *%which-key-enabled*
-    (gliver-hook-remove! *keymap-change-hook* 'which-key-on-keymap-change)
+    (gliver-hook-remove! *submap-change-hook* 'which-key-on-keymap-change)
     (toast-kill #:name *which-key-identifier-name*)
     (set! *%which-key-enabled* #f)
-    (log-info "which-key disabled.")))
+    (log-info "Which key disabled.")))

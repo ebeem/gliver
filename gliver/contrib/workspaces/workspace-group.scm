@@ -163,4 +163,4 @@ otherwise, *workspace-groups* will be configured by index."
     (gliver-hook-remove! *workspace-switch-hook* 'workspace-group-on-workspace-switch)
     (set! *workspace-group-enabled* #f)
 	(workspace-group-clear!)
-	(log-info "workspace-group disabled.")))
+	(log-info "Workspace groups disabled.")))

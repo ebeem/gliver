@@ -46,7 +46,7 @@ current workspace."
 Reduces the current container's height by half and creates a new
 container below it.  Only works when layout-type is manual."
   (if (not (layout-type-manual?))
-	  (log-debug "container-split-horizontal: layout-type is not manual")
+	  (log-debug "Layout-type is not manual")
 	  (let ((container (container-current)))
 		(when container
 		  (let* ((workspace (container-workspace container))
@@ -73,7 +73,7 @@ container below it.  Only works when layout-type is manual."
 			;; position and size must be set before focusing
 			(container-position-set! new-container old-x bot-y)
 			(container-size-set! new-container old-w bot-h)
-			(when *wm-behavior-focus-new-container*
+			(when *container-focus-new?*
 			  (container-focus! new-container))
 			(gliver-hook-run! *container-split-hook* container new-container)
 			(log-debug "Split horizontal."))))))
@@ -83,7 +83,7 @@ container below it.  Only works when layout-type is manual."
 Reduces the current container's width by half and creates a new
 container to the right.  Only works when layout-type is manual."
   (if (not (layout-type-manual?))
-	  (log-debug "container-split-vertical: layout-type is not manual")
+	  (log-debug "Layout-type is not manual")
 	  (let ((container (container-current)))
 		(when container
 		  (let* ((workspace (container-workspace container))
@@ -110,7 +110,7 @@ container to the right.  Only works when layout-type is manual."
 			;; position and size must be set before focusing
 			(container-position-set! new-container right-x old-y)
 			(container-size-set! new-container right-w old-h)
-			(when *wm-behavior-focus-new-container*
+			(when *container-focus-new?*
 			  (container-focus! new-container))
 			(gliver-hook-run! *container-split-hook* container new-container)
 			(log-debug "Split vertical."))))))
@@ -120,15 +120,15 @@ container to the right.  Only works when layout-type is manual."
 Only works when layout-type is manual and there is more than one
 container."
   (if (not (layout-type-manual?))
-	  (log-debug "container-destroy: layout-type is not manual")
+	  (log-debug "Layout-type  manual")
 	  (let* ((container (container-current))
 			 (workspace (and container (container-workspace container)))
 			 (containers (and workspace (workspace-containers workspace))))
 		(cond
 		 ((not container)
-		  (log-debug "container-destroy: no current container"))
+		  (log-debug "No current container"))
 		 ((<= (length containers) 1)
-		  (log-debug "container-destroy: cannot remove the last container"))
+		  (log-debug "Cannot remove the last container"))
 		 (else
 		  (container-remove! container)
 		  (log-debug "Container removed."))))))
@@ -138,7 +138,7 @@ container."
 windows.  The remaining container is resized to fill the output.
 Only works when layout-type is manual."
   (if (not (layout-type-manual?))
-	  (log-debug "container-destroy-others: layout-type is not manual")
+	  (log-debug "Layout-type is not manual")
 	  (let* ((container (container-current))
 			 (workspace (and container (container-workspace container))))
 		(when (and container workspace)

@@ -111,6 +111,7 @@
 (define (%open-mpd-socket host port)
   "Open a stream socket to MPD via TCP."
   (let ((sock (socket AF_INET SOCK_STREAM 0)))
+    (fcntl sock F_SETFD FD_CLOEXEC)
     (connect sock AF_INET (inet-pton AF_INET (if (string=? host "localhost") "127.0.0.1" host)) port)
     sock))
 

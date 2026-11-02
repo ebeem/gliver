@@ -12,6 +12,7 @@
   #:use-module (ice-9 match)
   #:use-module (ice-9 threads)
   #:use-module (ice-9 pretty-print)
+  #:use-module (ice-9 regex)
   #:use-module (srfi srfi-1)
   #:use-module (srfi srfi-2)
   #:use-module (srfi srfi-9)
@@ -25,6 +26,7 @@
   #:use-module (gliver wayland gen wayland)
   #:use-module (gliver wayland gen wlr-layer-shell-unstable-v1)
   #:use-module (gliver river connector)
+  #:use-module (gliver river wlr-layer-shell)
   #:use-module (gliver contrib ui components palette)
   #:use-module (gliver contrib ui gleui base)
   #:declarative? #f
@@ -35,6 +37,10 @@
 			gleui-palette-configured?
 			gleui-palette-candidate-matches?
 			gleui-palette-filter-candidates
+			gleui-palette-extract-text-columns
+			gleui-palette-parse-candidates
+			gleui-palette-score-candidate
+			gleui-palette-score-term
 			gleui-palette-item-formatter
 			gleui-palette-safe-col-string
 			gleui-palette-make-dmenu-options
@@ -70,7 +76,7 @@
                              width height output
                              keyboard keyboard-listener
                              xkb-ctx xkb-keymap xkb-state
-                             candidates display-candidates search-strings
+                             candidates display-candidates search-strings parsed-candidates
                              filtered-indices filter-text cursor-pos
                              selected-index scroll-offset prompt theme-overrides
                              done? result async-callback
@@ -93,6 +99,7 @@
   (candidates          %gps-candidates          %gps-candidates-set!)
   (display-candidates  %gps-display-candidates  %gps-display-candidates-set!)
   (search-strings      %gps-search-strings      %gps-search-strings-set!)
+  (parsed-candidates   %gps-parsed-candidates   %gps-parsed-candidates-set!)
   (filtered-indices    %gps-filtered-indices    %gps-filtered-indices-set!)
   (filter-text         %gps-filter-text         %gps-filter-text-set!)
   (cursor-pos          %gps-cursor-pos          %gps-cursor-pos-set!)
@@ -129,31 +136,7 @@ its initial Wayland configure event from the compositor."
 ;; and split can be cached in `gleui-palette-filter-candidates` to improve performance.
 ;; TODO: think about making a filter backend interface so other file-methods
 ;; can be supplied like `orderless`
-(define (gleui-palette-candidate-matches? query search-text case-sensitive?)
-  "Return #t if SEARCH-TEXT matches tokens in QUERY."
-  (if (or (string-null? query) (string-null? (string-trim-both query)))
-      #t
-      (let* ((q (if case-sensitive? query (string-downcase query)))
-             (t (if case-sensitive? search-text (string-downcase search-text)))
-             (terms (filter (lambda (s) (> (string-length s) 0)) (string-split q #\space))))
-        (every (lambda (term) (string-contains t term)) terms))))
-
-(define (gleui-palette-filter-candidates search-strings query case-sensitive?)
-  "Filter SEARCH-STRINGS against QUERY, returns a list of matching indices."
-  (let loop ((rest search-strings) (idx 0) (acc '()))
-    (if (null? rest)
-        (reverse acc)
-        (let ((matches? (gleui-palette-candidate-matches? query (car rest) case-sensitive?)))
-          (loop (cdr rest) (1+ idx) (if matches? (cons idx acc) acc))))))
-
-(define (gleui-palette-item-formatter item)
-  "Format an item into a tab-delimited or plain string.
-The palette accepts a list such as (app-name app-desc)"
-  (cond
-   ((string? item) item)
-   ((list? item)
-    (string-join (map (lambda (x) (format #f "~a" x)) item) "\t"))
-   (else (format #f "~a" item))))
+(define *col-split-rx* (make-regexp "[ \t]{2,}|\t"))
 
 (define* (gleui-palette-safe-col-string col #:optional (width 80))
   "Safely convert COL to string without unbounded expansion of large objects."
@@ -169,6 +152,239 @@ The palette accepts a list such as (app-name app-desc)"
          (call-with-output-string
            (lambda (p) (truncated-print col p #:width width))))
         "#<object>"))))
+
+(define (gleui-palette-extract-text-columns item)
+  "Extract (col0 . other-cols) from ITEM (string, list, or pair).
+Strips Pango markup and separates primary text column from secondary columns."
+  (cond
+   ((and (pair? item) (not (list? item)))
+    (gleui-palette-extract-text-columns (car item)))
+   ((list? item)
+    (let* ((strs (map (lambda (x)
+                        (string-trim-both
+                         (gleui-pango-markup-strip (gleui-palette-safe-col-string x))))
+                      item))
+           (non-empty (filter (lambda (s) (not (string-null? s))) strs)))
+      (if (null? non-empty)
+          (cons "" "")
+          (cons (car non-empty) (string-join (cdr non-empty) " ")))))
+   ((string? item)
+    (let* ((no-markup (gleui-pango-markup-strip item))
+           (delimited (regexp-substitute/global #f *col-split-rx* no-markup 'pre "\t" 'post))
+           (raw (map string-trim-both (string-split delimited #\tab)))
+           (non-empty (filter (lambda (s) (not (string-null? s))) raw)))
+      (if (null? non-empty)
+          (cons "" "")
+          (cons (car non-empty) (string-join (cdr non-empty) " ")))))
+   (else
+    (cons (string-trim-both (gleui-palette-safe-col-string item)) ""))))
+
+(define (gleui-palette-parse-candidates candidates search-strings)
+  "Pre-parse CANDIDATES and SEARCH-STRINGS into an optimized vector for fast filtering.
+Each entry is a vector #(col0 col0-low other other-low search search-low orig-idx)."
+  (let* ((cands (if (vector? candidates) (vector->list candidates) (or candidates '())))
+         (s-strs (if (vector? search-strings) (vector->list search-strings) (or search-strings '())))
+         (num (length cands))
+         (vec (make-vector num #f)))
+    (let loop ((rest-c cands)
+               (rest-s s-strs)
+               (idx 0))
+      (when (< idx num)
+        (let* ((cand (and (pair? rest-c) (car rest-c)))
+               (s-str (and (pair? rest-s) (car rest-s)))
+               (cols (gleui-palette-extract-text-columns cand))
+               (col0 (car cols))
+               (other (cdr cols))
+               (search (or (and (string? s-str) s-str)
+                           (if (and (string-null? col0) (string-null? other))
+                               ""
+                               (string-append col0 " " other)))))
+          (vector-set! vec idx
+                       (vector col0 (string-downcase col0)
+                               other (string-downcase other)
+                               search (string-downcase search)
+                               idx))
+          (loop (if (pair? rest-c) (cdr rest-c) '())
+                (if (pair? rest-s) (cdr rest-s) '())
+                (1+ idx)))))
+    vec))
+
+(define (gleui-palette-parse-search-strings search-strings)
+  "Pre-parse SEARCH-STRINGS into an optimized vector when candidates list is not available."
+  (let* ((strs (if (vector? search-strings) (vector->list search-strings) (or search-strings '())))
+         (num (length strs))
+         (vec (make-vector num #f)))
+    (let loop ((rest strs) (idx 0))
+      (when (< idx num)
+        (let* ((s-str (car rest))
+               (cols (gleui-palette-extract-text-columns s-str))
+               (col0 (car cols))
+               (other (cdr cols))
+               (search (if (string? s-str) s-str (string-append col0 " " other))))
+          (vector-set! vec idx
+                       (vector col0 (string-downcase col0)
+                               other (string-downcase other)
+                               search (string-downcase search)
+                               idx))
+          (loop (cdr rest) (1+ idx)))))
+    vec))
+
+(define (gleui-palette-word-boundary? str pos)
+  "Return #t if POS in STR is at a word start boundary."
+  (or (<= pos 0)
+      (let* ((prev (string-ref str (1- pos)))
+             (curr (if (< pos (string-length str)) (string-ref str pos) #\space)))
+        (or (char-whitespace? prev)
+            (char=? prev #\-)
+            (char=? prev #\_)
+            (char=? prev #\.)
+            (char=? prev #\/)
+            (char=? prev #\:)
+            (char=? prev #\()
+            (char=? prev #\[)
+            (char=? prev #\")
+            (char=? prev #\')
+            (and (char-upper-case? curr) (char-lower-case? prev))))))
+
+(define (gleui-palette-score-term term col0 col0-low other other-low search search-low case-sensitive?)
+  "Score a single QUERY TERM against parsed columns. Returns integer score, or #f if not found.
+First text column matches are weighted heavily over secondary columns or extra search strings."
+  (let* ((c0 (if case-sensitive? col0 col0-low))
+         (ot (if case-sensitive? other other-low))
+         (sr (if case-sensitive? search search-low))
+         (t-len (string-length term))
+         (c0-len (string-length c0))
+         (ot-len (string-length ot)))
+    (cond
+     ;; match in first column (col0) - highest importance
+     ((and (> c0-len 0) (string=? c0 term))
+      ;; Exact match in col0
+      11000)
+     ((and (> c0-len 0) (string-prefix? term c0))
+      ;; prefix match in col0 with length closeness bonus
+      (let ((ratio (/ t-len (max t-len c0-len))))
+        (+ 5000 (inexact->exact (round (* ratio 1000))))))
+     ((and (> c0-len 0) (string-contains c0 term))
+      => (lambda (pos)
+           (if (gleui-palette-word-boundary? col0 pos)
+               ;; word boundary match in col0
+               (+ 3000 (max 0 (- 500 (* 10 pos)))
+                  (inexact->exact (round (* (/ t-len (max t-len c0-len)) 500))))
+               ;; general substring match in col0
+               (+ 1000 (max 0 (- 300 (* 10 pos)))))))
+
+     ;; match in secondary columns (other) - description, generic name, etc.
+     ((and (> ot-len 0) (string=? ot term))
+      500)
+     ((and (> ot-len 0) (string-prefix? term ot))
+      (let ((ratio (/ t-len (max t-len ot-len))))
+        (+ 300 (inexact->exact (round (* ratio 100))))))
+     ((and (> ot-len 0) (string-contains ot term))
+      => (lambda (pos)
+           (if (gleui-palette-word-boundary? other pos)
+               (+ 200 (max 0 (- 50 (* 2 pos))))
+               (+ 100 (max 0 (- 30 (* 2 pos)))))))
+
+     ;; match in search-text only (exec, keywords, icon, etc.)
+     ((and sr (string-contains sr term))
+      => (lambda (pos)
+           (if (and search (gleui-palette-word-boundary? search pos))
+               (+ 50 (max 0 (- 20 pos)))
+               (+ 20 (max 0 (- 10 pos))))))
+
+     ;; not found anywhere in this candidate
+     (else #f))))
+
+(define (gleui-palette-score-candidate query terms col0 col0-low other other-low search search-low case-sensitive?)
+  "Calculate candidate match score against QUERY terms. Returns integer score, or #f if not matching."
+  (let ((c0 (if case-sensitive? col0 col0-low))
+        (ot (if case-sensitive? other other-low))
+        (sr (if case-sensitive? search search-low)))
+    (let loop ((rest terms) (total 0) (all-c0? #t) (all-disp? #t))
+      (if (null? rest)
+          (let* ((c0-len (string-length c0))
+                 (q-len (string-length query))
+                 (full-query-bonus
+                  (cond
+                   ((and (> c0-len 0) (string=? c0 query)) 20000)
+                   ((and (> c0-len 0) (string-prefix? query c0))
+                    (+ 10000 (inexact->exact (round (* (/ q-len (max q-len c0-len)) 2000)))))
+                   ((and (> c0-len 0) (string-contains c0 query))
+                    => (lambda (pos)
+                         (if (gleui-palette-word-boundary? col0 pos) 5000 2000)))
+                   (else 0)))
+                 (cohesion-bonus
+                  (+ (if all-c0? 2000 0)
+                     (if all-disp? 500 0)))
+                 (len-penalty (min 50 (quotient (string-length ot) 20))))
+            (- (+ total full-query-bonus cohesion-bonus) len-penalty))
+          (let ((s (gleui-palette-score-term (car rest) col0 col0-low other other-low search search-low case-sensitive?)))
+            (if (not s)
+                #f
+                (let ((in-c0? (and (> (string-length c0) 0) (string-contains c0 (car rest))))
+                      (in-disp? (or (and (> (string-length c0) 0) (string-contains c0 (car rest)))
+                                    (and (> (string-length ot) 0) (string-contains ot (car rest))))))
+                  (loop (cdr rest) (+ total s) (and all-c0? in-c0?) (and all-disp? in-disp?)))))))))
+
+(define (gleui-palette-candidate-matches? query search-text case-sensitive?)
+  "Return #t if SEARCH-TEXT matches tokens in QUERY."
+  (if (or (string-null? query) (string-null? (string-trim-both query)))
+      #t
+      (let* ((q (if case-sensitive? query (string-downcase query)))
+             (t (if case-sensitive? search-text (string-downcase search-text)))
+             (terms (filter (lambda (s) (> (string-length s) 0)) (string-split q #\space))))
+        (every (lambda (term) (string-contains t term)) terms))))
+
+(define* (gleui-palette-filter-candidates search-strings query case-sensitive?
+                                           #:optional (candidates #f)
+                                           #:key (parsed-candidates #f))
+  "Filter and rank candidates against QUERY, returning matching indices sorted by relevance.
+Matches in the first text column are given higher priority than description or search string matches."
+  (let* ((trimmed-q (if (string? query) (string-trim-both query) ""))
+         (num-cands (cond
+                     ((vector? parsed-candidates) (vector-length parsed-candidates))
+                     ((list? candidates) (length candidates))
+                     ((vector? candidates) (vector-length candidates))
+                     ((list? search-strings) (length search-strings))
+                     ((vector? search-strings) (vector-length search-strings))
+                     (else 0))))
+    (if (or (string-null? trimmed-q) (zero? num-cands))
+        (iota num-cands)
+        (let* ((parsed (or parsed-candidates
+                           (if (and candidates (or (pair? candidates) (vector? candidates)))
+                               (gleui-palette-parse-candidates candidates search-strings)
+                               (gleui-palette-parse-search-strings search-strings))))
+               (q-eff (if case-sensitive? trimmed-q (string-downcase trimmed-q)))
+               (terms (filter (lambda (s) (> (string-length s) 0)) (string-split q-eff #\space)))
+               (vec-len (vector-length parsed)))
+          (if (null? terms)
+              (iota num-cands)
+              (let loop ((idx 0) (acc '()))
+                (if (< idx vec-len)
+                    (let* ((entry (vector-ref parsed idx))
+                           (c0 (vector-ref entry 0))
+                           (c0-low (vector-ref entry 1))
+                           (other (vector-ref entry 2))
+                           (other-low (vector-ref entry 3))
+                           (search (vector-ref entry 4))
+                           (search-low (vector-ref entry 5))
+                           (orig-idx (vector-ref entry 6))
+                           (score (gleui-palette-score-candidate
+                                   q-eff terms c0 c0-low other other-low search search-low case-sensitive?)))
+                      (loop (1+ idx)
+                            (if score (cons (cons score orig-idx) acc) acc)))
+                    (let* ((forward-acc (reverse! acc))
+                           (sorted (stable-sort forward-acc (lambda (a b) (> (car a) (car b))))))
+                      (map cdr sorted)))))))))
+
+(define (gleui-palette-item-formatter item)
+  "Format an item into a tab-delimited or plain string.
+The palette accepts a list such as (app-name app-desc)"
+  (cond
+   ((string? item) item)
+   ((list? item)
+    (string-join (map (lambda (x) (format #f "~a" x)) item) "\t"))
+   (else (format #f "~a" item))))
 
 ;; TODO: searchable parameter is supposed to limit the columns that can be
 ;; searched, it's not implemented yet
@@ -530,14 +746,23 @@ The formatted string is cached in disp-cache to avoid recalculation."
 (define (gleui-palette-refilter! state)
   "Filter candidates against current filter-text and re-render."
   (let* ((search-strs (%gps-search-strings state))
+         (cands (%gps-candidates state))
+         (parsed-cands (%gps-parsed-candidates state))
          (query (%gps-filter-text state))
          (case-sens? *palette-case-sensitive?*)
-         (num-strs (if search-strs (length search-strs) 0)))
+         (num-strs (cond
+                    ((vector? parsed-cands) (vector-length parsed-cands))
+                    ((list? search-strs) (length search-strs))
+                    ((vector? search-strs) (vector-length search-strs))
+                    ((list? cands) (length cands))
+                    ((vector? cands) (vector-length cands))
+                    (else 0))))
 
-    ;; fast synchronous way if search entries are few
+    ;; fast synchronous filtering and ranking
     (let ((filtered (if (or (string-null? query) (string-null? (string-trim-both query)))
                         (iota num-strs)
-                        (gleui-palette-filter-candidates search-strs query case-sens?))))
+                        (gleui-palette-filter-candidates search-strs query case-sens?
+                                                         cands #:parsed-candidates parsed-cands))))
       (%gps-filtered-indices-set! state filtered)
       (%gps-selected-index-set! state 0)
       (%gps-scroll-offset-set! state 0)
@@ -836,11 +1061,11 @@ PATTERN can be a string, a <gliver-key>, or a list of either."
                         (close-fd fd)))
                     ;; on-enter
                     (lambda (data proxy serial surface keys-bv)
-                      (log-debug "gleui-palette: wl_keyboard entered"))
+                      (log-debug "wl_keyboard entered"))
                     ;; on-leave
                     (lambda (data proxy serial surface)
                       (gleui-repeat-worker-stop!)
-                      (log-debug "gleui-palette: wl_keyboard left"))
+                      (log-debug "wl_keyboard left"))
                     ;; on-key
                     (lambda (data proxy serial time key state-flag)
                       (if (zero? state-flag) ;; key released
@@ -913,10 +1138,10 @@ PATTERN can be a string, a <gliver-key>, or a list of either."
                         (%gps-repeat-rate-set! state rate))
                       (when (and (number? delay) (> delay 0))
                         (%gps-repeat-delay-set! state delay))
-                      (log-debug "gleui-palette: repeat info rate=~a delay=~a" rate delay)))))
+                      (log-debug "Repeat info rate=~a delay=~a" rate delay)))))
               (%gps-keyboard-listener-set! state kb-listener)
               (wl-proxy-add-listener keyboard kb-listener %null-pointer)
-              (log-debug "gleui-palette: wl_keyboard attached successfully."))))))))
+              (log-debug "wl_keyboard attached successfully."))))))))
 
 (define (gleui-palette-calc-height state)
   "Calculate total height in pixels for the current candidate list and theme."
@@ -940,11 +1165,10 @@ PATTERN can be a string, a <gliver-key>, or a list of either."
                  (null-pointer? (%gps-surface state))
                  (not (%gps-layer-surface state))
                  (null-pointer? (%gps-layer-surface state)))
-             *connected*
+             *river-connected?*
              (pointer? *wl-compositor*)
              (not (null-pointer? *wl-compositor*))
-             (pointer? *zwlr-layer-shell*)
-             (not (null-pointer? *zwlr-layer-shell*)))
+             (valid-pointer? *wlr-layer-shell*))
     (let* ((w (%gps-width state))
            (h (gleui-palette-calc-height state))
            (anchor (gleui-numpad->anchor (or *palette-location* 8)))
@@ -953,12 +1177,12 @@ PATTERN can be a string, a <gliver-key>, or a list of either."
       (gleui-layer-surface-create
        #:output target-output
        #:namespace "gliver-palette"
-       #:layer ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY
+       #:layer *wlr-layer-shell-layer-overlay*
        #:anchor anchor
        #:margin-top *palette-anchor-margin*
        #:margin-bottom *palette-anchor-margin*
        #:exclusive-zone -1
-       #:keyboard-interactivity ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_EXCLUSIVE
+       #:keyboard-interactivity *wlr-layer-shell-interactivity-exclusive*
        #:width w
        #:height h
        #:on-created (lambda (surf layer-surf)
@@ -967,25 +1191,24 @@ PATTERN can be a string, a <gliver-key>, or a list of either."
                       (%gps-height-set! state h)
                       (%gps-configured?-set! state #f))
        #:on-configure (lambda (cw ch)
-                        (log-debug "gleui-palette: Layer surface configured ~ax~a" cw ch)
+                        (log-debug "Layer surface configured ~ax~a" cw ch)
                         (%gps-configured?-set! state #t)
                         (when (%gps-visible? state)
                           (gleui-palette-render! state)))
        #:on-close (lambda ()
-                    (log-info "gleui-palette: Layer surface closed")
+                    (log-info "Layer surface closed")
                     (gleui-palette-hide! state))))))
 
 (define (gleui-palette-init!)
   "Initialize the cached palette view state and keyboard listener."
-  (unless (or (not *connected*)
+  (unless (or (not *river-connected?*)
               (not (pointer? *wl-compositor*))
               (null-pointer? *wl-compositor*)
-              (not (pointer? *zwlr-layer-shell*))
-              (null-pointer? *zwlr-layer-shell*)
+              (not (valid-pointer? *wlr-layer-shell*))
               (not (pointer? *wl-shm*))
               (null-pointer? *wl-shm*))
     (unless *gleui-palette-instance*
-      (log-info "gleui-palette: Initializing cached palette state")
+      (log-info "Initializing cached palette state")
       (let* ((cur-out (output-current))
              (out-w (if cur-out (output-width cur-out) 1920))
              (pal-pct (or *palette-width* 60))
@@ -997,13 +1220,13 @@ PATTERN can be a string, a <gliver-key>, or a list of either."
                      init-w init-h cur-out
                      %null-pointer #f
                      xkb-ctx %null-pointer %null-pointer
-                     '() #f '() '() "" 0 0 0 *palette-prompt* '() #f #f #f
+                     '() #f '() #f '() "" 0 0 0 *palette-prompt* '() #f #f #f
                      (make-mutex) 0
                      (or (catch #t (lambda () (var-get '*palette-repeat-rate*)) (lambda _ 25)) 25)
                      (or (catch #t (lambda () (var-get '*palette-repeat-delay*)) (lambda _ 600)) 600))))
         (set! *gleui-palette-instance* state)
         (gleui-palette-ensure-keyboard! state)
-        (log-info "gleui-palette: Cached state initialized successfully.")))))
+        (log-info "Cached state initialized successfully.")))))
 
 (define* (gleui-palette-open! candidates
                               #:key (search-strings #f)
@@ -1017,7 +1240,7 @@ PATTERN can be a string, a <gliver-key>, or a list of either."
   (gleui-palette-init!)
   (let ((state *gleui-palette-instance*))
     (when state
-      (let* ((num-cands (length candidates))
+      (let* ((num-cands (if (list? candidates) (length candidates) (vector-length candidates)))
              (search-strs
               (or search-strings
                   (map (lambda (cand)
@@ -1027,9 +1250,11 @@ PATTERN can be a string, a <gliver-key>, or a list of either."
                           ((list? cand) (string-join (map (lambda (x) (format #f "~a" x)) cand) " "))
                           (else (format #f "~a" cand))))
                        candidates)))
+             (parsed-cands (gleui-palette-parse-candidates candidates search-strs))
              (filtered (if (or (string-null? initial-filter) (string-null? (string-trim-both initial-filter)))
                            (iota num-cands)
-                           (gleui-palette-filter-candidates search-strs initial-filter *palette-case-sensitive?*)))
+                           (gleui-palette-filter-candidates search-strs initial-filter *palette-case-sensitive?*
+                                                            candidates #:parsed-candidates parsed-cands)))
              (cur-out (output-current))
              (out-w (if cur-out (output-width cur-out) 1920))
              (pal-pct (or (and theme-overrides (assq-ref theme-overrides 'width)) *palette-width* 60))
@@ -1038,6 +1263,7 @@ PATTERN can be a string, a <gliver-key>, or a list of either."
         (%gps-candidates-set! state candidates)
         (%gps-display-candidates-set! state (make-vector num-cands #f))
         (%gps-search-strings-set! state search-strs)
+        (%gps-parsed-candidates-set! state parsed-cands)
         (%gps-filtered-indices-set! state filtered)
         (%gps-filter-text-set! state initial-filter)
         (%gps-cursor-pos-set! state (string-length initial-filter))
@@ -1075,6 +1301,7 @@ PATTERN can be a string, a <gliver-key>, or a list of either."
     (%gps-candidates-set! state '())
     (%gps-display-candidates-set! state #f)
     (%gps-search-strings-set! state #f)
+    (%gps-parsed-candidates-set! state #f)
     (%gps-filtered-indices-set! state '())
     (%gps-filter-text-set! state "")
     (%gps-cursor-pos-set! state 0)
@@ -1100,7 +1327,7 @@ PATTERN can be a string, a <gliver-key>, or a list of either."
   (let ((state *gleui-palette-instance*))
     (when state
       (when candidates
-        (let* ((num-cands (length candidates))
+        (let* ((num-cands (if (list? candidates) (length candidates) (vector-length candidates)))
                (search-strs
                 (map (lambda (cand)
                        (cond
@@ -1108,10 +1335,12 @@ PATTERN can be a string, a <gliver-key>, or a list of either."
                         ((string? cand) cand)
                         ((list? cand) (string-join (map (lambda (x) (format #f "~a" x)) cand) " "))
                         (else (format #f "~a" cand))))
-                     candidates)))
+                     candidates))
+               (parsed-cands (gleui-palette-parse-candidates candidates search-strs)))
           (%gps-candidates-set! state candidates)
           (%gps-display-candidates-set! state (make-vector num-cands #f))
-          (%gps-search-strings-set! state search-strs)))
+          (%gps-search-strings-set! state search-strs)
+          (%gps-parsed-candidates-set! state parsed-cands)))
       (when prompt
         (%gps-prompt-set! state prompt))
       (when filter
@@ -1144,7 +1373,7 @@ Otherwise, runs a synchronous event loop until selection or cancellation."
               (begin
                 (while (and (%gps-visible? state)
                             (not (%gps-done? state))
-                            *connected*)
+                            *river-connected?*)
                   (catch #t
                     (lambda ()
                       (when *wl-display*
@@ -1198,10 +1427,10 @@ Otherwise, runs a synchronous event loop until selection or cancellation."
   (set! *palette-backend* gleui-palette-show)
   (set! *palette-dmenu-options* gleui-palette-make-dmenu-options)
   (set! *palette-backend-kill* gleui-palette-kill)
-  (when (and *connected*
+  (when (and *river-connected?*
              (pointer? *wl-compositor*) (not (null-pointer? *wl-compositor*))
-             (pointer? *zwlr-layer-shell*) (not (null-pointer? *zwlr-layer-shell*)))
+             (valid-pointer? *wlr-layer-shell*))
     (catch #t gleui-palette-init! (lambda _ #f)))
-  (log-info "gleui-palette installed as dmenu/palette backend."))
+  (log-info "Installed as dmenu/palette backend."))
 
 (gliver-hook-add! *gliver-globals-unbind-hook* 'gleui-palette-cleanup!)

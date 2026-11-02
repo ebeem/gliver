@@ -26,6 +26,7 @@
   #:use-module (gliver wayland gen wayland)
   #:use-module (gliver wayland gen wlr-layer-shell-unstable-v1)
   #:use-module (gliver river connector)
+  #:use-module (gliver river wlr-layer-shell)
   #:use-module (gliver contrib ui components toast)
   #:use-module (gliver contrib ui gleui base)
   #:declarative? #f
@@ -734,11 +735,10 @@
                  (null-pointer? (%tvs-surface state))
                  (not (%tvs-layer-surface state))
                  (null-pointer? (%tvs-layer-surface state)))
-             *connected*
+             *river-connected?*
              (pointer? *wl-compositor*)
              (not (null-pointer? *wl-compositor*))
-             (pointer? *zwlr-layer-shell*)
-             (not (null-pointer? *zwlr-layer-shell*)))
+             (valid-pointer? *wlr-layer-shell*))
     (let* ((loc (or (assq-ref (%tvs-theme-overrides state) 'location)
                     (catch #t (lambda () (var-get '*gleui-toast-location*)) (lambda _ 2))
                     2))
@@ -756,14 +756,14 @@
       (gleui-layer-surface-create
        #:output (%tvs-output state)
        #:namespace (string-append "gliver-toast-" name)
-       #:layer ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY
+       #:layer *wlr-layer-shell-layer-overlay*
        #:anchor anchor
        #:margin-top mt
        #:margin-right mr
        #:margin-bottom mb
        #:margin-left ml
        #:exclusive-zone -1
-       #:keyboard-interactivity ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_NONE
+       #:keyboard-interactivity *wlr-layer-shell-interactivity-none*
        #:width w
        #:height h
        #:on-created (lambda (surf layer-surf)
@@ -771,12 +771,12 @@
                       (%tvs-layer-surface-set! state layer-surf)
                       (%tvs-configured?-set! state #f))
        #:on-configure (lambda (cw ch)
-                        (log-debug "gleui-toast: Layer surface configured ~ax~a (~a)" cw ch name)
+                        (log-debug "Layer surface configured ~ax~a (~a)" cw ch name)
                         (%tvs-configured?-set! state #t)
                         (when (%tvs-visible? state)
                           (gleui-toast-render! state)))
        #:on-close (lambda ()
-                    (log-info "gleui-toast: Layer surface closed (~a)" name)
+                    (log-info "Layer surface closed (~a)" name)
                     (gleui-toast-kill #:name name))))))
 
 (define* (gleui-toast-set-margin! name
@@ -928,4 +928,4 @@ OUTPUT specifies the target output to display the toast on (defaults to current 
   "Install gleui-toast as the notification/message backend."
   (var-set! *toast-backend* gleui-toast-show)
   (var-set! *toast-backend-kill* gleui-toast-kill)
-  (log-info "gleui-toast installed as message backend."))
+  (log-info "Gleui toast installed as message backend."))

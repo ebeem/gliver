@@ -288,7 +288,6 @@ Returns a Wayland buffer foreign pointer."
 (define (container-border-init! container)
   "Initialize Wayland surface, shell surface, and node for container border."
   (when (and (container? container)
-             (not (container-destroyed? container))
              *wl-display*
              (pointer? *wl-compositor*)
              (not (null-pointer? *wl-compositor*))
@@ -323,7 +322,7 @@ Returns a Wayland buffer foreign pointer."
 
 (define (container-border-hide! container)
   "Hide container border by moving its node offscreen."
-  (when (and (container? container) (not (container-destroyed? container)))
+  (when (container? container)
     (let ((node (container-wl-node-proxy container)))
       (when (and node (pointer? node) (not (null-pointer? node)))
         (with-render-sequence
@@ -332,8 +331,7 @@ Returns a Wayland buffer foreign pointer."
 (define* (container-border-render! container #:key (force #f))
   "Render the container border for CONTAINER and commit the surface within a render sequence."
   (when (and (container? container)
-			 (workspace-visible? (container-workspace container))
-             (not (container-destroyed? container)))
+			 (workspace-visible? (container-workspace container)))
 	;; disable border if fullscreen mode is on
     (if (any window-fullscreen? (container-windows container))
         (container-border-hide! container)
@@ -434,8 +432,7 @@ Returns a Wayland buffer foreign pointer."
          (for-each
           (lambda (c)
             (when (and (container? c)
-                       (not (eq? c container))
-                       (not (container-destroyed? c)))
+                       (not (eq? c container)))
               (let ((state (get-container-border-state c)))
                 (when (and state
                            (not (equal? (%cbs-color state)
@@ -487,22 +484,22 @@ Returns a Wayland buffer foreign pointer."
 
 (define (container-border-on-window-container-removed window container)
   "Handle window removed from container, re-render border (e.g. background)."
-  (when (and (container? container) (not (container-destroyed? container)))
+  (when (container? container)
     (container-border-render! container)))
 
 (define (container-border-on-window-container-added window container)
   "Handle window added to container, re-render container border (e.g. background)."
-  (when (and (container? container) (not (container-destroyed? container)))
+  (when (container? container)
     (container-border-render! container)))
 
 (define (container-border-on-shell-interaction seat proxy-shell)
   "Handle shell surface interaction (mouse click)."
-  (when (and *wm-behavior-focus-mouse-click*
+  (when (and *seat-focus-on-mouse-click*
              proxy-shell
              (pointer? proxy-shell)
              (not (null-pointer? proxy-shell)))
     (let ((container (container-find-by-shell-surface proxy-shell)))
-      (when (and container (container? container) (not (container-destroyed? container)))
+      (when (and container (container? container))
         (log-debug "Container ~a clicked via mouse shell surface" (container-id container))
         (container-focus! container)))))
 
@@ -526,17 +523,18 @@ Returns a Wayland buffer foreign pointer."
     (gliver-hook-add! *container-focused-hook* 'container-border-on-container-focused)
     (gliver-hook-add! *container-unfocused-hook* 'container-border-on-container-unfocused)
     (gliver-hook-add! *container-resize-hook* 'container-border-on-container-resize)
+    (gliver-hook-add! *container-position-changed-hook* 'container-border-on-container-resize)
     (gliver-hook-add! *workspace-switch-hook* 'container-border-on-workspace-switch)
     (gliver-hook-add! *gliver-globals-unbind-hook* 'container-border-on-globals-unbind)
     (gliver-hook-add! *gliver-listeners-attach-hook* 'container-border-on-listeners-attach)
-    (gliver-hook-add! %window-container-removed-hook* 'container-border-on-window-container-removed)
-    (gliver-hook-add! %window-container-added-hook* 'container-border-on-window-container-added)
+    (gliver-hook-add! *window-container-removed-hook* 'container-border-on-window-container-removed)
+    (gliver-hook-add! *window-container-added-hook* 'container-border-on-window-container-added)
     (gliver-hook-add! *seat-shell-interacted-hook* 'container-border-on-shell-interaction)
     (gliver-hook-add! *window-fullscreen-entered-hook* 'container-border-on-window-fullscreen-entered)
     (gliver-hook-add! *window-fullscreen-exited-hook* 'container-border-on-window-fullscreen-exited)
     (set! *%container-border-enabled* #t)
     (container-borders-update-all!)
-    (log-info "container-border enabled.")))
+    (log-info "Container border enabled.")))
 
 (define (container-border-disable!)
   "Disable container borders, unhook and cleanup border surfaces."
@@ -546,17 +544,18 @@ Returns a Wayland buffer foreign pointer."
     (gliver-hook-remove! *container-focused-hook* 'container-border-on-container-focused)
     (gliver-hook-remove! *container-unfocused-hook* 'container-border-on-container-unfocused)
     (gliver-hook-remove! *container-resize-hook* 'container-border-on-container-resize)
+    (gliver-hook-remove! *container-position-changed-hook* 'container-border-on-container-resize)
     (gliver-hook-remove! *workspace-switch-hook* 'container-border-on-workspace-switch)
     (gliver-hook-remove! *gliver-globals-unbind-hook* 'container-border-on-globals-unbind)
     (gliver-hook-remove! *gliver-listeners-attach-hook* 'container-border-on-listeners-attach)
-    (gliver-hook-remove! %window-container-removed-hook* 'container-border-on-window-container-removed)
-    (gliver-hook-remove! %window-container-added-hook* 'container-border-on-window-container-added)
+    (gliver-hook-remove! *window-container-removed-hook* 'container-border-on-window-container-removed)
+    (gliver-hook-remove! *window-container-added-hook* 'container-border-on-window-container-added)
     (gliver-hook-remove! *seat-shell-interacted-hook* 'container-border-on-shell-interaction)
     (gliver-hook-remove! *window-fullscreen-entered-hook* 'container-border-on-window-fullscreen-entered)
     (gliver-hook-remove! *window-fullscreen-exited-hook* 'container-border-on-window-fullscreen-exited)
     (container-border-on-globals-unbind)
     (set! *%container-border-enabled* #f)
-    (log-info "container-border disabled.")))
+    (log-info "Container border disabled.")))
 
 (define (container-border-enabled?)
   "Return #t if container-border is enabled, #f otherwise."

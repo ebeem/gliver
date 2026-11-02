@@ -30,6 +30,28 @@
   #:declarative? #f
   #:export (
 			*%container-tab-indicator-enabled*
+			*container-tab-indicator-height*
+			*container-tab-indicator-show-single-window?*
+			*container-tab-indicator-show-title?*
+			*container-tab-indicator-active-bg-color*
+			*container-tab-indicator-active-text-color*
+			*container-tab-indicator-inactive-bg-color*
+			*container-tab-indicator-inactive-text-color*
+			*container-tab-indicator-unfocused-active-bg-color*
+			*container-tab-indicator-unfocused-active-text-color*
+			*container-tab-indicator-urgent-bg-color*
+			*container-tab-indicator-urgent-text-color*
+			*container-tab-indicator-border-color*
+			*container-tab-indicator-font*
+			*container-tab-indicator-font-size*
+			*container-tab-indicator-position*
+			*container-tab-indicator-gap*
+			*container-tab-indicator-radius*
+			*container-tab-indicator-border-width*
+			*container-tab-indicator-padding-x*
+			*container-tab-indicator-clickable?*
+			*container-tab-indicator-scrollable?*
+			*container-tab-indicator-scroll-direction*
 			*container-tab-indicator-last-pointer-x*
 			*container-tab-indicator-last-pointer-y*
 			valid-pointer?
@@ -109,6 +131,53 @@
 
 (define-var *%container-tab-indicator-enabled* #f
   "Internal state indicating whether container window indicators are enabled.")
+
+(define-var *container-tab-indicator-height* 22
+            "Height of the container window tab indicator in pixels.")
+(define-var *container-tab-indicator-show-single-window?* #t
+            "Whether to display the tab indicator when the container has only 1 window.")
+(define-var *container-tab-indicator-show-title?* #t
+            "Whether to display the title of the window inside each tab.")
+
+(define-var *container-tab-indicator-active-bg-color* *theme-border-color*
+            "Border color for focused containers.")
+(define-var *container-tab-indicator-active-text-color* *theme-base*
+            "Text color for the active window's tab title.")
+(define-var *container-tab-indicator-inactive-bg-color* *theme-mantle*
+            "Text color for the active tab title in an unfocused container.")
+(define-var *container-tab-indicator-inactive-text-color* *theme-text*
+            "Text color for inactive windows' tab titles.")
+(define-var *container-tab-indicator-unfocused-active-bg-color* *theme-mantle*
+            "Text color for the active tab title in an unfocused container.")
+(define-var *container-tab-indicator-unfocused-active-text-color* *theme-text*
+            "Text color for the active tab title in an unfocused container.")
+(define-var *container-tab-indicator-urgent-bg-color* *theme-urgent-color*
+            "Background color for tabs representing urgent windows.")
+(define-var *container-tab-indicator-urgent-text-color* *theme-crust*
+            "Text color for urgent tab titles.")
+(define-var *container-tab-indicator-border-color* *theme-border-color*
+            "Border stroke color for each tab.")
+
+(define-var *container-tab-indicator-font* *theme-font*
+            "Font family string used for tab title labels.")
+(define-var *container-tab-indicator-font-size* 12
+            "Font size in points for tab title labels.")
+(define-var *container-tab-indicator-position* 'top
+            "Position of the indicator bar relative to container ('top or 'bottom).")
+(define-var *container-tab-indicator-gap* 0
+            "Spacing in pixels between adjacent tabs.")
+(define-var *container-tab-indicator-radius* 0
+            "Corner radius in pixels for each tab.")
+(define-var *container-tab-indicator-border-width* 0
+            "Border stroke width in pixels for each tab.")
+(define-var *container-tab-indicator-padding-x* 0
+            "Horizontal padding inside each tab in pixels.")
+(define-var *container-tab-indicator-clickable?* #t
+            "Whether clicking on a tab focuses that window.")
+(define-var *container-tab-indicator-scrollable?* #t
+            "Whether scrolling on the tab indicator switches windows.")
+(define-var *container-tab-indicator-scroll-direction* 'up-prev
+            "Scroll direction for switching windows: 'up-prev (scroll up goes to previous window, down to next) or 'up-next (scroll up goes to next window, down to previous).")
 
 (define *container-tab-indicator-last-pointer-x* #f)
 (define *container-tab-indicator-last-pointer-y* #f)
@@ -725,7 +794,6 @@ Needed because the indicator will cover some area of windows in the container."
            (let ((c (container-tab-indicator-find-by-surface *container-tab-indicator-pointer-surface*)))
              (and c
                   (container? c)
-                  (not (container-destroyed? c))
                   (workspace-visible? (container-workspace c))
                   c)))
       (and *container-tab-indicator-last-pointer-x*
@@ -911,18 +979,18 @@ Calls switch-window to go to target one."
     (gliver-hook-add! *container-focused-hook* 'container-tab-indicator-on-container-focused)
     (gliver-hook-add! *container-unfocused-hook* 'container-tab-indicator-on-container-unfocused)
     (gliver-hook-add! *container-resize-hook* 'container-tab-indicator-on-container-resize)
+    (gliver-hook-add! *container-position-changed-hook* 'container-tab-indicator-on-container-resize)
     (gliver-hook-add! *workspace-switch-hook* 'container-tab-indicator-on-workspace-switch)
     (gliver-hook-add! *gliver-globals-unbind-hook* 'container-tab-indicator-on-globals-unbind)
     (gliver-hook-add! *gliver-listeners-attach-hook* 'container-tab-indicator-on-listeners-attach)
-    (gliver-hook-add! %window-container-removed-hook* 'container-tab-indicator-on-window-container-removed)
-    (gliver-hook-add! %window-container-added-hook* 'container-tab-indicator-on-window-container-added)
+    (gliver-hook-add! *window-container-removed-hook* 'container-tab-indicator-on-window-container-removed)
+    (gliver-hook-add! *window-container-added-hook* 'container-tab-indicator-on-window-container-added)
     (gliver-hook-add! *window-container-moved-hook* 'container-tab-indicator-on-window-container-moved)
     (gliver-hook-add! *window-destroyed-hook* 'container-tab-indicator-on-window-destroyed)
     (gliver-hook-add! *window-focused-hook* 'container-tab-indicator-on-window-focused)
     (gliver-hook-add! *window-unfocused-hook* 'container-tab-indicator-on-window-unfocused)
     (gliver-hook-add! *window-title-changed-hook* 'container-tab-indicator-on-window-title-changed)
     (gliver-hook-add! *window-app-id-changed-hook* 'container-tab-indicator-on-window-app-id-changed)
-    (gliver-hook-add! *window-urgent-hook* 'container-tab-indicator-on-window-urgent)
     (gliver-hook-add! *seat-shell-interacted-hook* 'container-tab-indicator-on-shell-interaction)
     (gliver-hook-add! *seat-seat-pointer-position-changed-hook* 'container-tab-indicator-on-pointer-position)
     (gliver-hook-add! *seat-object-id-changed-hook* 'container-tab-indicator-on-seat-object-id-changed)
@@ -931,7 +999,7 @@ Calls switch-window to go to target one."
     (set! *%container-tab-indicator-enabled* #t)
     (container-tab-indicator-seat-setup!)
     (container-tab-indicators-update-all!)
-    (log-info "container-tab-indicator enabled.")))
+    (log-info "Container tab indicator enabled.")))
 
 (define (container-tab-indicator-disable!)
   "Disable container window indicators and unhook and clean up all resources."
@@ -941,18 +1009,18 @@ Calls switch-window to go to target one."
     (gliver-hook-remove! *container-focused-hook* 'container-tab-indicator-on-container-focused)
     (gliver-hook-remove! *container-unfocused-hook* 'container-tab-indicator-on-container-unfocused)
     (gliver-hook-remove! *container-resize-hook* 'container-tab-indicator-on-container-resize)
+    (gliver-hook-remove! *container-position-changed-hook* 'container-tab-indicator-on-container-resize)
     (gliver-hook-remove! *workspace-switch-hook* 'container-tab-indicator-on-workspace-switch)
     (gliver-hook-remove! *gliver-globals-unbind-hook* 'container-tab-indicator-on-globals-unbind)
     (gliver-hook-remove! *gliver-listeners-attach-hook* 'container-tab-indicator-on-listeners-attach)
-    (gliver-hook-remove! %window-container-removed-hook* 'container-tab-indicator-on-window-container-removed)
-    (gliver-hook-remove! %window-container-added-hook* 'container-tab-indicator-on-window-container-added)
+    (gliver-hook-remove! *window-container-removed-hook* 'container-tab-indicator-on-window-container-removed)
+    (gliver-hook-remove! *window-container-added-hook* 'container-tab-indicator-on-window-container-added)
     (gliver-hook-remove! *window-container-moved-hook* 'container-tab-indicator-on-window-container-moved)
     (gliver-hook-remove! *window-destroyed-hook* 'container-tab-indicator-on-window-destroyed)
     (gliver-hook-remove! *window-focused-hook* 'container-tab-indicator-on-window-focused)
     (gliver-hook-remove! *window-unfocused-hook* 'container-tab-indicator-on-window-unfocused)
     (gliver-hook-remove! *window-title-changed-hook* 'container-tab-indicator-on-window-title-changed)
     (gliver-hook-remove! *window-app-id-changed-hook* 'container-tab-indicator-on-window-app-id-changed)
-    (gliver-hook-remove! *window-urgent-hook* 'container-tab-indicator-on-window-urgent)
     (gliver-hook-remove! *seat-shell-interacted-hook* 'container-tab-indicator-on-shell-interaction)
     (gliver-hook-remove! *seat-seat-pointer-position-changed-hook* 'container-tab-indicator-on-pointer-position)
     (gliver-hook-remove! *seat-object-id-changed-hook* 'container-tab-indicator-on-seat-object-id-changed)
@@ -961,7 +1029,7 @@ Calls switch-window to go to target one."
     (set! *%container-tab-indicator-enabled* #f)
     (container-tab-indicator-seat-cleanup!)
     (container-tab-indicator-on-globals-unbind)
-    (log-info "container-tab-indicator disabled.")))
+    (log-info "Container tab indicator disabled.")))
 
 (define (container-tab-indicator-enabled?)
   "Return #t if container window indicator is enabled, #f otherwise."

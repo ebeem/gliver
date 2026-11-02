@@ -103,7 +103,7 @@
   (define-key *root-map* "w" '(enter-submap *window-map*))
   (define-key *root-map* "W" '(enter-submap *workspace-map*))
 
-  (gliver-hook-run! *keybinding-sync-request-hook*))
+  (keybindings-sync!))
 
 (keybindings-clear!)
 (keybindings-gliver-install-default!)

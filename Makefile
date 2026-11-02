@@ -29,6 +29,12 @@ LIBGOBJECT_LIBDIR = $(shell $(PKG_CONFIG) --variable libdir gobject-2.0)
 LIBRSVG_LIBDIR = $(shell $(PKG_CONFIG) --variable libdir librsvg-2.0)
 
 MODULES =	gliver/core/ffi.scm \
+			gliver/core/logs.scm \
+			gliver/core/helpers.scm \
+			gliver/core/hooks.scm \
+			gliver/core/types.scm \
+			gliver/core/config.scm \
+			gliver/core-base.scm \
 			gliver/deps/libc.scm \
 			gliver/deps/color.scm \
 			gliver/deps/librsvg.scm \
@@ -44,17 +50,6 @@ MODULES =	gliver/core/ffi.scm \
 			gliver/wayland/gen/river-xkb-bindings-v1.scm \
 			gliver/wayland/gen/river-xkb-config-v1.scm \
 			gliver/wayland/gen/wlr-layer-shell-unstable-v1.scm \
-			gliver/core/logs.scm \
-			gliver/core/types.scm \
-			gliver/core/hooks.scm \
-			gliver/core/config.scm \
-			gliver/core/keybindings.scm \
-			gliver/core/output.scm \
-			gliver/core/seat.scm \
-			gliver/core/workspace.scm \
-			gliver/core/container.scm \
-			gliver/core/window.scm \
-			gliver/core.scm \
 			gliver/river/connector.scm \
 			gliver/river/window-manager.scm \
 			gliver/river/wm-seat-manager.scm \
@@ -63,11 +58,21 @@ MODULES =	gliver/core/ffi.scm \
 			gliver/river/wm-node-manager.scm \
 			gliver/river/wm-decoration-manager.scm \
 			gliver/river/wm-shell-surface-manager.scm \
-			gliver/river/keybindings-manager.scm \
+			gliver/river/xkb-bindings-manager.scm \
+			gliver/river/xkb-config-manager.scm \
 			gliver/river/layer-shell-manager.scm \
-			gliver/river/wallpaper-manager.scm \
-			gliver/river/keyboard-manager.scm \
+			gliver/river/input-manager.scm \
+			gliver/river/wlr-layer-shell.scm \
 			gliver/river.scm \
+			gliver/core/keybindings.scm \
+			gliver/core/seat.scm \
+			gliver/core/window.scm \
+			gliver/core/container.scm \
+			gliver/core/output.scm \
+			gliver/core/workspace.scm \
+			gliver/core/shell.scm \
+			gliver/core/keyboard.scm \
+			gliver/core.scm \
 			gliver/contrib/commands.scm \
 			gliver/contrib/commands/container.scm \
 			gliver/contrib/commands/media.scm \
@@ -111,6 +116,7 @@ MODULES =	gliver/core/ffi.scm \
 			gliver/contrib/ui/statusbar/volume.scm \
 			gliver/contrib/ui/statusbar/custom.scm \
 			gliver/contrib/ui/statusbar.scm \
+			gliver/contrib/ui/wallpaper/wallpaper-basic.scm \
 			gliver/contrib/windows/window-rules.scm \
 			gliver/contrib/workspaces/workspace-group.scm \
 			gliver/contrib/keybindings/stumpwm.scm \

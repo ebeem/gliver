@@ -61,7 +61,7 @@
 the output geometry and gap configuration.
 Rescales existing container positions/sizes so they proportionally
 fit the current output dimensions (e.g. after container is destroyed)."
-  (log-debug "layout-manual-reload on workspace ~a" workspace)
+  (log-debug "Layout-manual-reload on workspace ~a" workspace)
   (let* ((output (workspace-output workspace))
 		 (ow (output-usable-width output))
 		 (oh (output-usable-height output))
@@ -84,7 +84,7 @@ fit the current output dimensions (e.g. after container is destroyed)."
 	(cond
 	 ;; no containers, TODO: make sure at least one container is available
 	 ((zero? containers-count)
-	  (log-debug "layout-manual-reload: no containers in workspace, creating one"))
+	  (log-debug "Layout-manual-reload: no containers in workspace, creating one"))
 
 	 ;; exactly one container, it should fill the whole output (minus gaps).
 	 ((= containers-count 1)
@@ -282,7 +282,7 @@ the destroyed container's space and its own space, and clean up placeholders."
                      (scale-x? (and (> (abs (- new-w sw)) tolerance) (> sw 0)))
                      (scale-y? (and (> (abs (- new-h sh)) tolerance) (> sh 0))))
 
-                (log-debug "layout-manual-container-destroyed: upscaling ~a containers from ~ax~a to ~ax~a"
+                (log-debug "Layout-manual-container-destroyed: upscaling ~a containers from ~ax~a to ~ax~a"
                            (length selected-group) sw sh new-w new-h)
 
                 (for-each
@@ -348,7 +348,6 @@ the destroyed container's space and its own space, and clean up placeholders."
 (gliver-hook-add! *workspace-created-hook* 'layout-manual-workspace-created)
 (gliver-hook-add! *workspace-switch-hook* 'layout-manual-workspace-switched)
 (gliver-hook-add! *output-dimensions-changed-hook* 'layout-manual-output-dimensions-changed)
-(gliver-hook-add! *output-change-hook* 'layout-manual-output-changed)
 (gliver-hook-add! *container-destroy-hook* 'layout-manual-container-destroyed)
 (gliver-hook-add! *config-loaded-hook* 'layout-manual-config-loaded)
 (gliver-hook-add! *startup-hook* 'layout-manual-startup)

@@ -87,7 +87,7 @@
 			 (workspaces (output-workspaces output)))
 	;; NOTE: should these show up as toast messages?
 	(cond
-	 ((not *wm-behavior-workspace-destroyable*)
+	 ((not *workspace-destroyable*)
 	  (log-info "Destroying workspaces is disabled"))
 	 ((<= (length workspaces) 1)
 	  (log-info "Each output must at least have 1 workspace."))

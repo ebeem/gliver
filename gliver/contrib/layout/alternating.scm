@@ -130,7 +130,7 @@ respects the alternating layout system."
 	  (cond
 
 	   ((not container)
-		(log-debug "case-0: no container is available at the index ~a" index))
+		(log-debug "No container is available at the index ~a" index))
 
 	   ((= 0 index)
 		(let* ((gap-dt 0)
@@ -189,7 +189,7 @@ respects the alternating layout system."
 (define* (layout-alternating-reload workspace #:key (complete #f))
   "Reload function that ensures current workspace adheres to the
 layout rules."
-  (log-debug "layout-alternating-reload on workspace ~a" workspace)
+  (log-debug "Layout alternating reload on workspace ~a" workspace)
   (let* ((layout-cfg (workspace-layout workspace))
 		 (max-depth (layout-alternating-get-param layout-cfg 'max-depth 99))
 		 (windows (workspace-windows workspace))
@@ -224,7 +224,7 @@ layout rules."
 			   (current-container (window-container window))
 			   (currently-focused? (eq? window (window-current)))
 			   (target-container (list-ref containers (min i (- containers-count 1)))))
-		  (log-debug "current window to be moved is focused ~a" currently-focused?)
+		  (log-debug "Current window to be moved is focused ~a" currently-focused?)
 		  (window-move-to-container! window target-container #:focus currently-focused?)))
 
 	  ;; remove any extra empty containers
@@ -303,4 +303,3 @@ layout rules."
 (gliver-hook-add! *window-destroyed-hook* 'layout-alternating-window-destroyed)
 (gliver-hook-add! *workspace-created-hook* 'layout-alternating-workspace-created)
 (gliver-hook-add! *output-dimensions-changed-hook* 'layout-alternating-output-dimensions-changed)
-(gliver-hook-add! *output-change-hook* 'layout-alternating-output-changed)
