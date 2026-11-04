@@ -169,8 +169,13 @@ Parameters: (WORKSPACE [#:t-workspace #f])
 	    (%workspace-containers-set! workspace '())
 	    (%workspace-container-current-set! workspace #f)
 	    (%workspace-container-previous-set! workspace #f)
-	    (for-each (lambda (c) (container-remove! c #:focus #f))
+	    (for-each (lambda (c)
+					(or (container-remove! c #:focus #f)
+						;; last container won't be removed since there must be at least
+						;; one container in each workspace, run *container-destroy-hook*
+						(gliver-hook-run! *container-destroy-hook* c workspace)))
 	              containers))
+
       ;; remove workspace from output
       (%output-workspaces-set! output
 							   (delq workspace (output-workspaces output)))
