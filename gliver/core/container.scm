@@ -284,13 +284,13 @@ Parameters: (CONTAINER [#:target-container #f] [#:focus #t])
     ;; remove container from workspace's container list
     (%workspace-containers-set! workspace
                                 (delq container (workspace-containers workspace)))
+	(gliver-hook-run! *container-destroy-hook* container workspace)
     ;; clear references on workspace if they point to this container
     (when (eq? (workspace-container-previous workspace) container)
       (%workspace-container-previous-set! workspace #f))
     (let ((was-current? (eq? (workspace-container-current workspace) container)))
       (when was-current?
         (%workspace-container-current-set! workspace #f))
-      (gliver-hook-run! *container-destroy-hook* container workspace)
       ;; focus a new container if the current focused container was removed
       (when (and focus was-current?)
         (container-focus! container-target)))))
@@ -385,6 +385,7 @@ Parameters: (CONTAINER WIDTH HEIGHT [#:animate #t])
 		 (w-changed? (not (= (container-width container) int-width)))
 		 (h-changed? (not (= (container-height container) int-height))))
 	(when (or w-changed? h-changed?)
+	  (log-debug "Resizing container ~a to ~ax~a" container int-width int-height)
       (let ((dw (- int-width (container-width container)))
             (dh (- int-height (container-height container))))
 	    (%container-width-set! container int-width)

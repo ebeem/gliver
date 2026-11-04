@@ -540,6 +540,7 @@ Parameters: (OUTPUT X Y WIDTH HEIGHT)
   - WIDTH: Usable width in pixels.
   - HEIGHT: Usable height in pixels.
 Returns unspecified."
+  (log-info "Updating usable output area ~a to ~ax~a+(~a+~a)" output width height x y)
   (%output-usable-x-set! output x)
   (%output-usable-y-set! output y)
   (%output-usable-width-set! output width)

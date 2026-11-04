@@ -411,7 +411,7 @@ Parameters: (WORKSPACE WP)
 Parameters: (OUTPUT WP)
   - OUTPUT: Output record whose wallpaper changed.
   - WP: New wallpaper specification (file path string or hex color)."
-  (when (and *wallpaper-manager-enabled* output ws)
+  (when (and *wallpaper-manager-enabled* output wp)
     (let* ((ws (output-workspace-current output))
            (ws-wp (and ws (workspace-wallpaper ws))))
       ;; only update if active workspace does not have an overriding wallpaper;

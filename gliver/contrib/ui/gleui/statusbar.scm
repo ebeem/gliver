@@ -460,7 +460,10 @@ Example: (list 'window (make-module-mpd))"
 					 (new-uy (+ cur-y (if (eq? bar-pos 'bottom) 0 th)))
 					 (new-uh (max 0 (- cur-h th))))
 				(output-usable-area-set! output cur-x new-uy cur-w new-uh)
-				(gliver-hook-run! *output-dimensions-changed-hook* output (output-width output) (output-height output))))
+				(gliver-hook-run! *output-dimensions-changed-hook*
+								  output
+								  (output-width output)
+								  (output-height output))))
 
 			(define (make-output-listener state)
 			  (define (handle-configure data proxy serial width height)
@@ -810,13 +813,22 @@ Runs at most once per second and only re-renders when module contents change."
                (cur-w  (output-width output))
                (cur-h  (output-height output))
                (new-uy (+ cur-y (if (eq? bar-pos 'bottom) 0 total-h)))
-               (new-uh (max 0 (- cur-h total-h))))
+               (new-uh (max 0 (- cur-h total-h)))
+			   (cur-uy  (output-usable-y output))
+               (cur-uh  (output-usable-height output)))
           (unless (null-pointer? layer-surf)
             (zwlr-layer-surface-v1-set-size layer-surf 0 bar-h)
             (zwlr-layer-surface-v1-set-exclusive-zone layer-surf total-h)
-            (output-usable-area-set! output cur-x new-uy cur-w new-uh)
-            (when (and (pointer? surface) (not (null-pointer? surface)))
-              (wl-surface-commit surface))))))))
+
+			;; check before committing usable area, otherwise infinite loop may occur
+			;; because this function listens to output dimensions hook
+			(unless (and (= new-uh cur-uh)
+						 (= new-uy cur-uy))
+			  (output-usable-area-set! output cur-x new-uy cur-w new-uh)
+			  (gliver-hook-run! *output-dimensions-changed-hook*
+								  output
+								  (output-width output)
+								  (output-height output)))))))))
 
 (define (statusbar-on-output-statusbar-changed output bar)
   (when *statusbar-enabled*
