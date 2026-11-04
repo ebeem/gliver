@@ -1,5 +1,4 @@
-#!/usr/bin/guile \
--s
+#!/usr/bin/env guile
 !#
 
 ;;; bin/gliver --- Main entry point for Gliver
