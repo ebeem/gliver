@@ -21,7 +21,7 @@
 
 (define-command (prefix-abort)
   "Abort prefix mode."
-  (keybinding-switch-to-mode! 'normal)
+  (keybinding-switch-to-mode! '*top-map*)
   (log-debug "Aborted."))
 
 (define-command (enter-keymap name)
@@ -33,5 +33,5 @@
 
 (define-command (keybindings-clear!)
   "Clear all keybindings from all standard and registered keymaps."
-  (for-each keymap-clear! *keymap-registered*)
+  (for-each keymap-clear! (manager-keymaps *manager*))
   (keybinding-sync!))

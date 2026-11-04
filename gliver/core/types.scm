@@ -38,6 +38,8 @@
 			command-run
 			%command-run-by-string
 			command-run-by-name
+			%manager-keymaps-set!
+			manager-keymaps
 			%manager-wl-proxy-set!
 			manager-wl-proxy
 			%manager-windows-set!
@@ -279,6 +281,26 @@
 			window-current
 			window-workspace
 			window-output
+			*key-modifier-map*
+			key-keysym
+			key-modifiers
+			key?
+			%make-key
+			make-key
+			keymap-passthrough?
+			keymap-bindings
+			keymap-name
+			keymap?
+			%make-keymap
+			make-keymap
+			keybinding-keymap
+			keybinding-mode
+			keybinding-persist
+			keybinding-action
+			keybinding-key
+			keybinding?
+			%make-keybinding
+			make-keybinding
 			manager-print-tree
 ))
 
@@ -400,16 +422,18 @@ Returns procedure result or #f if command is unknown or fails."
 ;;  - seats: list of active <seat> (input devices)
 ;;  - windows: flat list of all active <window> records
 ;;  - wl-proxy: river_window_manager_v1 wayland proxy handle
+;;  - keymaps: list of all registered <keymap> instances
 (define-record-type <manager-state>
   (%make-manager-state outputs output-current output-previous
-                       seats windows wl-proxy)
+                       seats windows wl-proxy keymaps)
   manager-state?
   (outputs                manager-outputs                %manager-outputs-set!)
   (output-current         manager-output-current         %manager-output-current-set!)
   (output-previous        manager-output-previous        %manager-output-previous-set!)
   (seats                  manager-seats                  %manager-seats-set!)
   (windows                manager-windows                %manager-windows-set!)
-  (wl-proxy               manager-wl-proxy               %manager-wl-proxy-set!))
+  (wl-proxy               manager-wl-proxy               %manager-wl-proxy-set!)
+  (keymaps                manager-keymaps                %manager-keymaps-set!))
 
 
 ;; singleton global window manager state
@@ -419,7 +443,8 @@ Returns procedure result or #f if command is unknown or fails."
 					   #f				; output-previous
 					   '()				; seats
 					   '()				; windows
-					   %null-pointer)   ; wl-proxy
+					   %null-pointer    ; wl-proxy
+					   '())             ; keymaps
   "Global Gliver window manager state.")
 
 ;;; ID generation counters
@@ -538,8 +563,7 @@ Parameters: (OUTPUT X Y WIDTH HEIGHT)
   - X: Horizontal offset in pixels.
   - Y: Vertical offset in pixels.
   - WIDTH: Usable width in pixels.
-  - HEIGHT: Usable height in pixels.
-Returns unspecified."
+  - HEIGHT: Usable height in pixels."
   (log-info "Updating usable output area ~a to ~ax~a+(~a+~a)" output width height x y)
   (%output-usable-x-set! output x)
   (%output-usable-y-set! output y)
@@ -793,8 +817,7 @@ Parameters: (CONTAINER X Y WIDTH HEIGHT)
   - X: Horizontal offset in pixels.
   - Y: Vertical offset in pixels.
   - WIDTH: Usable width in pixels.
-  - HEIGHT: Usable height in pixels.
-Returns unspecified."
+  - HEIGHT: Usable height in pixels."
   (%container-usable-x-set! container (inexact->exact (floor x)))
   (%container-usable-y-set! container (inexact->exact (floor y)))
   (%container-usable-width-set! container (max 0 (inexact->exact (floor width))))
@@ -974,12 +997,83 @@ Parameters: (WINDOW)
 Returns parent <output> of WINDOW, or #f."
   (workspace-output (window-workspace window)))
 
+;;; key representation record (<key>)
+;;  - modifiers: list of modifier symbols (e.g. '(Control Alt))
+;;  - keysym: keysym symbol or character (e.g. 'Return, 't)
+(define-var *key-modifier-map*
+  '(("C" . Control)
+    ("M" . Alt)
+    ("s" . Super)
+    ("S" . Shift)
+    ("H" . Hyper))
+  "Mapping from modifier prefix string to modifier symbol.")
+
+(define-record-type <key>
+  (%make-key modifiers keysym)
+  key?
+  (modifiers key-modifiers)
+  (keysym    key-keysym))
+
+(define (make-key modifiers keysym)
+  "Create a new key with MODIFIERS and KEYSYM.
+NOTE: user will probably want to use `kbd` instead.
+Returns newly created <key> record."
+  (define (%modifier-weight m)
+    "Sort modifiers by *key-modifier-map* order."
+    (or (list-index (lambda (pair)
+                      (eq? (cdr pair) m))
+                    *key-modifier-map*)
+        99))
+
+  (define (%modifier<? a b)
+    "Return #t if modifier A is less than B in weight."
+    (< (%modifier-weight a)
+       (%modifier-weight b)))
+
+  (%make-key (sort modifiers %modifier<?) keysym))
+
+;;; keymap representation record (<keymap>)
+;;  - name: keymap identifier symbol (e.g. '*top-map*, '*root-map*, etc.)
+;;  - bindings: hash table mapping key string to <keybinding> record
+;;  - passthrough?: boolean indicating if unbound keys pass through to focused window
+(define-record-type <keymap>
+  (%make-keymap name bindings passthrough?)
+  keymap?
+  (name         keymap-name)
+  (bindings     keymap-bindings)
+  (passthrough? keymap-passthrough?))
+
+(define* (make-keymap name #:key (passthrough? #f))
+  "Create and return a new <keymap> named NAME."
+  (let ((sym (if (symbol? name) name (string->symbol name))))
+    (%make-keymap sym (make-hash-table string=? string-hash) passthrough?)))
+
+;;; key binding record (<keybinding>)
+;;  - key: <key> record representing modifiers and keysym
+;;  - action: procedure, command name (symbol/string), command list, or <keymap>
+;;  - persist: boolean flag indicating whether keymap stays active after key press
+;;  - mode: symbol indicating the mode/submap ('*top-map*, '*root-map*, etc.)
+;;  - keymap: owning <keymap> record (optional)
+(define-record-type <keybinding>
+  (%make-keybinding key action persist mode keymap)
+  keybinding?
+  (key      keybinding-key)
+  (action   keybinding-action)
+  (persist  keybinding-persist)
+  (mode     keybinding-mode)
+  (keymap   keybinding-keymap))
+
+(define* (make-keybinding key action persist #:optional mode keymap)
+  "Create a new <keybinding> record."
+  (%make-keybinding key action persist mode keymap))
+
 (set-record-type-printer!
  <manager-state>
  (lambda (out port)
-   (format port "#<manager proxy=~s outputs=~a>"
+   (format port "#<manager proxy=~s outputs=~a keymaps=~a>"
            (manager-wl-proxy out)
-           (length (manager-outputs out)))))
+           (length (manager-outputs out))
+           (length (manager-keymaps out)))))
 
 (set-record-type-printer!
  <output>
@@ -1038,6 +1132,30 @@ Returns parent <output> of WINDOW, or #f."
            (window-x window)
            (window-y window)
            (if (window-container window) (container-id (window-container window)) #f))))
+
+(set-record-type-printer!
+ <key>
+ (lambda (k port)
+   (format port "#<key modifiers=~a keysym=~a>"
+           (key-modifiers k)
+           (key-keysym k))))
+
+(set-record-type-printer!
+ <keymap>
+ (lambda (km port)
+   (format port "#<keymap name=~s bindings=~a passthrough?=~a>"
+           (keymap-name km)
+           (hash-table-size (keymap-bindings km))
+           (keymap-passthrough? km))))
+
+(set-record-type-printer!
+ <keybinding>
+ (lambda (b port)
+   (format port "#<keybinding key=~a action=~a mode=~a persist=~a>"
+           (keybinding-key b)
+           (keybinding-action b)
+           (keybinding-mode b)
+           (keybinding-persist b))))
 
 (define* (manager-print-tree #:optional (manager *manager*))
   "Return the MANAGER state tree in a hierarchical formatted string.

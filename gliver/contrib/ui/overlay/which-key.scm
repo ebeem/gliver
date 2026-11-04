@@ -179,10 +179,10 @@
 	rows))
 
 (define (which-key-on-keymap-change mode-name)
-  "Hook handler: show bindings when entering a non-normal mode."
+  "Hook handler: show bindings when entering a non-top-map mode."
   (cond
-   ((eq? mode-name 'normal)
-    ;; returned to normal mode, kill the current which-key toast
+   ((eq? mode-name '*top-map*)
+    ;; returned to *top-map* mode, kill the current which-key toast
 	(toast-kill #:name *which-key-identifier-name*)
     #f)
    (else

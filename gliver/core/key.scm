@@ -14,34 +14,21 @@
   #:use-module (ice-9 regex)
   #:use-module (srfi srfi-1)
   #:use-module (srfi srfi-2)
-  #:use-module (srfi srfi-9)
   #:use-module (srfi srfi-11)
   #:use-module (system foreign)
   #:use-module (gliver core-base)
   #:use-module (gliver deps libxkbcommon)
   #:declarative? #f
   #:export (
-			*key-modifier-map*
 			*key-modifier-bitmask-map*
-			key-keysym
-			key-modifiers
-			key?
-			make-key
 			key=?
 			key->string
 			*key-keysym-aliases*
 			key-keysym-name->xkb-value
 			key->xkb-binding-args
+			xkb-args->key
 			kbd
 ))
-
-(define-var *key-modifier-map*
-  '(("C" . Control)
-    ("M" . Alt)
-    ("s" . Super)
-    ("S" . Shift)
-    ("H" . Hyper))
-  "Mapping from modifier prefix string to modifier symbol.")
 
 (define-var *key-modifier-bitmask-map*
   '((Control . 4)     ;; RIVER_MOD_CTRL
@@ -50,39 +37,6 @@
     (Shift   . 1)     ;; RIVER_MOD_SHIFT
     (Hyper   . 32))   ;; RIVER_MOD_MOD3
   "Mapping from modifier symbol to river/wayland modifier bitmask.")
-
-;; key representation record:
-;;  - modifiers: list of modifier symbols (e.g. '(Control Alt))
-;;  - keysym: keysym symbol or character (e.g. 'Return, 't)
-;; NOTE: the <key> record stores XKB modifiers and symbols
-;; use key->string to convert a <key> to Emacs like key
-;; use kbd to create a <key> record from Emacs like key ("C-t")
-(define-record-type <key>
-  (%make-key modifiers keysym)
-  key?
-  (modifiers key-modifiers)
-  (keysym    key-keysym))
-
-(define (make-key modifiers keysym)
-  "Create a new key with MODIFIERS and KEYSYM.
-Parameters: (MODIFIERS KEYSYM)
-  - MODIFIERS: List of modifier symbols (e.g. '(Control Alt)).
-  - KEYSYM: Keysym symbol or character (e.g. 'Return, 't).
-NOTE: user will probably want to use `kbd` instead.
-Returns newly created <key> record."
-  (define (%modifier-weight m)
-	"Sort modifiers by *key-modifier-map* order."
-    (or (list-index (lambda (pair)
-					  (eq? (cdr pair) m))
-                    *key-modifier-map*)
-        99))
-
-  (define (%modifier<? a b)
-	"Return #t if modifier A is less than B in weight."
-    (< (%modifier-weight a)
-       (%modifier-weight b)))
-
-  (%make-key (sort modifiers %modifier<?) keysym))
 
 (define (key=? a b)
   "Return #t if keys A and A represent the same key binding."
@@ -96,17 +50,17 @@ Returns newly created <key> record."
 Parameters: (KEY)
   - KEY: Target <key> record or key description string.
 Returns formatted key string (e.g. \"C-t\", \"s-Return\")."
+  (define (%modifier->string m)
+    "Return string representation of modifiers as per *key-modifier-map*"
+    (let ((pair (find (lambda (entry) (eq? (cdr entry) m))
+                      *key-modifier-map*)))
+      (if pair
+          (car pair)
+          (symbol->string m))))
+
   (if (string? key)
       key
-      (let* ((%modifier->string
-              (lambda (m)
-                "Return string representation of modifiers as per *key-modifier-map*"
-                (let ((pair (find (lambda (entry) (eq? (cdr entry) m))
-                                  *key-modifier-map*)))
-                  (if pair
-                      (car pair)
-                      (symbol->string m)))))
-             (mods (map %modifier->string (key-modifiers key)))
+      (let* ((mods (map %modifier->string (key-modifiers key)))
              (keysym (symbol->string (key-keysym key))))
         ;; join the mods with keysym via "-"
         (string-join (append mods (list keysym)) "-"))))
@@ -211,6 +165,22 @@ Returns a pair: (modifier-bitmask . xkb-keysym-uint)."
 
   (cons (%modifiers->bitmask (key-modifiers key))
         (key-keysym-name->xkb-value (key-keysym key))))
+
+(define (xkb-args->key modifier-bitmask keysym-value)
+  "Convert an XKB modifier bitmask and numeric keysym value to a <key> record.
+Parameters: (MODIFIER-BITMASK KEYSYM-VALUE)
+  - MODIFIER-BITMASK: River/Wayland modifier bitmask integer.
+  - KEYSYM-VALUE: Numeric XKB keysym.
+Returns <key> record."
+  (let* ((mods (filter-map (lambda (pair)
+                             (let ((mod-name (car pair))
+                                   (mod-bit  (cdr pair)))
+                               (and (not (zero? (logand modifier-bitmask mod-bit)))
+                                    mod-name)))
+                           *key-modifier-bitmask-map*))
+         (name-str (xkb-value->keysym-name keysym-value))
+         (keysym (if name-str (string->symbol name-str) 'None)))
+    (make-key mods keysym)))
 
 ;; kbd doesn't have a prefix (key-kbd) because we maintain
 ;; this keyword since it's very common for emacs and stumpwm users
