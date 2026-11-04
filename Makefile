@@ -64,7 +64,9 @@ MODULES =	gliver/core/ffi.scm \
 			gliver/river/input-manager.scm \
 			gliver/river/wlr-layer-shell.scm \
 			gliver/river.scm \
-			gliver/core/keybindings.scm \
+			gliver/core/key.scm \
+			gliver/core/keymap.scm \
+			gliver/core/keybinding.scm \
 			gliver/core/seat.scm \
 			gliver/core/window.scm \
 			gliver/core/container.scm \

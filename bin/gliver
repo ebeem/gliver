@@ -110,7 +110,7 @@
 
     ;; step 11: sync keybindings to river (deferred to next manage sequence)
     (log-info "Requesting keybinding sync...")
-    (keybindings-sync!)
+    (keybinding-sync!)
 
     ;; step 12: load configuration
     (log-info "Loading configuration...")

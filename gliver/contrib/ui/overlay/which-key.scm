@@ -116,13 +116,13 @@
 
 (define (describe-action action)
   "Return a short description toast span for a binding action."
-  (let* ((is-keymap? (or (and (list? action) (eq? (car action) 'enter-submap))
-                         (gliver-keymap? action)))
+  (let* ((is-keymap? (or (and (list? action) (eq? (car action) 'enter-keymap))
+                         (keymap? action)))
          (raw-name (cond
-                    ((and (list? action) (eq? (car action) 'enter-submap))
+                    ((and (list? action) (eq? (car action) 'enter-keymap))
                      (format #f "~a" (cadr action)))
-                    ((gliver-keymap? action)
-                     (format #f "~a" (gliver-keymap-name action)))
+                    ((keymap? action)
+                     (format #f "~a" (keymap-name action)))
                     ((symbol? action) (symbol->string action))
                     ((string? action) action)
                     ((procedure? action) "λ")
@@ -157,16 +157,16 @@
 
 (define (format-bindings keymap)
   "Format all bindings in KEYMAP as a single display string."
-  (let* ((pairs (gliver-keymap->alist keymap))
+  (let* ((pairs (keymap->alist keymap))
          ;; sort alphabetically by the string representation of the key
          (sorted-pairs (sort pairs (lambda (a b)
-                                     (string<? (gliver-key->string (car a))
-                                               (gliver-key->string (car b))))))
+                                     (string<? (key->string (car a))
+                                               (key->string (car b))))))
 
          ;; convert each binding into an toast column
          (cols (map (lambda (pair)
-                      (let* ((key-str     (gliver-key->string (car pair)))
-                             (action      (gliver-binding-action (cdr pair)))
+                      (let* ((key-str     (key->string (car pair)))
+                             (action      (keybinding-action (cdr pair)))
                              (key-span    (toast-make-span key-str #:color *which-key-keybinding-color*))
                              (sep-span    (toast-make-span *which-key-separator* #:color *which-key-separator-color*))
                              (action-span (describe-action action)))
@@ -186,7 +186,7 @@
 	(toast-kill #:name *which-key-identifier-name*)
     #f)
    (else
-    (let ((keymap (var-get mode-name)))
+    (let ((keymap (or (keymap-find mode-name) (var-get mode-name))))
       (if keymap
           (let ((text (format-bindings keymap)))
 			(toast-show text
@@ -198,16 +198,16 @@
             (toast-kill #:name *which-key-identifier-name*)))))))
 
 (define (which-key-enable!)
-  "Enable which-key: show available keys when entering submaps."
+  "Enable which-key: show available keys when entering keymaps."
   (unless *%which-key-enabled*
-    (gliver-hook-add! *submap-change-hook* 'which-key-on-keymap-change)
+    (gliver-hook-add! *keymap-change-hook* 'which-key-on-keymap-change)
     (set! *%which-key-enabled* #t)
     (log-info "Which key enabled.")))
 
 (define (which-key-disable!)
   "Disable which-key."
   (when *%which-key-enabled*
-    (gliver-hook-remove! *submap-change-hook* 'which-key-on-keymap-change)
+    (gliver-hook-remove! *keymap-change-hook* 'which-key-on-keymap-change)
     (toast-kill #:name *which-key-identifier-name*)
     (set! *%which-key-enabled* #f)
     (log-info "Which key disabled.")))

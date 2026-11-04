@@ -87,5 +87,5 @@
   (define-key *root-map* "C-q" 'quit)
 
   ;; prefix
-  (define-key *top-map* "C-t" '(enter-submap *root-map*))
-  (keybindings-sync!))
+  (define-key *top-map* "C-t" '(enter-keymap *root-map*))
+  (keybinding-sync!))

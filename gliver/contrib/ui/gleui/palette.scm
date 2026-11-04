@@ -805,7 +805,7 @@ The formatted string is cached in disp-cache to avoid recalculation."
 
 (define *palette-evdev-fallback-map*
   (map (lambda (entry)
-         (cons (car entry) (keysym-name->xkb-value (cdr entry))))
+         (cons (car entry) (key-keysym-name->xkb-value (cdr entry))))
        '((1   . "Escape")
          (28  . "Return")
          (14  . "BackSpace")
@@ -816,9 +816,9 @@ The formatted string is cached in disp-cache to avoid recalculation."
          (15  . "Tab"))))
 
 (define (gleui-palette-parse-key spec)
-  "Convert a key specification into a <gliver-key> record."
+  "Convert a key specification into a <key> record."
   (cond
-   ((gliver-key? spec) spec)
+   ((key? spec) spec)
    ((string? spec)
     (or (hash-ref *palette-kbd-cache* spec)
         (let ((k (catch #t (lambda () (kbd spec)) (lambda _ #f))))
@@ -830,11 +830,11 @@ The formatted string is cached in disp-cache to avoid recalculation."
   "Return #t if a single key spec matches keysym and modifier state."
   (let ((k (gleui-palette-parse-key spec)))
     (and k
-         (let* ((mods (gliver-key-modifiers k))
+         (let* ((mods (key-modifiers k))
                 (exp-ctrl?  (and (memq 'Control mods) #t))
                 (exp-alt?   (and (memq 'Alt mods) #t))
                 (exp-shift? (and (memq 'Shift mods) #t))
-                (exp-val    (keysym-name->xkb-value (gliver-key-keysym k))))
+                (exp-val    (key-keysym-name->xkb-value (key-keysym k))))
            (and (> exp-val 0)
                 (or (= keysym exp-val)
                     ;; case-insensitive ascii letter match (e.g. C-n / C-N)
@@ -850,7 +850,7 @@ The formatted string is cached in disp-cache to avoid recalculation."
 
 (define (gleui-palette-key-match? pattern keysym ctrl? alt? shift?)
   "Check whether KEYSYM and modifier flags match PATTERN.
-PATTERN can be a string, a <gliver-key>, or a list of either."
+PATTERN can be a string, a <key>, or a list of either."
   (cond
    ((null? pattern) #f)
    ((pair? pattern)

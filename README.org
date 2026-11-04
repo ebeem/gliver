@@ -214,7 +214,7 @@ NOTE: this issue doesn't seem to be easy to resolve, clients in this case violat
 | Name                 | Gliver Component            | Good Alternatives |
 |----------------------+-----------------------------+-------------------|
 | output configuration | core/output.scm             | kanashi           |
-| input configuration  | core/keybindings.scm        | channel, kwim     |
+| input configuration  | core/keybinding.scm         | channel, kwim     |
 | topbar / statusbar   | gleui/statusbar.scm         | waybar, swaybar   |
 | screen locker        | TODO                        | swaylock, waylock |
 | idle management      | TODO                        | swayidle          |

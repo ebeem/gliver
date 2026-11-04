@@ -108,12 +108,12 @@
 
 (define-command (describe-key)
   "Describe a keybinding, prompting to select from all active keybindings."
-  (let* ((top-pairs (gliver-keymap->alist *top-map*))
-         (root-pairs (gliver-keymap->alist *root-map*))
+  (let* ((top-pairs (keymap->alist *top-map*))
+         (root-pairs (keymap->alist *root-map*))
          (all-pairs (append top-pairs root-pairs))
          (entries (map (lambda (pair)
-                         (let* ((key-str (gliver-key->string (car pair)))
-                                (action (gliver-binding-action (cdr pair)))
+                         (let* ((key-str (key->string (car pair)))
+                                (action (keybinding-action (cdr pair)))
                                 (act-str (format #f "~a" action))
                                 (doc (if (or (symbol? action) (string? action))
                                          (let ((cmd (command-find action)))
@@ -139,17 +139,17 @@
   #:interactive (string)
   "Find the keybinding for a command."
   (let ((bindings (filter (lambda (pair)
-                            (let ((action (gliver-binding-action (cdr pair))))
+                            (let ((action (keybinding-action (cdr pair))))
                               (or (and (string? action)
                                        (string=? action (if (symbol? name)
                                                             (symbol->string name)
                                                             name)))
                                   (and (symbol? action) (eq? action name)))))
-                          (gliver-keymap->alist *root-map*))))
+                          (keymap->alist *root-map*))))
     (if (null? bindings)
         (log-debug "~a is not on any key." name)
         (log-debug "~a is on ~a" name
-                   (string-join (map (lambda (b) (gliver-key->string (car b))) bindings)
+                   (string-join (map (lambda (b) (key->string (car b))) bindings)
 								", ")))))
 
 (define-command (list-commands)
