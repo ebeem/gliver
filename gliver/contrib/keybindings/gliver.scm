@@ -2,23 +2,8 @@
   #:use-module (gliver core)
   #:use-module (gliver contrib commands)
   #:export (
-			*window-map*
-			*help-map*
-			*hotkeygrab-map*
 			keybindings-gliver-install-default!
 ))
-
-(define-var *window-map*
-  (make-keymap '*window-map*)
-  "Window map layer")
-
-(define-var *help-map*
-  (make-keymap '*help-map*)
-  "Help map layer")
-
-(define-var *hotkeygrab-map*
-  (make-keymap '*hotkeygrab-map* #:passthrough? #t)
-  "Hotkey Grab map layer")
 
 (define (keybindings-gliver-install-default!)
   "Install the default Gliver keybindings."

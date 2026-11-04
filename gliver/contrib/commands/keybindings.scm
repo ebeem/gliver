@@ -33,5 +33,5 @@
 
 (define-command (keybindings-clear!)
   "Clear all keybindings from all standard and registered keymaps."
-  (for-each keymap-clear! (keymap-registered))
+  (for-each keymap-clear! *keymap-registered*)
   (keybinding-sync!))
