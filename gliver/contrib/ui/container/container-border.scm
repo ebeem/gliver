@@ -54,6 +54,7 @@
 			container-border-on-container-unfocused
 			container-border-on-container-resize
 			container-border-on-workspace-switch
+			container-border-on-workspace-destroy
 			container-border-on-globals-unbind
 			container-border-on-listeners-attach
 			container-border-on-window-container-removed
@@ -304,6 +305,7 @@ Returns a Wayland buffer foreign pointer."
 
 (define (container-border-cleanup! container)
   "Clean up Wayland surface, shell surface, node, and buffer for container."
+  (log-info "cleaning up border container ~a" container)
   (when (container? container)
     (let ((surface (container-wl-surface container))
           (shell-surf (container-wl-shell-surface container))
@@ -311,14 +313,14 @@ Returns a Wayland buffer foreign pointer."
           (buffer (container-wl-buffer container)))
       (hashq-remove! *container-border-table* container)
       (%container-wl-node-proxy-set! container #f)
-      (when (and node (pointer? node) (not (null-pointer? node)))
-        (catch #t (lambda () (wm-node-destroy! node)) (lambda _ #f)))
-      (when (and shell-surf (pointer? shell-surf) (not (null-pointer? shell-surf)))
-        (catch #t (lambda () (wm-shell-surface-destroy! shell-surf)) (lambda _ #f)))
-      (when (and surface (pointer? surface) (not (null-pointer? surface)))
-        (catch #t (lambda () (wl-surface-destroy surface)) (lambda _ #f)))
-      (when (and buffer (pointer? buffer) (not (null-pointer? buffer)))
-        (catch #t (lambda () (wl-buffer-destroy buffer)) (lambda _ #f))))))
+      (when (valid-pointer? node)
+        (wm-node-destroy! node))
+      (when (valid-pointer? shell-surf)
+        (wm-shell-surface-destroy! shell-surf))
+      (when (valid-pointer? surface)
+        (wl-surface-destroy surface))
+      (when (valid-pointer? buffer)
+        (wl-buffer-destroy buffer)))))
 
 (define (container-border-hide! container)
   "Hide container border by moving its node offscreen."
@@ -338,70 +340,75 @@ Returns a Wayland buffer foreign pointer."
         (begin
 		  ;; init border if it's not created yet
           (with-render-sequence
-           (unless (container-wl-surface container)
-             (container-border-init! container))
-           (let* ((state (ensure-container-border-state! container))
-                  (surface (container-wl-surface container))
-                  (shell-surf (container-wl-shell-surface container))
-                  (node (container-wl-node-proxy container))
-                  (color (container-border-color container))
-                  (border-w *container-border-width*)
-                  (border-r *container-border-radius*)
-                  (border-edges *container-border-edges*)
-                  ;; border is outer, not inner
-                  ;; so width and height will be increased by 2 * border width
-                  ;; while x and y will be padded by border width
-                  (w (+ (container-width container) (* 2 border-w)))
-                  (h (+ (container-height container) (* 2 border-w)))
-                  (x (- (container-x container) border-w))
-                  (y (- (container-y container) border-w))
-                  ;; background color will be false/transparent if container has windows
-                  (bg-color (and (null? (container-windows container)) *container-border-bg-color*))
-                  (curr-buf (container-wl-buffer container))
-                  (prev-w (%cbs-width state))
-                  (prev-h (%cbs-height state))
-                  (prev-color (%cbs-color state))
-                  (prev-bg (%cbs-bg-color state))
-                  (reusable? (and (not force)
-                                  curr-buf
-                                  (pointer? curr-buf)
-                                  (not (null-pointer? curr-buf))
-                                  (= prev-w w)
-                                  (= prev-h h)
-                                  (equal? prev-color color)
-                                  (equal? prev-bg bg-color))))
+		   ;; workspace visible in render sequence will ensure
+		   ;; workspace exists as there maybe some delay until
+		   ;; the render sequence starts (mainly with init config)
+		   (and-let* ((workspace (container-workspace container))
+					  ((workspace-visible? workspace)))
+			 (unless (container-wl-surface container)
+               (container-border-init! container))
+			 (let* ((state (ensure-container-border-state! container))
+					(surface (container-wl-surface container))
+					(shell-surf (container-wl-shell-surface container))
+					(node (container-wl-node-proxy container))
+					(color (container-border-color container))
+					(border-w *container-border-width*)
+					(border-r *container-border-radius*)
+					(border-edges *container-border-edges*)
+					;; border is outer, not inner
+					;; so width and height will be increased by 2 * border width
+					;; while x and y will be padded by border width
+					(w (+ (container-width container) (* 2 border-w)))
+					(h (+ (container-height container) (* 2 border-w)))
+					(x (- (container-x container) border-w))
+					(y (- (container-y container) border-w))
+					;; background color will be false/transparent if container has windows
+					(bg-color (and (null? (container-windows container)) *container-border-bg-color*))
+					(curr-buf (container-wl-buffer container))
+					(prev-w (%cbs-width state))
+					(prev-h (%cbs-height state))
+					(prev-color (%cbs-color state))
+					(prev-bg (%cbs-bg-color state))
+					(reusable? (and (not force)
+									curr-buf
+									(pointer? curr-buf)
+									(not (null-pointer? curr-buf))
+									(= prev-w w)
+									(= prev-h h)
+									(equal? prev-color color)
+									(equal? prev-bg bg-color))))
 
-             (when (and surface (pointer? surface) (not (null-pointer? surface))
-                        node (pointer? node) (not (null-pointer? node))
-                        shell-surf (pointer? shell-surf) (not (null-pointer? shell-surf))
-                        (> w 0) (> h 0))
-               (wm-node-position-set! node x y)
-               (wm-node-place-top! node)
-               (container-border-update-input-region! container surface w h border-w border-edges)
-               (if reusable?
-                   (begin
-                     (wm-shell-surface-sync-next-commit! shell-surf)
-                     (wl-surface-commit surface))
-                   (let ((new-buffer (container-border-buffer-create w h border-w color border-r border-edges bg-color))
-                         (old-buffer curr-buf))
-                     (when (and (pointer? new-buffer) (not (null-pointer? new-buffer)))
-                       (%container-wl-buffer-set! container new-buffer)
-                       (%container-border-color-set! container color)
-                       (%cbs-width-set! state w)
-                       (%cbs-height-set! state h)
-                       (%cbs-bg-color-set! state bg-color)
+               (when (and surface (pointer? surface) (not (null-pointer? surface))
+                          node (pointer? node) (not (null-pointer? node))
+                          shell-surf (pointer? shell-surf) (not (null-pointer? shell-surf))
+                          (> w 0) (> h 0))
+				 (wm-node-position-set! node x y)
+				 (wm-node-place-top! node)
+				 (container-border-update-input-region! container surface w h border-w border-edges)
+				 (if reusable?
+					 (begin
                        (wm-shell-surface-sync-next-commit! shell-surf)
-                       (wl-surface-attach surface new-buffer 0 0)
-                       (wl-surface-damage surface 0 0 w h)
-                       (wl-surface-commit surface)
-                       (when (and old-buffer (pointer? old-buffer) (not (null-pointer? old-buffer))
-                                  (not (equal? old-buffer new-buffer)))
-                         (catch #t (lambda () (wl-buffer-destroy old-buffer)) (lambda _ #f)))))))))
+                       (wl-surface-commit surface))
+					 (let ((new-buffer (container-border-buffer-create w h border-w color border-r border-edges bg-color))
+                           (old-buffer curr-buf))
+                       (when (and (pointer? new-buffer) (not (null-pointer? new-buffer)))
+						 (%container-wl-buffer-set! container new-buffer)
+						 (%container-border-color-set! container color)
+						 (%cbs-width-set! state w)
+						 (%cbs-height-set! state h)
+						 (%cbs-bg-color-set! state bg-color)
+						 (wm-shell-surface-sync-next-commit! shell-surf)
+						 (wl-surface-attach surface new-buffer 0 0)
+						 (wl-surface-damage surface 0 0 w h)
+						 (wl-surface-commit surface)
+						 (when (and old-buffer (pointer? old-buffer) (not (null-pointer? old-buffer))
+									(not (equal? old-buffer new-buffer)))
+                           (catch #t (lambda () (wl-buffer-destroy old-buffer)) (lambda _ #f)))))))))
 
-		  ;; mark dirty if needed as this may be called outside of river sequence
-          (when (and (not *in-manage-sequence*)
-                     (not *in-render-sequence*))
-            (wm-manager-manage-dirty (manager-wl-proxy *manager*)))))))
+		   ;; mark dirty if needed as this may be called outside of river sequence
+           (when (and (not *in-manage-sequence*)
+                      (not *in-render-sequence*))
+             (wm-manager-manage-dirty (manager-wl-proxy *manager*))))))))
 
 (define (container-borders-update-all!)
   "Update borders for all containers in the display."
@@ -455,6 +462,16 @@ Returns a Wayland buffer foreign pointer."
     (for-each container-border-hide! (workspace-containers prev-workspace)))
   (when workspace
     (for-each container-border-render! (workspace-containers workspace))))
+
+(define* (container-border-on-workspace-destroy workspace #:optional target #:rest rest)
+  "Handle workspace destruction, clean up border resources for all containers in WORKSPACE."
+  (when (workspace? workspace)
+    (for-each container-border-cleanup! (workspace-containers workspace))
+    (let ((containers (filter (lambda (c)
+                                (and (container? c)
+                                     (eq? (container-workspace c) workspace)))
+                              (hash-map->list (lambda (k v) k) *container-border-table*))))
+      (for-each container-border-cleanup! containers))))
 
 (define (container-border-on-globals-unbind)
   "Clean up all container border surfaces on unbind/shutdown."
@@ -525,6 +542,7 @@ Returns a Wayland buffer foreign pointer."
     (gliver-hook-add! *container-resize-hook* 'container-border-on-container-resize)
     (gliver-hook-add! *container-position-changed-hook* 'container-border-on-container-resize)
     (gliver-hook-add! *workspace-switch-hook* 'container-border-on-workspace-switch)
+    (gliver-hook-add! *workspace-destroy-hook* 'container-border-on-workspace-destroy)
     (gliver-hook-add! *gliver-globals-unbind-hook* 'container-border-on-globals-unbind)
     (gliver-hook-add! *gliver-listeners-attach-hook* 'container-border-on-listeners-attach)
     (gliver-hook-add! *window-container-removed-hook* 'container-border-on-window-container-removed)
@@ -546,6 +564,7 @@ Returns a Wayland buffer foreign pointer."
     (gliver-hook-remove! *container-resize-hook* 'container-border-on-container-resize)
     (gliver-hook-remove! *container-position-changed-hook* 'container-border-on-container-resize)
     (gliver-hook-remove! *workspace-switch-hook* 'container-border-on-workspace-switch)
+    (gliver-hook-remove! *workspace-destroy-hook* 'container-border-on-workspace-destroy)
     (gliver-hook-remove! *gliver-globals-unbind-hook* 'container-border-on-globals-unbind)
     (gliver-hook-remove! *gliver-listeners-attach-hook* 'container-border-on-listeners-attach)
     (gliver-hook-remove! *window-container-removed-hook* 'container-border-on-window-container-removed)
