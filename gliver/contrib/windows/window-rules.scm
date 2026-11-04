@@ -93,7 +93,7 @@ PATTERN can be a string (exact match) or a regex-capable string."
           (when val
             (let ((container (window-container window)))
               (when container
-				(log-debug "focus window")
+				(log-debug "Focus window")
 				;; TODO: focus window/container
                 ))))
          (else

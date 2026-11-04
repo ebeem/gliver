@@ -104,7 +104,6 @@ Returns the PID."
 (define-command (gliver-quit)
   "Quit Gliver."
   (gliver-hook-run! *shutdown-hook*)
-  (var-set! *running?* #f)
   (log-debug "Goodbye."))
 
 (define-command (restart)

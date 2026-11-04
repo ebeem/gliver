@@ -35,6 +35,7 @@
   #:use-module (gliver wayland gen wayland)
   #:use-module (gliver wayland gen wlr-layer-shell-unstable-v1)
   #:use-module (gliver river connector)
+  #:use-module (gliver river wlr-layer-shell)
   #:use-module (gliver contrib commands)
   #:use-module (gliver contrib ui gleui base)
   #:use-module (gliver contrib ui statusbar base)
@@ -395,7 +396,7 @@ Example: (list 'window (make-module-mpd))"
   (define (globals-ready?)
     (and *statusbar-enabled*
          (valid-pointer? *wl-compositor*)
-         (valid-pointer? *zwlr-layer-shell*)
+         (valid-pointer? *wlr-layer-shell*)
          (valid-pointer? *wl-shm*)))
 
   (define (resolve-target-wl-output)
@@ -404,12 +405,12 @@ Example: (list 'window (make-module-mpd))"
 
   (define (calculate-anchor position)
 	(if (eq? position 'bottom)
-		(+ ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM
-		   ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT
-		   ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT)
-		(+ ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP
-		   ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT
-		   ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT)))
+		(+ *wlr-layer-shell-anchor-bottom*
+		   *wlr-layer-shell-anchor-left*
+		   *wlr-layer-shell-anchor-right*)
+		(+ *wlr-layer-shell-anchor-top*
+		   *wlr-layer-shell-anchor-left*
+		   *wlr-layer-shell-anchor-right*)))
 
   (let ((bar (output-statusbar output)))
     (when (and bar
@@ -431,10 +432,10 @@ Example: (list 'window (make-module-mpd))"
                  (init-width    (max 100 (- (output-width output) margin-left margin-right)))
                  (surface       (wl-compositor-create-surface *wl-compositor*))
                  (layer-surf    (zwlr-layer-shell-v1-get-layer-surface
-                                 *zwlr-layer-shell*
+                                 *wlr-layer-shell*
                                  surface
                                  target-wl-out
-                                 ZWLR_LAYER_SHELL_V1_LAYER_TOP
+                                 *wlr-layer-shell-layer-top*
                                  "gliver-statusbar"))
                  (state         (%make-statusbar-output-state
                                  output surface layer-surf %null-pointer
@@ -449,7 +450,7 @@ Example: (list 'window (make-module-mpd))"
 			  (zwlr-layer-surface-v1-set-exclusive-zone layer-surf th)
 			  (zwlr-layer-surface-v1-set-keyboard-interactivity
 			   layer-surf
-			   ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_NONE))
+			   *wlr-layer-shell-interactivity-none*))
 
 			(define (update-usable-area! th)
 			  (let* ((cur-x  (output-x output))
@@ -459,7 +460,10 @@ Example: (list 'window (make-module-mpd))"
 					 (new-uy (+ cur-y (if (eq? bar-pos 'bottom) 0 th)))
 					 (new-uh (max 0 (- cur-h th))))
 				(output-usable-area-set! output cur-x new-uy cur-w new-uh)
-				(gliver-hook-run! *output-change-hook* output)))
+				(gliver-hook-run! *output-dimensions-changed-hook*
+								  output
+								  (output-width output)
+								  (output-height output))))
 
 			(define (make-output-listener state)
 			  (define (handle-configure data proxy serial width height)
@@ -510,7 +514,7 @@ Example: (list 'window (make-module-mpd))"
             (catch #t (lambda () (wl-buffer-destroy buffer)) (lambda _ #f))))
         ;; restore usable area to full output dimensions
         (output-usable-area-set! output (output-x output) (output-y output) (output-width output) (output-height output))
-        (gliver-hook-run! *output-change-hook* output)
+        (gliver-hook-run! *output-dimensions-changed-hook* output (output-width output) (output-height output))
         (when *wl-display*
           (wl-display-flush *wl-display*))))))
 
@@ -770,7 +774,7 @@ Runs at most once per second and only re-renders when module contents change."
                  (sleep 1)
                  ;; when river is connected, *manager-tick-hook* handles updates on the main thread.
                  ;; only drive tick from thread if not connected to river.
-                 (unless (river-connected?)
+                 (unless *river-connected?*
                    (catch #t
                      (lambda () (statusbar-on-tick))
                      (lambda _ #f)))
@@ -809,14 +813,22 @@ Runs at most once per second and only re-renders when module contents change."
                (cur-w  (output-width output))
                (cur-h  (output-height output))
                (new-uy (+ cur-y (if (eq? bar-pos 'bottom) 0 total-h)))
-               (new-uh (max 0 (- cur-h total-h))))
+               (new-uh (max 0 (- cur-h total-h)))
+			   (cur-uy  (output-usable-y output))
+               (cur-uh  (output-usable-height output)))
           (unless (null-pointer? layer-surf)
             (zwlr-layer-surface-v1-set-size layer-surf 0 bar-h)
             (zwlr-layer-surface-v1-set-exclusive-zone layer-surf total-h)
-            (output-usable-area-set! output cur-x new-uy cur-w new-uh)
-            (gliver-hook-run! *output-change-hook* output)
-            (when (and (pointer? surface) (not (null-pointer? surface)))
-              (wl-surface-commit surface))))))))
+
+			;; check before committing usable area, otherwise infinite loop may occur
+			;; because this function listens to output dimensions hook
+			(unless (and (= new-uh cur-uh)
+						 (= new-uy cur-uy))
+			  (output-usable-area-set! output cur-x new-uy cur-w new-uh)
+			  (gliver-hook-run! *output-dimensions-changed-hook*
+								  output
+								  (output-width output)
+								  (output-height output)))))))))
 
 (define (statusbar-on-output-statusbar-changed output bar)
   (when *statusbar-enabled*

@@ -1,5 +1,4 @@
-#!/usr/bin/guile \
--s
+#!/usr/bin/env guile
 !#
 
 ;;; bin/gliver --- Main entry point for Gliver
@@ -25,17 +24,11 @@
              (gliver core)
              (gliver river)
              (gliver contrib commands)
-             (gliver river connector)
-             (gliver river window-manager)
-             (gliver river keybindings-manager)
-             (gliver river layer-shell-manager)
-             (gliver river keyboard-manager)
-			 (gliver contrib keybindings stumpwm)
+			 (gliver contrib keybindings gliver)
              (gliver contrib debug ipc-server)
-             (gliver contrib debug repl-server)
-)
+             (gliver contrib debug repl-server))
 
-(define *version* "0.0.3")
+(define *version* "0.0.4")
 
 ;;; cli argument parsing
 (define option-spec
@@ -81,7 +74,7 @@
     (log-info "Connecting to River...")
     (river-connect!)
 
-    (unless (river-connected?)
+    (unless *river-connected?*
       (log-error "Could not connect to Wayland display.")
       (log-error "Make sure River is running and WAYLAND_DISPLAY is set.")
       (format (current-error-port)
@@ -112,11 +105,11 @@
     (ipc-start!)
 
     ;; step 10: install default keybindings (if not overridden by config)
-    (keybindings-stumpwm-install-default!)
+    (keybindings-gliver-install-default!)
 
     ;; step 11: sync keybindings to river (deferred to next manage sequence)
-    (log-info "requesting keybinding sync...")
-    (gliver-hook-run! *keybinding-sync-request-hook*)
+    (log-info "Requesting keybinding sync...")
+    (keybinding-sync!)
 
     ;; step 12: load configuration
     (log-info "Loading configuration...")

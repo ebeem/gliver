@@ -1,4 +1,18 @@
+;;; gliver/core/ffi.scm.in --- Shared library paths for foreign function interfaces
+;;;
+;;; Copyright (C) 2026 Gliver Contributors
+;;; SPDX-License-Identifier: GPL-3.0-or-later
+;;;
+;;; This module defines paths to dynamically loaded shared libraries
+;;; used by Gliver via Guile's Foreign Function Interface (FFI).
+;;;
+;;; Any used library must be referenced here and in Makefile so
+;;; they can be resolved in any system, this approach also ensures
+;;; proper support for Guix, check the below pull request for details
+;;; https://codeberg.org/ebeem/gliver/pulls/3
+
 (define-module (gliver core ffi)
+  #:declarative? #f
   #:export (
 			%libxkbcommon
 			%libwayland-client
@@ -8,6 +22,7 @@
 			%librsvg
 ))
 
+;;; shared library paths
 (define %libxkbcommon
   "@LIBXKBCOMMON_LIBDIR@/libxkbcommon")
 

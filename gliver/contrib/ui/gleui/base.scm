@@ -25,6 +25,7 @@
   #:use-module (gliver wayland gen wayland)
   #:use-module (gliver wayland gen wlr-layer-shell-unstable-v1)
   #:use-module (gliver river connector)
+  #:use-module (gliver river wlr-layer-shell)
   #:declarative? #f
   #:export (
 			gleui-shm-slot-stride
@@ -139,28 +140,28 @@
 (define (gleui-numpad->anchor n)
   "Convert numpad position (1-9) used in gliver to zwlr_layer_surface_v1 anchor bitmask."
   (case n
-    ((7) (+ ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT))
-    ((8) ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP)
-    ((9) (+ ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT))
-    ((4) ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT)
+    ((7) (+ *wlr-layer-shell-anchor-top* *wlr-layer-shell-anchor-left*))
+    ((8) *wlr-layer-shell-anchor-top*)
+    ((9) (+ *wlr-layer-shell-anchor-top* *wlr-layer-shell-anchor-right*))
+    ((4) *wlr-layer-shell-anchor-left*)
     ((5) 0) ;; centered
-    ((6) ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT)
-    ((1) (+ ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT))
-    ((2) ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM)
-    ((3) (+ ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT))
-    (else ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP)))
+    ((6) *wlr-layer-shell-anchor-right*)
+    ((1) (+ *wlr-layer-shell-anchor-bottom* *wlr-layer-shell-anchor-left*))
+    ((2) *wlr-layer-shell-anchor-bottom*)
+    ((3) (+ *wlr-layer-shell-anchor-bottom* *wlr-layer-shell-anchor-right*))
+    (else *wlr-layer-shell-anchor-top*)))
 
 (define* (gleui-layer-surface-create #:key
                                      (output #f)
                                      (namespace "gleui")
-                                     (layer ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY)
+                                     (layer *wlr-layer-shell-layer-overlay*)
                                      (anchor 0)
                                      (margin-top 0)
                                      (margin-right 0)
                                      (margin-bottom 0)
                                      (margin-left 0)
                                      (exclusive-zone -1)
-                                     (keyboard-interactivity ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_NONE)
+                                     (keyboard-interactivity *wlr-layer-shell-interactivity-none*)
                                      (width 0)
                                      (height 0)
                                      (on-created #f)
@@ -168,15 +169,14 @@
                                      (on-close #f))
   "Create and configure a Wayland surface and zwlr_layer_surface_v1.
 Returns (values surface layer-surface) or (values #f #f) on failure."
-  (if (or (not *connected*)
+  (if (or (not *river-connected?*)
           (not (pointer? *wl-compositor*))
           (null-pointer? *wl-compositor*))
       (values #f #f)
       (let* ((surface (wl-compositor-create-surface *wl-compositor*)))
         (if (or (not surface) (null-pointer? surface))
             (values #f #f)
-            (if (or (not (pointer? *zwlr-layer-shell*))
-                    (null-pointer? *zwlr-layer-shell*))
+            (if (not (valid-pointer? *wlr-layer-shell*))
                 (begin
                   (catch #t (lambda () (wl-surface-destroy surface)) (lambda _ #f))
                   (values #f #f))
@@ -189,9 +189,9 @@ Returns (values surface layer-surface) or (values #f #f) on failure."
                                            (else (output-current))))
                            (output-if (output-wl-output-proxy target-output))
                            (layer-surface (zwlr-layer-shell-v1-get-layer-surface
-                                           *zwlr-layer-shell*
+                                           *wlr-layer-shell*
                                            surface
-                                           (if (and output-if (pointer? output-if) (not (null-pointer? output-if)))
+                                           (if (valid-pointer? output-if)
                                                output-if
                                                %null-pointer)
                                            layer

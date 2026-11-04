@@ -9,27 +9,29 @@
   #:export (
 			prefix-activated
 			prefix-abort
-			enter-submap
+			enter-keymap
 			keybindings-clear!
 ))
 
 ;;; prefix mode commands
 (define-command (prefix-activated)
   "Handle prefix key activation."
-  (var-set! *mode* '*root-map*)
+  (keybinding-switch-to-mode! '*root-map*)
   (log-debug "Prefix mode activated."))
 
 (define-command (prefix-abort)
   "Abort prefix mode."
-  (var-set! *mode* 'normal)
+  (keybinding-switch-to-mode! '*top-map*)
   (log-debug "Aborted."))
 
-(define-command (enter-submap name)
+(define-command (enter-keymap name)
   #:interactive (symbol)
-  "Enter a sub-keymap by symbol."
-  (log-debug "Entering submap: ~a" name))
+  "Enter a keymap by symbol."
+  (let ((mode (if (keymap? name) (keymap-name name) name)))
+    (keybinding-switch-to-mode! mode)
+    (log-debug "Entering keymap: ~a" mode)))
 
 (define-command (keybindings-clear!)
   "Clear all keybindings from all standard and registered keymaps."
-  (for-each gliver-keymap-clear! (registered-keymaps))
-  (gliver-hook-run! *keybinding-sync-request-hook*))
+  (for-each keymap-clear! (manager-keymaps *manager*))
+  (keybinding-sync!))

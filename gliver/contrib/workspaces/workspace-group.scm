@@ -96,22 +96,21 @@ Otherwise, it will return workspaces having the same index as WS."
   (and-let* (((workspace? focused-ws))
              (group (%workspace-group-find focused-ws))
              ((pair? group))
-             (output (workspace-output focused-ws))
-             (switched (list output)))
+             (output (workspace-output focused-ws)))
 
-    (define (%sync-target! ws)
-      (and-let* (((workspace? ws))
-                 (out (workspace-output ws))
-                 ((not (memq out switched))))
-		;; switched keeps track of synced outputs
-		;; this group sync won't switch workspace on
-		;; an output more than once
-        (set! switched (cons out switched))
-        (unless (workspace-visible? ws)
-		  ;; focus workspace without focusing its container or output
-          (workspace-focus! ws #:focus-child #f #:focus-parent #f))))
-
-    (for-each %sync-target! group)))
+    (let ((switched (list output)))
+      (define (%sync-target! ws)
+        (and-let* (((workspace? ws))
+                   (out (workspace-output ws))
+                   ((not (memq out switched))))
+          ;; switched keeps track of synced outputs
+          ;; this group sync won't switch workspace on
+          ;; an output more than once
+          (set! switched (cons out switched))
+          (unless (workspace-visible? ws)
+            ;; focus workspace without focusing its container or output
+            (workspace-focus! ws #:focus-child #f #:focus-parent #f))))
+      (for-each %sync-target! group))))
 
 (define (workspace-group-on-workspace-switch ws prev)
   "Hook handler called when a workspace is switched."
@@ -163,4 +162,4 @@ otherwise, *workspace-groups* will be configured by index."
     (gliver-hook-remove! *workspace-switch-hook* 'workspace-group-on-workspace-switch)
     (set! *workspace-group-enabled* #f)
 	(workspace-group-clear!)
-	(log-info "workspace-group disabled.")))
+	(log-info "Workspace groups disabled.")))

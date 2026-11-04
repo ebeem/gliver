@@ -5,7 +5,6 @@
 
 (define-module (gliver contrib commands keyboard)
   #:use-module (gliver core)
-  #:use-module (gliver river keyboard-manager)
   #:declarative? #f
   #:export (
 			keyboard-layout-next
@@ -15,9 +14,9 @@
 ;;; keyboard commands
 (define-command (keyboard-layout-next)
   "Switch to the next configured keyboard layout."
-  (keyboard-manager-layout-next!))
+  (keyboard-layout-next!))
 
 (define-command (keyboard-layout-prev)
   "Switch to the previous configured keyboard layout."
-  (keyboard-manager-layout-prev!))
+  (keyboard-layout-prev!))
 

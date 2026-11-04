@@ -10,6 +10,7 @@
 			 (gliver contrib keybindings gliver)
 			 (gliver contrib ui container container-border)
 			 (gliver contrib ui container container-tab-indicator)
+			 (gliver contrib ui wallpaper wallpaper-basic)
 
 			 ;; optional deps (recommended)
 			 (gliver contrib ui overlay which-key)
@@ -28,6 +29,7 @@
 ;; path of your wallpaper 
 ;(set! *wallpaper* "~/.wallpapers/fixed/flat-16.png")
 ;(set! *wallpaper-mode* 'fill)
+;(wallpaper-enable!)
 
 ;; workspace grid to enable up and down navigation
 ;; by default its value is 1 which disables up and down movement

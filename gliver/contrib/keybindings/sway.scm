@@ -93,4 +93,4 @@
   (define-key *top-map* "XF86MonBrightnessUp" "exec brightnessctl set 5%+")
   (define-key *top-map* "Print" "exec grim")
 
-  (gliver-hook-run! *keybinding-sync-request-hook*))
+  (keybinding-sync!))

@@ -142,7 +142,7 @@
 (define-command (notification-daemon-clear-history!)
   "Clear the notification history."
   (set! *notification-daemon-history* '())
-  (log-info "notification-daemon: History cleared."))
+  (log-info "History cleared."))
 
 (define (%dbus-session-bus-path)
   "Locate the dbus UNIX socket path."
@@ -695,7 +695,7 @@
 (define-command (notification-daemon-redisplay-last!)
   "Redisplay the most recent notification from history."
   (if (null? *notification-daemon-history*)
-      (log-info "notification-daemon: No notifications in history.")
+      (log-info "No notifications in history.")
       (let* ((last (car *notification-daemon-history*))
              (app-name (assoc-ref last 'app-name))
              (summary (assoc-ref last 'summary))
@@ -906,11 +906,11 @@ This should be called manually via tick hook for instance"
                 (%process-in-buffer!)
                 (loop))
                ((and (number? n) (= n 0))
-                (log-info "notification-daemon: D-Bus socket closed by peer.")
+                (log-info "D-Bus socket closed by peer.")
                 (notification-daemon-stop!))
                (else #f))))))
       (lambda (key . args)
-        (log-error "notification-daemon: Polling error: ~a ~a" key args)))))
+        (log-error "Polling error: ~a ~a" key args)))))
 
 (define (%recv-with-timeout! s scratch timeout-sec)
   "Read with timeout TIMEOUT-SEC."
@@ -944,13 +944,13 @@ Returns bool that indicates whether daemon has been started successfully."
   (if *notification-daemon-socket*
 	  ;; socket is already running, return true
       (begin
-        (log-info "notification-daemon: Already running.")
+        (log-info "Already running.")
         #t)
       (let ((path (%dbus-session-bus-path)))
         (if (not path)
 			;; socket path wasn't properly detected, return false
             (begin
-              (log-warn "notification-daemon: DBUS_SESSION_BUS_ADDRESS not found; daemon not started.")
+              (log-warn "DBUS_SESSION_BUS_ADDRESS not found; daemon not started.")
               #f)
 
 			(catch #t
@@ -1008,10 +1008,10 @@ Returns bool that indicates whether daemon has been started successfully."
                                 (fcntl sock F_SETFL (logior (fcntl sock F_GETFL) O_NONBLOCK))
 								;; poll socket every tick
                                 (gliver-hook-add! *manager-tick-hook* 'notification-daemon-poll!)
-                                (log-info "notification-daemon: Acquired org.freedesktop.Notifications.")
+                                (log-info "Acquired org.freedesktop.Notifications.")
                                 #t)
                               (begin
-                                (log-warn "notification-daemon: Could not acquire org.freedesktop.Notifications (code ~a)." code)
+                                (log-warn "Could not acquire org.freedesktop.Notifications (code ~a)." code)
                                 (close-port sock)
                                 (set! *notification-daemon-socket* #f)
                                 #f))))
@@ -1019,7 +1019,7 @@ Returns bool that indicates whether daemon has been started successfully."
                         (loop-req)))))))
 
               (lambda (key . args)
-                (log-error "notification-daemon: Failed to start: ~a ~a" key args)
+                (log-error "Failed to start: ~a ~a" key args)
                 (when *notification-daemon-socket*
                   (close-port *notification-daemon-socket*)
                   (set! *notification-daemon-socket* #f))
@@ -1034,7 +1034,7 @@ Returns bool that indicates whether daemon has been stopped successfully."
   (set! *notification-daemon-active-ids* '())
   (set! *notification-daemon-active-id* #f)
   (when *notification-daemon-socket*
-    (log-info "notification-daemon: Stopping...")
+    (log-info "Stopping...")
     (gliver-hook-remove! *manager-tick-hook* 'notification-daemon-poll!)
     (catch #t
       (lambda ()
@@ -1042,7 +1042,7 @@ Returns bool that indicates whether daemon has been stopped successfully."
       (lambda _ #f))
     (set! *notification-daemon-socket* #f)
     (set! *notification-daemon-dbus-in-buffer* (make-bytevector 0 0))
-    (log-info "notification-daemon: Stopped.")
+    (log-info "Stopped.")
     #t))
 
 (define-command (notification-daemon-restart!)

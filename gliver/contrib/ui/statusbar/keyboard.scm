@@ -7,7 +7,7 @@
   #:use-module (ice-9 format)
   #:use-module (srfi srfi-1)
   #:use-module (gliver core)
-  #:use-module (gliver river keyboard-manager)
+  #:use-module (gliver core keyboard)
   #:use-module (gliver deps libxkbcommon)
   #:use-module (gliver contrib ui statusbar base)
   #:declarative? #f
@@ -17,7 +17,7 @@
 
 (define (%query-keyboard-layout)
   "Detect the currently active keyboard layout from available sources."
-  (keyboard-manager-current-layout-code))
+  (keyboard-current-layout-code))
 
 (define* (make-module-keyboard #:key
                                (id 'keyboard)
@@ -42,8 +42,8 @@ Supports short aliases, custom icon, layout cycling, and click actions."
   (define (%update module output)
     (let* ((raw (%query-keyboard-layout))
 		   ;; TODO: this should get layout name rather than code
-           (curr-name (keyboard-manager-current-layout-code))
-           (curr-code (keyboard-manager-current-layout-code))
+           (curr-name (keyboard-current-layout-code))
+           (curr-code (keyboard-current-layout-code))
            ;; check custom user mappings first for raw, code, or name
            (mapped (or (assoc-ref mappings raw)
                        (and curr-code (assoc-ref mappings curr-code))
@@ -60,7 +60,7 @@ Supports short aliases, custom icon, layout cycling, and click actions."
       (statusbar-module-state-set! module `((layout . ,raw)
                                            (name . ,curr-name)
                                            (code . ,curr-code)
-                                           (index . ,*keyboard-manager-current-layout-index*)))))
+                                           (index . ,*keyboard-current-layout-index*)))))
 
   (define (%handle-click button x y module output custom-data)
     (cond

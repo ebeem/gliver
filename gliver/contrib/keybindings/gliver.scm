@@ -3,17 +3,7 @@
   #:use-module (gliver contrib commands)
   #:export (
 			keybindings-gliver-install-default!
-			*window-map*
-			*help-map*
 ))
-
-(define-var *window-map*
-  (make-gliver-keymap '*window-map*)
-  "window map layer")
-
-(define-var *help-map*
-  (make-gliver-keymap '*help-map*)
-  "help map layer")
 
 (define (keybindings-gliver-install-default!)
   "Install the default Gliver keybindings."
@@ -91,7 +81,8 @@
 	"XF86MonBrightnessUp"   'media-brightness-increase
 	"Print"                 'media-screenshot
 
-	"s-space" '(enter-submap *root-map*))
+	"s-S-z"   '(enter-keymap *hotkeygrab-map*)
+	"s-space" '(enter-keymap *root-map*))
 
   (define-keys *help-map*
 	"v"         'describe-variable
@@ -99,11 +90,11 @@
 	"k"         'describe-key)
 
   (define-key *root-map* "o" 'launcher-run)
-  (define-key *root-map* "h" '(enter-submap *help-map*))
-  (define-key *root-map* "w" '(enter-submap *window-map*))
-  (define-key *root-map* "W" '(enter-submap *workspace-map*))
+  (define-key *root-map* "h" '(enter-keymap *help-map*))
+  (define-key *root-map* "w" '(enter-keymap *window-map*))
+  (define-key *root-map* "W" '(enter-keymap *workspace-map*))
 
-  (gliver-hook-run! *keybinding-sync-request-hook*))
+  (keybinding-sync!))
 
 (keybindings-clear!)
 (keybindings-gliver-install-default!)

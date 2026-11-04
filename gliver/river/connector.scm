@@ -3,238 +3,195 @@
 ;;; Copyright (C) 2026 Gliver Contributors
 ;;; SPDX-License-Identifier: GPL-3.0-or-later
 ;;;
-;;; This module integrates Gliver with the River Wayland compositor.
+;;; This module integrates Gliver with Wayland display & River compositor.
 ;;; It handles:
 ;;;  - Connecting to River's Wayland display
-;;;  - Window management via river-window-management-v1 protocol
-;;;  - Key bindings via river-xkb-bindings-v1 protocol
-;;;  - Input configuration via river-input-management-v1 protocol
-;;;  - The main event loop
+;;;  - Advertising Wayland protocols availability
+;;;  - Executing main Gliver/River event loop
+;;;
+;;; This module implements the Wayland protocols
+;;;  - wl_compositor
+;;;  - wl_shm
 
 (define-module (gliver river connector)
-  #:use-module (ice-9 format)
-  #:use-module (ice-9 match)
-  #:use-module (ice-9 rdelim)
-  #:use-module (srfi srfi-1)
-  #:use-module (srfi srfi-69)
   #:use-module (system foreign)
-  #:use-module (gliver core types)
-  #:use-module (gliver core config)
-  #:use-module (gliver core logs)
-  #:use-module (gliver core hooks)
+  #:use-module (gliver core-base)
   #:use-module (gliver wayland client)
   #:use-module (gliver wayland gen wayland)
-  #:use-module (gliver wayland gen river-input-management-v1)
-  #:use-module (gliver wayland gen river-layer-shell-v1)
-  #:use-module (gliver wayland gen wlr-layer-shell-unstable-v1)
   #:declarative? #f
   #:export (
-			WL_COMPOSITOR_NAME
-			WL_SHM_NAME
 			*wl-display*
 			*wl-registry*
-			*connected*
-			*input-manager*
-			*layer-shell*
 			*wl-compositor*
 			*wl-shm*
-			*zwlr-layer-shell*
-			*pending-key-action*
-			river-connected?
+			*river-connected?*
+			river-on-registry-global
+			river-on-registry-global-remove
 			river-connect!
 			river-disconnect!
-			river-dispatch-once!
-			read-proc-mem-kb
 			river-event-loop!
+			river-on-globals-bind
+			river-on-globals-unbind
+			river-on-globals-verify
 ))
 
 ;;; protocol names
-(define WL_COMPOSITOR_NAME "wl_compositor")
-(define WL_SHM_NAME "wl_shm")
+(define %WL_COMPOSITOR_NAME "wl_compositor")
+(define %WL_SHM_NAME "wl_shm")
 
 ;;; state
-(define-var *wl-display* #f
-			"global wayland display.")
-(define-var *wl-registry* #f
-			"global wayland registry.")
-(define-var *connected* #f
-			"Whether gliver is connected to river.")
-
-;;; window management protocol state
-(define-var *input-manager* %null-pointer
-			"river_input_manager_v1 wayland proxy")
-(define-var *layer-shell* %null-pointer
-			"river_layer_shell_v1 wayland proxy")
+(define-var *wl-display* %null-pointer
+			"Global Wayland display pointer, used for event loop pulling and flushing requests.")
+(define-var *wl-registry* %null-pointer
+			"Global Wayland registry pointer, used to discover and bind Wayland protocols.")
 (define-var *wl-compositor* %null-pointer
-			"wl_compositor wayland proxy")
+			"Proxy for wl_compositor, used to create Wayland surfaces and regions.")
 (define-var *wl-shm* %null-pointer
-			"wl_shm wayland wayland proxy")
-(define-var *zwlr-layer-shell* %null-pointer
-			"zwlr_layer_shell_v1 wayland proxy")
+			"Proxy for wl_shm, used to allocate pixel buffers.")
+(define-var *river-connected?* #f
+			"Flag indicating whether Gliver is currently connected to the Wayland display.")
 
-(define (river-connected?)
-  *connected*)
 
-;;; connection
+(define (river-on-registry-global data registry object-id protocol-ptr version)
+  "Callback for any advertised Wayland protocol. All available protocols
+will be passed to this callback upon connecting to Wayland.
+Parameters: (DATA REGISTRY OBJECT-ID PROTOCOL-PTR VERSION)
+  - DATA: Pointer to user context (unused, null in Gliver).
+  - REGISTRY: Pointer to wl_registry proxy.
+  - OBJECT-ID: Numeric Wayland object ID.
+  - PROTOCOL-PTR: Pointer to interface name string.
+  - VERSION: Maximum interface version supported by compositor."
+  (let ((protocol-name (pointer->string protocol-ptr)))
+    ;; any interface should start binding with this hook
+    (log-debug "Binding ~a..." protocol-name)
+    (gliver-hook-run! *gliver-globals-bind-hook*
+                      registry protocol-name object-id version)))
+
+(define (river-on-registry-global-remove data registry object-id)
+  "Callback when any advertised Wayland protocol becomes unavailable/removed.
+Parameters: (DATA REGISTRY OBJECT-ID)
+  - DATA: Pointer to user context (unused, null in Gliver).
+  - REGISTRY: Pointer to wl_registry proxy.
+  - OBJECT-ID: Numeric Wayland object ID."
+  ;; currently isn't used at all, it should be useful
+  ;; for certain situations were advertised protocols become
+  ;; unavailable, but using river will probably make this useless
+  (log-debug "Registry global_remove: object-id=~a" object-id))
+
 (define (river-connect!)
-  "Connect to River's Wayland display and bind required protocols."
-  ;; ensure DISPLAY is set for Xwayland applications
+  "Connect to Wayland display and bind required protocols.
+Parameters: None."
+  ;; ensure $DISPLAY is set for Xwayland applications
+  ;; only x11 application use this environment variable
   (unless (getenv "DISPLAY")
 	(setenv "DISPLAY" ":0"))
 
   (log-info "Connecting to Wayland display...")
+
+  ;; any error that occur during the initialization process
+  ;; is failure in connecting to river and should terminate gliver
   (catch #t
     (lambda ()
+	  ;; connect to wayland display using $WAYLAND_DISPLAY environment variable
+	  ;; the wayland display is used to flush buffers and read/dispatch compositor events
       (set! *wl-display* (wl-display-connect))
       (log-info "Connected to Wayland display.")
 	  (gliver-hook-run! *manager-connected-hook*)
 
-	  ;; get the registry and set up the global listener
+	  ;; get the registry of the wayland display
+	  ;; the registry is used to discover what protocols are available
+	  ;; under the wayland session (wayland & river protocols)
       (set! *wl-registry* (gliver-wl-display-get-registry *wl-display*))
 
-	  (let ((listener
-             (make-wl-listener
-              (list
-               (procedure->pointer
-                void
-                (lambda (data registry object-id protocol-ptr version)
-                  (let ((protocol-name (pointer->string protocol-ptr)))
-					;; any interface should start binding with this hook
-                    ;; (log-info "binding ~a..." protocol-name)
-					(gliver-hook-run! *gliver-globals-bind-hook*
-									  registry protocol-name object-id version)))
-                (list '* '* uint32 '* uint32))
-               ;; global_remove(data, registry, object-id)
-               (procedure->pointer
-                void
-                (lambda (data registry object-id)
-                  (log-debug "Registry global_remove: object-id=~a" object-id))
-                (list '* '* uint32))))))
-        (wl-proxy-add-listener *wl-registry* listener %null-pointer))
+	  ;; create a listener for on-global and on-global-remove wayland protocol
+	  ;; used to advertise for available protocols and when protocols become unavailable
+	  (let ((listener (make-wl-listener
+					   (list (procedure->pointer void river-on-registry-global (list '* '* uint32 '* uint32))
+							 (procedure->pointer void river-on-registry-global-remove (list '* '* uint32))))))
+		(wl-proxy-add-listener *wl-registry* listener %null-pointer))
 
-	  ;; first roundtrip: process globals, bind protocols
+	  ;; first roundtrip: process globals and bind protocols
 	  (wl-display-roundtrip *wl-display*)
 
-	  ;; verify all important interfaces were bound
+	  ;; verify all important protocols were bound
+	  ;; if a hook throws an error, gliver will crash as they run with strict
+	  ;; optional protocols shouldn't throw errors
 	  (gliver-hook-run-strict! *gliver-globals-verify-hook*)
-	  (log-debug "All critical globals were bound")
+	  (log-debug "All critical globals were bound successfully")
 
-      (log-info "Core protocols bound.")
+	  ;; verify all important protocol listeners were attached
+	  ;; if a hook throws an error, gliver will crash as they run with strict
       (gliver-hook-run-strict! *gliver-listeners-attach-hook*)
+      (log-info "All critical global listeners were attached successfully")
 
       ;; second roundtrip: flushes bind requests and receives initial state
       ;; (outputs, seats, manage_start events delivered via wm listener)
       (wl-display-roundtrip *wl-display*)
       (log-info "Initial state synced")
-      (set! *connected* #t)
-      (log-info "River integration initialized."))
+      (set! *river-connected?* #t)
+      (log-info "Gliver connected to Wayland display successfully."))
     (lambda (key . args)
       (log-error "Failed to connect to Wayland: ~a ~a" key args)
-      (set! *connected* #f))))
+      (set! *river-connected?* #f))))
 
 (define (river-disconnect!)
-  "Disconnect from the Wayland display."
-  (when *connected*
+  "Disconnect from Wayland display and clear globals.
+Parameters: None."
+  (when *river-connected?*
     (log-info "Disconnecting from Wayland display...")
     (gliver-hook-run! *gliver-globals-unbind-hook*)
-    ;; destroy input manager
-    (unless (null-pointer? *input-manager*)
-      (river-input-manager-v1-destroy *input-manager*)
-      (set! *input-manager* %null-pointer))
-    ;; destroy layer shell
-    (unless (null-pointer? *layer-shell*)
-      (river-layer-shell-v1-destroy *layer-shell*)
-      (set! *layer-shell* %null-pointer))
-    ;; destroy zwlr layer shell
-    (unless (null-pointer? *zwlr-layer-shell*)
-      (zwlr-layer-shell-v1-destroy *zwlr-layer-shell*)
-      (set! *zwlr-layer-shell* %null-pointer))
     ;; note: wl_compositor and wl_shm have no destroy request,
     ;; they are cleaned up when the display disconnects
 
     ;; disconnect display
-    (when *wl-display*
+    (when (valid-pointer? *wl-display*)
       (wl-display-disconnect *wl-display*)
-      (set! *wl-display* #f))
-    (set! *connected* #f)
+      (set! *wl-display* %null-pointer))
+    (set! *river-connected?* #f)
     (log-info "Disconnected.")))
 
-;;; event loop
-(define (river-dispatch-once!)
-  "Dispatch pending Wayland events once."
-  (when *connected*
-    (catch #t
-      (lambda ()
-        (wl-display-flush *wl-display*)
-        ;; Non-blocking dispatch
-        (let ((ret (wl-display-dispatch-pending *wl-display*)))
-          (when (< ret 0)
-            (log-error "Wayland dispatch error")
-            (set! *connected* #f))))
-      (lambda (key . args)
-        (log-error "Event dispatch error: ~a ~a" key args)))))
-
-(define (read-proc-mem-kb)
-  "Read current RSS from /proc/self/status (Linux only)."
-  (catch #t
-    (lambda ()
-      (call-with-input-file "/proc/self/status"
-        (lambda (port)
-          (let loop ()
-            (let ((line (read-line port)))
-              (if (eof-object? line)
-                  0
-                  (if (string-prefix? "VmRSS:" line)
-                      (string->number
-                       (string-trim-both
-                        (string-drop-right
-                         (string-trim (substring line 6))
-                         2)))
-                      (loop))))))))
-    (lambda _ 0)))
-
 (define (river-event-loop!)
-  "Run the main event loop.
-This integrates Wayland event dispatching with IPC and REPL polling."
-  (log-info "Entering main event loop.")
-  (var-set! *running?* #t)
+  "Run the main Wayland event loop, flush requests, and dispatch incoming events.
+Parameters: None."
+  (log-info "Entering Wayland main event loop.")
 
   (let ((wl-fd (wl-display-get-fd *wl-display*)))
-    (while (and *running?* *connected*)
+    (while *river-connected?*
       (catch #t
         (lambda ()
           ;; flush outgoing requests
           (let ((flush-ret (wl-display-flush *wl-display*)))
             (when (< flush-ret 0)
               (log-error "Wayland flush error")
-              (set! *connected* #f)))
+              (set! *river-connected?* #f)))
 
-          (when *connected*
-            ;; prepare to read events
-            (let ((prep (wl-display-prepare-read *wl-display*)))
-              (if (not (zero? prep))
-                  ;; events already pending, dispatch them
-                  (let ((ret (wl-display-dispatch-pending *wl-display*)))
-                    (when (< ret 0)
-                      (log-error "Wayland dispatch error")
-                      (set! *connected* #f)))
-                  ;; lock acquired, poll the fd before reading
-                  ;; use select with a 16ms timeout to avoid busy-waiting
-                  (let ((ready (select (list wl-fd) '() '() 0 16000)))
-                    (if (pair? (car ready))
-                        ;; data available, read and dispatch
-                        (begin
-                          (wl-display-read-events *wl-display*)
-                          (let ((ret (wl-display-dispatch-pending *wl-display*)))
-                            (when (< ret 0)
-                              (log-error "Wayland dispatch error")
-                              (set! *connected* #f))))
-                        ;; timeout, no events, cancel the read lock
-                        (wl-display-cancel-read *wl-display*))))))
+          ;; prepare to read events
+		  (let ((prep (wl-display-prepare-read *wl-display*)))
+            (if (not (zero? prep))
+                ;; events already pending, dispatch them
+                (let ((ret (wl-display-dispatch-pending *wl-display*)))
+                  (when (< ret 0)
+                    (log-error "Wayland dispatch error")
+                    (set! *river-connected?* #f)))
+
+                ;; lock acquired, poll the fd before reading
+                ;; use select with a 16ms timeout to avoid busy-waiting
+                (let ((ready (select (list wl-fd) '() '() 0 16000)))
+                  (if (pair? (car ready))
+                      ;; data available, read and dispatch
+                      (begin
+                        (wl-display-read-events *wl-display*)
+                        (let ((ret (wl-display-dispatch-pending *wl-display*)))
+                          (when (< ret 0)
+                            (log-error "Wayland dispatch error")
+                            (set! *river-connected?* #f))))
+
+                      ;; timeout, no events, cancel the read lock
+                      (wl-display-cancel-read *wl-display*)))))
 
           ;; periodic tick hook for event loop
 		  ;; could be useful for statusbar and monitoring performance
-          (when *connected*
+          (when *river-connected?*
             (gliver-hook-run! *manager-tick-hook*)))
 
         (lambda (key . args)
@@ -243,42 +200,48 @@ This integrates Wayland event dispatching with IPC and REPL polling."
           (catch #t
             (lambda () (wl-display-cancel-read *wl-display*))
             (lambda _ #f))
-          (set! *connected* #f)))))
+          (set! *river-connected?* #f)))))
 
   (log-info "Main event loop exited."))
 
 (define (river-on-globals-bind registry protocol-name object-id version)
-  "Bind Wayland compositor, shm, layer-shell, and output globals."
+  "Bind Wayland compositor and shm globals from REGISTRY.
+Parameters: (REGISTRY PROTOCOL-NAME OBJECT-ID VERSION)
+  - REGISTRY: Pointer to wl_registry proxy.
+  - PROTOCOL-NAME: Interface name string.
+  - OBJECT-ID: Numeric Wayland object ID.
+  - VERSION: Maximum interface version supported by compositor."
   (cond
-   ((string=? protocol-name WL_COMPOSITOR_NAME)
+   ;; binding *wl-compositor*
+   ((string=? protocol-name %WL_COMPOSITOR_NAME)
     (log-info "Binding ~a..." protocol-name)
     (set! *wl-compositor*
           (gliver-wl-registry-bind registry object-id
                                    *wl-compositor-interface*
                                    (min version 4))))
-   ((string=? protocol-name WL_SHM_NAME)
+
+   ;; binding *wl-shm*
+   ((string=? protocol-name %WL_SHM_NAME)
     (log-info "Binding ~a..." protocol-name)
     (set! *wl-shm*
           (gliver-wl-registry-bind registry object-id
                                    *wl-shm-interface*
-                                   1)))
-   ((string=? protocol-name ZWLR_LAYER_SHELL_V1_NAME)
-    (log-info "Binding ~a..." protocol-name)
-    (set! *zwlr-layer-shell*
-          (gliver-wl-registry-bind registry object-id
-                                   *zwlr-layer-shell-v1-interface*
-                                   (min version 4))))))
+                                   (min version 1))))))
 
 (define (river-on-globals-unbind)
-  "Unbind globals and clean up wallpaper resources."
+  "Reset connector global Wayland proxies on compositor disconnect.
+Parameters: None."
   (set! *wl-compositor* %null-pointer)
-  (set! *wl-shm* %null-pointer)
-  (set! *zwlr-layer-shell* %null-pointer))
+  (set! *wl-shm* %null-pointer))
 
 (define (river-on-globals-verify)
-  "Verify wallpaper globals."
-  (when (null-pointer? *zwlr-layer-shell*)
-    (log-warn "zwlr_layer_shell_v1 not available, background wallpaper features may be disabled")))
+  "Verify availability of connector globals and raise error if mandatory interfaces are missing.
+Parameters: None."
+  (unless (and (valid-pointer? *wl-display*)
+			   (valid-pointer? *wl-registry*)
+			   (valid-pointer? *wl-compositor*))
+    (log-error "Wayland display, registry, or compositor wasn't found")
+	(error "Wayland display, registry, or compositor wasn't found")))
 
 (gliver-hook-add! *gliver-globals-bind-hook* 'river-on-globals-bind)
 (gliver-hook-add! *gliver-globals-unbind-hook* 'river-on-globals-unbind)
