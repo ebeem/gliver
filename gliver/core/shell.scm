@@ -13,6 +13,7 @@
   #:use-module (srfi srfi-2)
   #:use-module (gliver core-base)
   #:use-module (gliver river layer-shell-manager)
+  #:use-module (gliver river window-manager)
   #:declarative? #f
   #:export (
 			*shell-default-output-name*
@@ -38,8 +39,9 @@ request a specific output.
 Must be called in a manage sequence."
   (log-info "Setting default layer shell output to ~a" output)
   (and-let* ((proxy-ls-output (output-wl-ls-proxy output)))
-    (layer-shell-output-set-default proxy-ls-output)
-	(set! *shell-current-default-output* output)))
+    (with-manage-sequence
+     (layer-shell-output-set-default proxy-ls-output)
+	 (set! *shell-current-default-output* output))))
 
 (define (shell-on-output-non-exclusive-area data ls-output-proxy x y width height)
   "Invoked when non exclusive area of a layer shell output changes.
@@ -110,6 +112,7 @@ Parameters: (OUTPUT)
   (and-let* ((proxy (output-wl-ls-proxy output))
 			 ((valid-pointer? proxy)))
 	(layer-shell-output-destroy proxy)
+	(%output-wl-ls-proxy-set! output #f))
 
 	;; if deleted output is set as default, pick another one
 	(when (eq? *shell-current-default-output* output)
