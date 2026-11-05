@@ -147,8 +147,6 @@ Parameters: (DATA PROXY-LAYER-SURFACE)
   (and-let* ((state (%wallpaper-find-state-by-layer-surface proxy)))
     (log-info "wallpaper: layer surface closed for output ~a"
               (output-name (wallpaper-output-state-output state)))
-    ;; clear layer surface pointer before cleanup to prevent double destruction
-    (%wallpaper-output-state-layer-surface-set! state %null-pointer)
     (wallpaper-cleanup-output! (wallpaper-output-state-output state))))
 
 ;;; rendering and buffer management
@@ -368,7 +366,7 @@ Parameters: (OUTPUT)
                              (log-error "wallpaper: failed to create layer surface: ~a ~a" k args)
                              #f))))
                     (if (not (valid-pointer? layer-surf))
-                        (catch #t (lambda () (wl-surface-destroy surface)) (lambda _ #f))
+                        (wl-surface-destroy surface)
                         (let* ((init-width (output-width output))
                                (init-height (output-height output))
                                (state (%make-wallpaper-output-state
@@ -478,12 +476,15 @@ Parameters: (OUTPUT)
         (let ((layer-surf (wallpaper-output-state-layer-surface state))
               (surface (wallpaper-output-state-surface state))
               (buffer (wallpaper-output-state-buffer state)))
+          (%wallpaper-output-state-layer-surface-set! state %null-pointer)
+          (%wallpaper-output-state-surface-set! state %null-pointer)
+          (%wallpaper-output-state-buffer-set! state %null-pointer)
           (when (valid-pointer? layer-surf)
-            (catch #t (lambda () (wlr-layer-surface-destroy layer-surf)) (lambda _ #f)))
+            (wlr-layer-surface-destroy layer-surf))
           (when (valid-pointer? surface)
-            (catch #t (lambda () (wl-surface-destroy surface)) (lambda _ #f)))
+            (wl-surface-destroy surface))
           (when (valid-pointer? buffer)
-            (catch #t (lambda () (wl-buffer-destroy buffer)) (lambda _ #f))))))))
+            (wl-buffer-destroy buffer)))))))
 
 (define (wallpaper-update-all!)
   "Update wallpaper across all known outputs.
