@@ -118,7 +118,7 @@ Parameters: (OUTPUT)
 	(when (eq? *shell-current-default-output* output)
 	  (and-let* ((outputs (manager-outputs *manager*))
 				 ((pair? outputs)))
-		(shell-output-set-default! (car outputs))))))
+		(shell-output-set-default! (car outputs)))))
 
 (define (shell-on-seat-created seat)
   "Invoked when an <seat> record is created.
