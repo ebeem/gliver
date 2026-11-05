@@ -308,48 +308,56 @@ Parameters: (CONTAINER [#:focus-child #t] [#:focus-parent #t])
   - CONTAINER: <container> record to focus.
   - FOCUS-CHILD: Boolean, whether to focus the active child window (default #t).
   - FOCUS-PARENT: Boolean, whether to focus the parent workspace (default #t)."
-  (when (and container (container? container))
+  (when (container? container)
     (log-debug "Focusing container ~a, is focused? = ~a" container
 			   (container-focused? container))
 	(let* ((windows (container-windows container))
 		   (window (or (container-window-current container)
-					   (and (pair? windows) (car windows)))))
+					   (and (pair? windows) (car windows))))
+		   (seat (seat-current)))
 
 	  ;; proceed with focusing if container isn't focused or
 	  ;; container window is focused by seat
 	  ;; window may be focused by seat when switching workspaces
-      (unless (and (container-focused? container)
-				   (eq? window (seat-window-focused (seat-current))))
+      (unless (and seat
+				   (container-focused? container)
+				   (eq? window (seat-window-focused seat)))
 		(let* ((workspace (container-workspace container))
-			   (prev-container (and workspace (workspace-container-current workspace)))
-			   (focused-container (container-current))
+			   (workspace-container (and workspace (workspace-container-current workspace)))
+			   (current-container (container-current))
 			   (prev-window (window-current)))
-	      (when (and workspace (workspace? workspace))
-			(%workspace-container-previous-set! workspace prev-container)
+
+		  ;; update workspace current and previous container
+		  (when (workspace? workspace)
+			(%workspace-container-previous-set! workspace workspace-container)
 			(%workspace-container-current-set! workspace container)
+			;; if focus parent is #t, focus the container's workspace
 			(when focus-parent
-		      (workspace-focus! workspace #:focus-child #f)))
+			  (workspace-focus! workspace #:focus-child #f)))
 
-          ;; unfocus previously focused container
-          (when (and focused-container (not (eq? focused-container container)))
-			(gliver-hook-run! *container-unfocused-hook* focused-container))
-          (when (and prev-container
-					 (not (eq? prev-container container))
-					 (not (eq? prev-container focused-container)))
-			(gliver-hook-run! *container-unfocused-hook* prev-container))
-          (gliver-hook-run! *container-focused-hook* container)
+		  ;; unfocus previously focused container and focus new one
+		  (when (and current-container
+					 (not (eq? current-container container)))
+			(gliver-hook-run! *container-unfocused-hook* current-container))
+		  (unless (eq? current-container container)
+			(gliver-hook-run! *container-focused-hook* container))
 
-	      (if (and focus-child window)
-		      (begin
-				(when (and prev-window (not (eq? prev-window window)))
-		          (gliver-hook-run! *window-unfocused-hook* prev-window))
-				(window-focus! window #:focus-parent #f))
-		      (when (and focus-child (not window))
-				(when (and prev-window (window? prev-window) (not (window-destroyed? prev-window)))
-		          (gliver-hook-run! *window-unfocused-hook* prev-window))
-				(let ((seat (seat-current)))
-		          (when (and seat (seat? seat) (seat-window-focused seat))
-					(seat-wm-window-focus-clear seat))))))))))
+		  ;; focus container's window if focus-child is #t
+	      (when focus-child
+			;; unfocus previous window if it's valid
+			(when (and (window? prev-window)
+					   (not (window-destroyed? prev-window))
+					   (not (eq? prev-window window)))
+			  (gliver-hook-run! *window-unfocused-hook* prev-window))
+			(cond
+			 ((window? window)
+			  ;; focus new window if target window is valid
+			  (window-focus! window #:focus-parent #f))
+			 ((and seat (seat-window-focused seat))
+			  ;; clear focus if no valid window is found
+			  ;; this will usually occur when the container is empty
+			  ;; we don't want input to be sent to last focused window
+			  (seat-wm-window-focus-clear seat)))))))))
 
 (define* (container-usable-area-update-windows! container #:key (animate #t))
   "Apply the container's usable area to all non-fullscreen windows inside CONTAINER.
