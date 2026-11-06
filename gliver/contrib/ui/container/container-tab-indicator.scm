@@ -6,6 +6,9 @@
 ;;; Usage:
 ;;;   (use-modules (gliver contrib ui container container-tab-indicator))
 ;;;   (container-tab-indicator-enable!)
+;;; TODO: should have a list of indicators available in a list
+;;; any time an indicator is needed, it's popped from that list
+;;; or created if needed, this way it's more memory efficient
 
 (define-module (gliver contrib ui container container-tab-indicator)
   #:use-module (cairo)
@@ -124,6 +127,7 @@
 			container-tab-indicator-on-listeners-attach
 			container-tab-indicator-on-window-fullscreen-entered
 			container-tab-indicator-on-window-fullscreen-exited
+			container-tab-indicator-on-output-removed
 			container-tab-indicator-enable!
 			container-tab-indicator-disable!
 			container-tab-indicator-enabled?
@@ -549,14 +553,18 @@ Needed because the indicator will cover some area of windows in the container."
               (node (%cwi-wl-node state))
               (buffer (%cwi-wl-buffer state)))
           (hashq-remove! *container-tab-indicator-table* container)
-          (when (and node (pointer? node) (not (null-pointer? node)))
-            (catch #t (lambda () (wm-node-destroy! node)) (lambda _ #f)))
-          (when (and shell-surf (pointer? shell-surf) (not (null-pointer? shell-surf)))
-            (catch #t (lambda () (wm-shell-surface-destroy! shell-surf)) (lambda _ #f)))
-          (when (and surface (pointer? surface) (not (null-pointer? surface)))
-            (catch #t (lambda () (wl-surface-destroy surface)) (lambda _ #f)))
-          (when (and buffer (pointer? buffer) (not (null-pointer? buffer)))
-            (catch #t (lambda () (wl-buffer-destroy buffer)) (lambda _ #f))))))))
+          (%cwi-wl-node-set! state %null-pointer)
+          (%cwi-wl-shell-surface-set! state %null-pointer)
+          (%cwi-wl-surface-set! state %null-pointer)
+          (%cwi-wl-buffer-set! state %null-pointer)
+          (when (valid-pointer? node)
+            (wm-node-destroy! node))
+          (when (valid-pointer? shell-surf)
+            (wm-shell-surface-destroy! shell-surf))
+          (when (valid-pointer? surface)
+            (wl-surface-destroy surface))
+          (when (valid-pointer? buffer)
+            (wl-buffer-destroy buffer)))))))
 
 (define (container-tab-indicator-hide! container)
   "Hide container window indicator by moving its node offscreen and synchronizing usable area."
@@ -690,6 +698,17 @@ Needed because the indicator will cover some area of windows in the container."
     (for-each container-tab-indicator-hide! (workspace-containers prev-workspace)))
   (when workspace
     (for-each container-tab-indicator-render! (workspace-containers workspace))))
+
+(define (container-tab-indicator-on-output-removed output)
+  "Invoked when OUTPUT is removed, hide tab indicators
+for all workspaces on OUTPUT.
+Parameters: (OUTPUT)
+  - OUTPUT: <output> record being removed."
+  (when (and output (output? output))
+    (for-each
+     (lambda (ws)
+       (for-each container-tab-indicator-hide! (workspace-containers ws)))
+     (output-workspaces output))))
 
 (define (container-tab-indicator-on-window-focused window)
   "Handle window focused event, update container indicator and keep indicator on top."
@@ -996,6 +1015,7 @@ Calls switch-window to go to target one."
     (gliver-hook-add! *seat-object-id-changed-hook* 'container-tab-indicator-on-seat-object-id-changed)
     (gliver-hook-add! *window-fullscreen-entered-hook* 'container-tab-indicator-on-window-fullscreen-entered)
     (gliver-hook-add! *window-fullscreen-exited-hook* 'container-tab-indicator-on-window-fullscreen-exited)
+    (gliver-hook-add! *output-removed-hook* 'container-tab-indicator-on-output-removed)
     (set! *%container-tab-indicator-enabled* #t)
     (container-tab-indicator-seat-setup!)
     (container-tab-indicators-update-all!)
@@ -1026,6 +1046,7 @@ Calls switch-window to go to target one."
     (gliver-hook-remove! *seat-object-id-changed-hook* 'container-tab-indicator-on-seat-object-id-changed)
     (gliver-hook-remove! *window-fullscreen-entered-hook* 'container-tab-indicator-on-window-fullscreen-entered)
     (gliver-hook-remove! *window-fullscreen-exited-hook* 'container-tab-indicator-on-window-fullscreen-exited)
+    (gliver-hook-remove! *output-removed-hook* 'container-tab-indicator-on-output-removed)
     (set! *%container-tab-indicator-enabled* #f)
     (container-tab-indicator-seat-cleanup!)
     (container-tab-indicator-on-globals-unbind)
