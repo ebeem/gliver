@@ -502,21 +502,25 @@ Example: (list 'window (make-module-mpd))"
               (surface (statusbar-output-state-surface state))
               (buffer (statusbar-output-state-buffer state))
               (slots (statusbar-output-state-shm-slots state)))
+          (%statusbar-output-state-layer-surface-set! state %null-pointer)
+          (%statusbar-output-state-surface-set! state %null-pointer)
+          (%statusbar-output-state-buffer-set! state %null-pointer)
           (when slots
             (when (car slots) (gleui-shm-slot-destroy (car slots)))
             (when (cdr slots) (gleui-shm-slot-destroy (cdr slots)))
             (%statusbar-output-state-shm-slots-set! state #f))
-          (when (and (pointer? layer-surf) (not (null-pointer? layer-surf)))
-            (catch #t (lambda () (zwlr-layer-surface-v1-destroy layer-surf)) (lambda _ #f)))
-          (when (and (pointer? surface) (not (null-pointer? surface)))
-            (catch #t (lambda () (wl-surface-destroy surface)) (lambda _ #f)))
-          (when (and (not slots) (pointer? buffer) (not (null-pointer? buffer)))
-            (catch #t (lambda () (wl-buffer-destroy buffer)) (lambda _ #f))))
-        ;; restore usable area to full output dimensions
-        (output-usable-area-set! output (output-x output) (output-y output) (output-width output) (output-height output))
-        (gliver-hook-run! *output-dimensions-changed-hook* output (output-width output) (output-height output))
-        (when *wl-display*
-          (wl-display-flush *wl-display*))))))
+          (when (valid-pointer? layer-surf)
+            (zwlr-layer-surface-v1-destroy layer-surf))
+          (when (valid-pointer? surface)
+            (wl-surface-destroy surface))
+          (when (valid-pointer? buffer)
+            (wl-buffer-destroy buffer)))
+        ;; restore usable area to full output dimensions if output is still available
+        (when (memq output (manager-outputs *manager*))
+          (output-usable-area-set! output (output-x output) (output-y output)
+								   (output-width output) (output-height output))
+          (gliver-hook-run! *output-dimensions-changed-hook* output
+							(output-width output) (output-height output)))))))
 
 (define (statusbar-seat-cleanup!)
   "Release Wayland seat and pointer proxies created for statusbar interaction."
