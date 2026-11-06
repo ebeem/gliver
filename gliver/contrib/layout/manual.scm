@@ -26,6 +26,7 @@
 			layout-manual-workspace-created
 			layout-manual-workspace-switched
 			layout-manual-output-dimensions-changed
+			layout-manual-output-position-changed
 			layout-manual-output-changed
 			layout-manual-container-destroyed
 			layout-manual-config-loaded
@@ -165,6 +166,13 @@ Ensure placeholders are spawned for empty containers and at most 1 per container
 		 (container (and workspace (workspace-container-current workspace)))
 		 (window (and container (container-window-current container))))
 	(layout-manual-update 'output-dimensions-changed workspace container window)))
+
+(define (layout-manual-output-position-changed output prev-x prev-y)
+  "Invoked when OUTPUT position changes in manual layout."
+  (and-let* ((workspace (output-workspace-current output))
+			 (container (workspace-container-current workspace))
+			 (window (container-window-current container)))
+	(layout-manual-update 'output-position-changed workspace container window)))
 
 (define (layout-manual-container-destroyed container workspace)
   "Handle container destruction in manual layout.
@@ -348,6 +356,7 @@ the destroyed container's space and its own space, and clean up placeholders."
 (gliver-hook-add! *workspace-created-hook* 'layout-manual-workspace-created)
 (gliver-hook-add! *workspace-switch-hook* 'layout-manual-workspace-switched)
 (gliver-hook-add! *output-dimensions-changed-hook* 'layout-manual-output-dimensions-changed)
+(gliver-hook-add! *output-position-changed-hook* 'layout-manual-output-position-changed)
 (gliver-hook-add! *container-destroy-hook* 'layout-manual-container-destroyed)
 (gliver-hook-add! *config-loaded-hook* 'layout-manual-config-loaded)
 (gliver-hook-add! *startup-hook* 'layout-manual-startup)

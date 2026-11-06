@@ -26,6 +26,7 @@
 			layout-alternating-window-destroyed
 			layout-alternating-workspace-created
 			layout-alternating-output-dimensions-changed
+			layout-alternating-output-position-changed
 			layout-alternating-output-changed
 			))
 
@@ -289,6 +290,13 @@ layout rules."
 		 (window (container-window-current container)))
 	(layout-alternating-update 'output-dimensions-changed workspace container window)))
 
+(define (layout-alternating-output-position-changed output prev-x prev-y)
+  "Invoked when OUTPUT position changes in alternating layout."
+  (and-let* ((workspace (output-workspace-current output))
+			 (container (workspace-container-current workspace))
+			 (window (container-window-current container)))
+	(layout-alternating-update 'output-position-changed workspace container window)))
+
 (define (layout-alternating-output-changed output)
   "Handle output change hook (e.g. layer shell non-exclusive area change)."
   (when (and output (output? output))
@@ -303,3 +311,4 @@ layout rules."
 (gliver-hook-add! *window-destroyed-hook* 'layout-alternating-window-destroyed)
 (gliver-hook-add! *workspace-created-hook* 'layout-alternating-workspace-created)
 (gliver-hook-add! *output-dimensions-changed-hook* 'layout-alternating-output-dimensions-changed)
+(gliver-hook-add! *output-position-changed-hook* 'layout-alternating-output-position-changed)
