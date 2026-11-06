@@ -8,6 +8,9 @@
 ;;; Usage:
 ;;;   (use-modules (gliver contrib ui container container-border))
 ;;;   (container-border-enable!)
+;;; TODO: should have a list of borders available in a list
+;;; any time a border is needed, it's popped from that list
+;;; or created if needed, this way it's more memory efficient
 
 (define-module (gliver contrib ui container container-border)
   #:use-module (cairo)
@@ -62,6 +65,7 @@
 			container-border-on-shell-interaction
 			container-border-on-window-fullscreen-entered
 			container-border-on-window-fullscreen-exited
+			container-border-on-output-removed
 			container-border-enable!
 			container-border-disable!
 			container-border-enabled?
@@ -313,6 +317,9 @@ Returns a Wayland buffer foreign pointer."
           (buffer (container-wl-buffer container)))
       (hashq-remove! *container-border-table* container)
       (%container-wl-node-proxy-set! container #f)
+      (%container-wl-shell-surface-set! container #f)
+      (%container-wl-surface-set! container #f)
+      (%container-wl-buffer-set! container #f)
       (when (valid-pointer? node)
         (wm-node-destroy! node))
       (when (valid-pointer? shell-surf)
@@ -403,12 +410,12 @@ Returns a Wayland buffer foreign pointer."
 						 (wl-surface-commit surface)
 						 (when (and old-buffer (pointer? old-buffer) (not (null-pointer? old-buffer))
 									(not (equal? old-buffer new-buffer)))
-                           (catch #t (lambda () (wl-buffer-destroy old-buffer)) (lambda _ #f)))))))))
+                           (wl-buffer-destroy old-buffer)))))))))
 
-		   ;; mark dirty if needed as this may be called outside of river sequence
-           (when (and (not *in-manage-sequence*)
-                      (not *in-render-sequence*))
-             (wm-manager-manage-dirty (manager-wl-proxy *manager*))))))))
+		  ;; mark dirty if needed as this may be called outside of river sequence
+		  (when (and (not *in-manage-sequence*)
+					 (not *in-render-sequence*))
+			(wm-manager-manage-dirty (manager-wl-proxy *manager*)))))))
 
 (define (container-borders-update-all!)
   "Update borders for all containers in the display."
@@ -472,6 +479,17 @@ Returns a Wayland buffer foreign pointer."
                                      (eq? (container-workspace c) workspace)))
                               (hash-map->list (lambda (k v) k) *container-border-table*))))
       (for-each container-border-cleanup! containers))))
+
+(define (container-border-on-output-removed output)
+  "Invoked when OUTPUT is removed, hide container border nodes
+for all workspaces on OUTPUT.
+Parameters: (OUTPUT)
+  - OUTPUT: <output> record being removed."
+  (when (output? output)
+    (for-each
+     (lambda (ws)
+       (for-each container-border-hide! (workspace-containers ws)))
+     (output-workspaces output))))
 
 (define (container-border-on-globals-unbind)
   "Clean up all container border surfaces on unbind/shutdown."
@@ -550,6 +568,7 @@ Returns a Wayland buffer foreign pointer."
     (gliver-hook-add! *seat-shell-interacted-hook* 'container-border-on-shell-interaction)
     (gliver-hook-add! *window-fullscreen-entered-hook* 'container-border-on-window-fullscreen-entered)
     (gliver-hook-add! *window-fullscreen-exited-hook* 'container-border-on-window-fullscreen-exited)
+    (gliver-hook-add! *output-removed-hook* 'container-border-on-output-removed)
     (set! *%container-border-enabled* #t)
     (container-borders-update-all!)
     (log-info "Container border enabled.")))
@@ -572,6 +591,7 @@ Returns a Wayland buffer foreign pointer."
     (gliver-hook-remove! *seat-shell-interacted-hook* 'container-border-on-shell-interaction)
     (gliver-hook-remove! *window-fullscreen-entered-hook* 'container-border-on-window-fullscreen-entered)
     (gliver-hook-remove! *window-fullscreen-exited-hook* 'container-border-on-window-fullscreen-exited)
+    (gliver-hook-remove! *output-removed-hook* 'container-border-on-output-removed)
     (container-border-on-globals-unbind)
     (set! *%container-border-enabled* #f)
     (log-info "Container border disabled.")))
