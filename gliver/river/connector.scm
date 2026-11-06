@@ -150,6 +150,15 @@ Parameters: None."
     (set! *river-connected?* #f)
     (log-info "Disconnected.")))
 
+(define (log-wayland-error! context)
+  "Log wayland error given CONTEXT. "
+  (let ((proto-err (wl-display-get-protocol-error *wl-display*))
+        (err (wl-display-get-error *wl-display*)))
+    (if proto-err
+        (log-error "~a: protocol error: code ~a on interface ~a (object id ~a)"
+                   context (car proto-err) (cadr proto-err) (caddr proto-err))
+        (log-error "~a: system error (errno ~a)" context err))))
+
 (define (river-event-loop!)
   "Run the main Wayland event loop, flush requests, and dispatch incoming events.
 Parameters: None."
@@ -162,7 +171,7 @@ Parameters: None."
           ;; flush outgoing requests
           (let ((flush-ret (wl-display-flush *wl-display*)))
             (when (< flush-ret 0)
-              (log-error "Wayland flush error")
+              (log-wayland-error! "Wayland flush error")
               (set! *river-connected?* #f)))
 
           ;; prepare to read events
@@ -171,7 +180,7 @@ Parameters: None."
                 ;; events already pending, dispatch them
                 (let ((ret (wl-display-dispatch-pending *wl-display*)))
                   (when (< ret 0)
-                    (log-error "Wayland dispatch error")
+                    (log-wayland-error! "Wayland dispatch-pending error")
                     (set! *river-connected?* #f)))
 
                 ;; lock acquired, poll the fd before reading
@@ -183,7 +192,7 @@ Parameters: None."
                         (wl-display-read-events *wl-display*)
                         (let ((ret (wl-display-dispatch-pending *wl-display*)))
                           (when (< ret 0)
-                            (log-error "Wayland dispatch error")
+                            (log-wayland-error! "Wayland dispatch error")
                             (set! *river-connected?* #f))))
 
                       ;; timeout, no events, cancel the read lock

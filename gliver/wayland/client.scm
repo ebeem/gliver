@@ -23,6 +23,8 @@
             wl-display-dispatch-pending
             wl-display-roundtrip
             wl-display-flush
+            wl-display-get-error
+            wl-display-get-protocol-error
             gliver-wl-display-get-registry
 
             ;; registry
@@ -126,6 +128,36 @@
 
 (define (wl-display-flush display)
   (%wl-display-flush display))
+
+(define %wl-display-get-error
+  (wl-func "wl_display_get_error" int (list '*)))
+
+(define (wl-display-get-error display)
+  "Return errno of the Wayland display, or 0 if no error."
+  (%wl-display-get-error display))
+
+(define %wl-display-get-protocol-error
+  (wl-func "wl_display_get_protocol_error" uint32 (list '* '* '*)))
+
+(define (wl-display-get-protocol-error display)
+  "Return (code interface-name id) if a protocol error occurred on DISPLAY, or #f."
+  (let ((err (%wl-display-get-error display)))
+    (if (= err 71) ; EPROTO
+        (let* ((interface-ptr (make-bytevector (sizeof '*) 0))
+               (id-ptr (make-bytevector (sizeof uint32) 0))
+               (code (%wl-display-get-protocol-error display
+                                                    (bytevector->pointer interface-ptr)
+                                                    (bytevector->pointer id-ptr)))
+               (raw-iface (dereference-pointer (bytevector->pointer interface-ptr)))
+               (name (if (null-pointer? raw-iface)
+                         "unknown"
+                         (let ((name-ptr (dereference-pointer raw-iface)))
+                           (if (null-pointer? name-ptr)
+                               "unknown"
+                               (pointer->string name-ptr)))))
+               (id (bytevector-u32-native-ref id-ptr 0)))
+          (list code name id))
+        #f)))
 
 (define %wl-display-prepare-read
   (wl-func "wl_display_prepare_read" int (list '*)))
