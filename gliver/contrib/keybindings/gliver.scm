@@ -89,6 +89,9 @@
 	"f"         'describe-command
 	"k"         'describe-key)
 
+  (define-keys *hotkeygrab-map*
+	"s-S-z"     '(enter-keymap *top-map*))
+
   (define-key *root-map* "o" 'launcher-run)
   (define-key *root-map* "h" '(enter-keymap *help-map*))
   (define-key *root-map* "w" '(enter-keymap *window-map*))
