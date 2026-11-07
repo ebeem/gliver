@@ -22,6 +22,7 @@
   #:use-module (system foreign)
   #:export (
 			*wm-output-listener*
+			*wl-output-listener*
 			wm-output-on-listeners-attach
 			wm-output-on-output
 			wm-output-destroy
@@ -32,20 +33,39 @@
 			wm-output-on-output-wl-output
 			wm-output-on-output-position
 			wm-output-on-output-dimensions
+			wm-output-on-wl-output-geometry
+			wm-output-on-wl-output-mode
+			wm-output-on-wl-output-done
+			wm-output-on-wl-output-scale
+			wm-output-on-wl-output-name
+			wm-output-on-wl-output-description
 ))
 
 (define-var *wm-output-listener* #f
 			"Wayland listener for river_output_v1 events.")
 
+(define-var *wl-output-listener* #f
+			"Wayland listener for wl_output events.")
+
 (define (wm-output-on-listeners-attach)
-  "Attach river_output_v1 event listener.
+  "Attach river_output_v1 and wl_output event listeners.
 Parameters: None."
   (set! *wm-output-listener*
         (make-river-output-v1-listener
          wm-output-on-output-removed
          wm-output-on-output-wl-output
          wm-output-on-output-position
-         wm-output-on-output-dimensions)))
+         wm-output-on-output-dimensions))
+  ;; wl-output events are actually part of the wayland protocol
+  ;; not river, they advertise useful information like name and scale
+  (set! *wl-output-listener*
+        (make-wl-output-listener
+         wm-output-on-wl-output-geometry
+         wm-output-on-wl-output-mode
+         wm-output-on-wl-output-done
+         wm-output-on-wl-output-scale
+         wm-output-on-wl-output-name
+         wm-output-on-wl-output-description)))
 (gliver-hook-add! *gliver-listeners-attach-hook* 'wm-output-on-listeners-attach 0)
 
 (define (wm-output-on-output data manager proxy-output)
@@ -94,7 +114,11 @@ Returns: wl_output proxy pointer, or #f if registry is unavailable or invalid."
   (when (number? object-id)
     (when *log-river-calls*
       (log-debug "Binding wl_output object ~a (version ~a)" object-id version))
-    (gliver-wl-registry-bind *wl-registry* object-id *wl-output-interface* version)))
+    (let ((proxy (gliver-wl-registry-bind *wl-registry* object-id *wl-output-interface* version)))
+	  ;; after receiving a valid proxy of wl-output, attach the listeners
+      (when (and (valid-pointer? proxy) *wl-output-listener*)
+        (wl-proxy-add-listener proxy *wl-output-listener* %null-pointer))
+      proxy)))
 
 (define (wm-output-wl-output-release proxy-wl-output)
   "Release wl_output proxy object if valid.
@@ -149,3 +173,50 @@ Parameters: (DATA PROXY-OUTPUT WIDTH HEIGHT)
   (when *log-river-calls*
 	(log-debug "Output dimensions: ~a = ~ax~a" proxy-output width height))
   (gliver-hook-run! %output-dimensions-changed-hook data proxy-output width height))
+
+;;; wl-output events
+(define (wm-output-on-wl-output-geometry data proxy x y physical-width physical-height subpixel make-ptr model-ptr transform)
+  "Invoked when wl_output advertises geometric properties."
+  (let ((make (and (valid-pointer? make-ptr)
+				   (pointer->string make-ptr)))
+        (model (and (valid-pointer? model-ptr)
+					(pointer->string model-ptr))))
+    (when *log-river-calls*
+      (log-debug "wl_output ~a geometry: x=~a y=~a size=~ax~amm subpixel=~a make=~a model=~a transform=~a"
+                 proxy x y physical-width physical-height subpixel make model transform))
+    (gliver-hook-run! %output-geometry-changed-hook data proxy x y physical-width physical-height subpixel make model transform)))
+
+(define (wm-output-on-wl-output-mode data proxy flags width height refresh)
+  "Invoked when wl_output advertises an available mode."
+  (when *log-river-calls*
+    (log-debug "wl_output ~a mode: ~ax~a @ ~amHz flags=~a"
+               proxy width height refresh flags))
+  (gliver-hook-run! %output-mode-changed-hook data proxy flags width height refresh))
+
+(define (wm-output-on-wl-output-done data proxy)
+  "Invoked when all wl_output properties in the current batch have been sent."
+  (when *log-river-calls*
+    (log-debug "wl_output ~a done" proxy))
+  (gliver-hook-run! %output-done-hook data proxy))
+
+(define (wm-output-on-wl-output-scale data proxy factor)
+  "Invoked when wl_output advertises output scaling factor."
+  (when *log-river-calls*
+    (log-debug "wl_output ~a scale: ~a" proxy factor))
+  (gliver-hook-run! %output-scale-changed-hook data proxy factor))
+
+(define (wm-output-on-wl-output-name data proxy name-ptr)
+  "Invoked when wl_output advertises hardware output name."
+  (let ((name (and (valid-pointer? name-ptr) (pointer->string name-ptr))))
+    (when name
+      (when *log-river-calls*
+        (log-debug "wl_output ~a hardware name: ~a" proxy name))
+      (gliver-hook-run! %output-name-changed-hook data proxy name))))
+
+(define (wm-output-on-wl-output-description data proxy desc-ptr)
+  "Invoked when wl_output advertises human-readable description."
+  (let ((desc (and (valid-pointer? desc-ptr) (pointer->string desc-ptr))))
+    (when desc
+      (when *log-river-calls*
+        (log-debug "wl_output ~a description: ~a" proxy desc))
+      (gliver-hook-run! %output-description-changed-hook data proxy desc))))

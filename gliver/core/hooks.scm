@@ -116,9 +116,22 @@
 			%output-object-id-changed-hook
 			%output-position-changed-hook
 			%output-dimensions-changed-hook
+			%output-geometry-changed-hook
+			%output-mode-changed-hook
+			%output-done-hook
+			%output-scale-changed-hook
+			%output-name-changed-hook
+			%output-description-changed-hook
 			*output-created-hook*
 			*output-removed-hook*
 			*output-object-id-changed-hook*
+			*output-name-changed-hook*
+			*output-wl-name-changed-hook*
+			*output-description-changed-hook*
+			*output-scale-changed-hook*
+			*output-mode-changed-hook*
+			*output-geometry-changed-hook*
+			*output-done-hook*
 			*output-position-changed-hook*
 			*output-dimensions-changed-hook*
 			*output-destroy-hook*
@@ -847,6 +860,59 @@ Parameters: (DATA PROXY-OUTPUT OBJECT-ID)
   - PROXY-OUTPUT: river_output_v1 proxy handle.
   - OBJECT-ID: Integer object IDs.")
 
+(define-var %output-geometry-changed-hook
+  (make-gliver-hook '%output-geometry-changed 10)
+  "Invoked when wl_output geometric properties are advertised.
+Parameters: (DATA PROXY X Y PHYSICAL-WIDTH PHYSICAL-HEIGHT SUBPIXEL MAKE MODEL TRANSFORM)
+  - DATA: User context pointer (unused, null in Gliver).
+  - PROXY: Pointer to wl_output proxy.
+  - X, Y: Integer coordinates in compositor logical space.
+  - PHYSICAL-WIDTH, PHYSICAL-HEIGHT: Integer physical screen dimensions in millimeters.
+  - SUBPIXEL: Integer Subpixel orientation code.
+  - MAKE, MODEL: String manufacturer and model name.
+  - TRANSFORM: Integer buffer transform code.")
+
+(define-var %output-mode-changed-hook
+  (make-gliver-hook '%output-mode-changed 6)
+  "Invoked when wl_output mode is advertised.
+Parameters: (DATA PROXY FLAGS WIDTH HEIGHT REFRESH)
+  - DATA: User context pointer (unused, null in Gliver).
+  - PROXY: Pointer to wl_output proxy.
+  - FLAGS: Integer mode flags bitfield (1 = current, 2 = preferred).
+  - WIDTH, HEIGHT: Integer mode resolution in pixels.
+  - REFRESH: Integer vertical refresh rate in mHz.")
+
+(define-var %output-done-hook
+  (make-gliver-hook '%output-done 2)
+  "Invoked when all wl_output properties in the current batch have been sent.
+Parameters: (DATA PROXY)
+  - DATA: User context pointer (unused, null in Gliver).
+  - PROXY: Pointer to wl_output proxy handle.")
+
+(define-var %output-scale-changed-hook
+  (make-gliver-hook '%output-scale-changed 3)
+  "Invoked when wl_output scaling factor changes.
+Parameters: (DATA PROXY FACTOR)
+  - DATA: User context pointer (unused, null in Gliver).
+  - PROXY: Pointer to wl_output proxy handle.
+  - FACTOR: Integer scaling factor.")
+
+(define-var %output-name-changed-hook
+  (make-gliver-hook '%output-name-changed 3)
+  "Invoked when wl_output advertises hardware output name.
+Parameters: (DATA PROXY NAME)
+  - DATA: User context pointer (unused, null in Gliver).
+  - PROXY: Pointer to wl_output proxy.
+  - NAME: String hardware output name (e.g. \"eDP-1\").")
+
+(define-var %output-description-changed-hook
+  (make-gliver-hook '%output-description-changed 3)
+  "Invoked when wl_output advertises human-readable description.
+Parameters: (DATA PROXY DESCRIPTION)
+  - DATA: User context pointer (unused, null in Gliver).
+  - PROXY: Pointer to wl_output proxy.
+  - DESCRIPTION: String human-readable description.")
+
 (define-var %output-position-changed-hook
   (make-gliver-hook '%output-position-changed 4)
   "Invoked when output global screen coordinates are changed.
@@ -881,6 +947,60 @@ Parameters: (OUTPUT)
 Parameters: (OUTPUT PREV-OBJECT-ID)
   - OUTPUT: The <output> record.
   - PREV-OBJECT-ID: Previous integer Object ID.")
+
+(define-var *output-name-changed-hook*
+  (make-gliver-hook 'output-name-changed 3)
+  "Invoked when an output name changes.
+Parameters: (OUTPUT OLD-NAME NEW-NAME)
+  - OUTPUT: The <output> record.
+  - OLD-NAME: String previous output name.
+  - NEW-NAME: String new output name.")
+
+(define-var *output-wl-name-changed-hook*
+  (make-gliver-hook 'output-wl-name-changed 2)
+  "Invoked when an output's wl_output hardware name is changed.
+Parameters: (OUTPUT NAME)
+  - OUTPUT: The <output> record.
+  - NAME: String hardware name (e.g. \"eDP-1\", \"HDMI-A-1\").")
+
+(define-var *output-description-changed-hook*
+  (make-gliver-hook 'output-description-changed 2)
+  "Invoked when an output's wl_output description is changed.
+Parameters: (OUTPUT DESCRIPTION)
+  - OUTPUT: The <output> record.
+  - DESCRIPTION: String human-readable description.")
+
+(define-var *output-scale-changed-hook*
+  (make-gliver-hook 'output-scale-changed 2)
+  "Invoked when an output's wl_output scaling factor changes.
+Parameters: (OUTPUT FACTOR)
+  - OUTPUT: The <output> record.
+  - FACTOR: Integer scaling factor.")
+
+(define-var *output-mode-changed-hook*
+  (make-gliver-hook 'output-mode-changed 5)
+  "Invoked when an output's mode is changed.
+Parameters: (OUTPUT FLAGS WIDTH HEIGHT REFRESH)
+  - OUTPUT: The <output> record.
+  - FLAGS: Integer mode flags bitfield.
+  - WIDTH, HEIGHT: Integer mode resolution in pixels.
+  - REFRESH: Integer vertical refresh rate in mHz.")
+
+(define-var *output-geometry-changed-hook*
+  (make-gliver-hook 'output-geometry-changed 7)
+  "Invoked when wl_output geometric properties are advertised.
+Parameters: (OUTPUT PHYSICAL-WIDTH PHYSICAL-HEIGHT SUBPIXEL MAKE MODEL TRANSFORM)
+  - OUTPUT: The <output> record.
+  - PHYSICAL-WIDTH, PHYSICAL-HEIGHT: Integer physical screen dimensions in millimeters.
+  - SUBPIXEL: Integer Subpixel orientation code.
+  - MAKE, MODEL: String manufacturer and model name.
+  - TRANSFORM: Integer buffer transform code.")
+
+(define-var *output-done-hook*
+  (make-gliver-hook 'output-done 1)
+  "Invoked when all wl_output properties for an output in the current batch have completed.
+Parameters: (OUTPUT)
+  - OUTPUT: The <output> record.")
 
 (define-var *output-position-changed-hook*
   (make-gliver-hook 'output-position-changed 3)
