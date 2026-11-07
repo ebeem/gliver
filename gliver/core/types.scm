@@ -113,6 +113,7 @@
 			output-find-by-proxy
 			output-find-by-ls-proxy
 			output-find-by-wl-output
+			output-find-by-wl-output-proxy
 			output-find-by-name
 			output-find-by-id
 			output-wallpaper-set!
@@ -602,14 +603,22 @@ Returns matching <output> record or #f."
             (equal? (output-wl-ls-proxy output) ls-proxy))
           (manager-outputs *manager*))))
 
-(define (output-find-by-wl-output proxy)
+(define (output-find-by-wl-output object-id)
+  "Look up the <output> record by wl_output OBJECT-ID.
+Parameters: (OBJECT-ID)
+  - OBJECT-ID: Integer Wayland object ID.
+Returns matching <output> record or #f."
+  (and (number? object-id)
+       (find (lambda (out) (equal? (output-wl-output out) object-id))
+             (manager-outputs *manager*))))
+
+(define (output-find-by-wl-output-proxy proxy)
   "Look up the <output> record by wl_output PROXY.
 Parameters: (PROXY)
   - PROXY: wl_output proxy pointer.
 Returns matching <output> record or #f."
   (and-let* (((valid-pointer? proxy)))
-    (find (lambda (out)
-            (equal? (output-wl-output out) proxy))
+    (find (lambda (out) (equal? (output-wl-output-proxy out) proxy))
           (manager-outputs *manager*))))
 
 (define (output-find-by-name target-name)
