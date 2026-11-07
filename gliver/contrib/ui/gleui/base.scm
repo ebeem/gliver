@@ -180,57 +180,60 @@ Returns (values surface layer-surface) or (values #f #f) on failure."
                 (begin
                   (catch #t (lambda () (wl-surface-destroy surface)) (lambda _ #f))
                   (values #f #f))
-                (catch #t
-                  (lambda ()
-                    (let* ((target-output (cond
-                                           ((and output (output? output)) output)
-                                           ((string? output) (output-find-by-name output))
-                                           ((number? output) (output-find-by-id output))
-                                           (else (output-current))))
-                           (output-if (output-wl-output-proxy target-output))
-                           (layer-surface (zwlr-layer-shell-v1-get-layer-surface
-                                           *wlr-layer-shell*
-                                           surface
-                                           (if (valid-pointer? output-if)
-                                               output-if
-                                               %null-pointer)
-                                           layer
-                                           namespace)))
-                      (if (or (not layer-surface) (null-pointer? layer-surface))
-                          (begin
-                            (catch #t (lambda () (wl-surface-destroy surface)) (lambda _ #f))
-                            (values #f #f))
-                          (begin
-                            (zwlr-layer-surface-v1-set-size layer-surface width height)
-                            (zwlr-layer-surface-v1-set-anchor layer-surface anchor)
-                            (zwlr-layer-surface-v1-set-margin layer-surface margin-top margin-right margin-bottom margin-left)
-                            (zwlr-layer-surface-v1-set-exclusive-zone layer-surface exclusive-zone)
-                            (zwlr-layer-surface-v1-set-keyboard-interactivity layer-surface keyboard-interactivity)
+                (let ((layer-surface #f))
+				  (catch #t
+					(lambda ()
+                      (let* ((target-output (cond
+											 ((and output (output? output)) output)
+											 ((string? output) (output-find-by-name output))
+											 ((number? output) (output-find-by-id output))
+											 (else (output-current))))
+							 (output-if (output-wl-output-proxy target-output)))
+						(set! layer-surface (zwlr-layer-shell-v1-get-layer-surface
+											 *wlr-layer-shell*
+											 surface
+											 (if (valid-pointer? output-if)
+												 output-if
+												 %null-pointer)
+											 layer
+											 namespace))
+						(if (or (not layer-surface) (null-pointer? layer-surface))
+							(begin
+                              (catch #t (lambda () (wl-surface-destroy surface)) (lambda _ #f))
+                              (values #f #f))
+							(begin
+                              (zwlr-layer-surface-v1-set-size layer-surface width height)
+                              (zwlr-layer-surface-v1-set-anchor layer-surface anchor)
+                              (zwlr-layer-surface-v1-set-margin layer-surface margin-top margin-right margin-bottom margin-left)
+                              (zwlr-layer-surface-v1-set-exclusive-zone layer-surface exclusive-zone)
+                              (zwlr-layer-surface-v1-set-keyboard-interactivity layer-surface keyboard-interactivity)
 
-                            (when (procedure? on-created)
-                              (on-created surface layer-surface))
+                              (when (procedure? on-created)
+								(on-created surface layer-surface))
 
-                            (let ((listener
-                                   (make-zwlr-layer-surface-v1-listener
-                                    (lambda (data proxy serial w h)
-                                      (zwlr-layer-surface-v1-ack-configure proxy serial)
-                                      (when (procedure? on-configure)
-                                        (on-configure w h)))
-                                    (lambda (data proxy)
-                                      (if (procedure? on-close)
-                                          (on-close)
-                                          (gleui-layer-surface-destroy! surface proxy))))))
-                              (wl-proxy-add-listener layer-surface listener %null-pointer))
-                            (wl-surface-commit surface)
-                            (when *wl-display*
-                              (catch #t
-                                (lambda () (wl-display-roundtrip *wl-display*))
-                                (lambda _ (wl-display-flush *wl-display*))))
-                            (values surface layer-surface)))))
-                  (lambda (k . args)
-                    (log-error "gleui-layer-surface-create failed: ~a ~a" k args)
-                    (catch #t (lambda () (wl-surface-destroy surface)) (lambda _ #f))
-                    (values #f #f))))))))
+                              (let ((listener
+									 (make-zwlr-layer-surface-v1-listener
+                                      (lambda (data proxy serial w h)
+										(zwlr-layer-surface-v1-ack-configure proxy serial)
+										(when (procedure? on-configure)
+                                          (on-configure w h)))
+                                      (lambda (data proxy)
+										(if (procedure? on-close)
+											(on-close)
+											(gleui-layer-surface-destroy! surface proxy))))))
+								(wl-proxy-add-listener layer-surface listener %null-pointer))
+                              (wl-surface-commit surface)
+                              (when *wl-display*
+								(catch #t
+                                  (lambda () (wl-display-roundtrip *wl-display*))
+                                  (lambda _ (wl-display-flush *wl-display*))))
+                              (values surface layer-surface)))))
+					(lambda (k . args)
+                      (log-error "gleui-layer-surface-create failed: ~a ~a" k args)
+                      (when (valid-pointer? layer-surface)
+						(zwlr-layer-surface-v1-destroy layer-surface))
+                      (catch #t (lambda () (wl-surface-destroy surface)) (lambda _ #f))
+                      (values #f #f)))))))))
 
 (define (gleui-layer-surface-destroy! surface layer-surface)
   "Destroy a LAYER-SURFACE and SURFACE."
