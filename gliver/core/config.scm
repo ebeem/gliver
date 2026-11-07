@@ -485,11 +485,21 @@ following the same order in a keyboard numpad
   "Directory path for Gliver configuration files.")
 
 (define-var *gliver-runtime-dir*
-  (string-append *xdg-state-home* "/gliver")
+  (let ((base (string-append *xdg-state-home* "/gliver"))
+        (wayland-display (getenv "WAYLAND_DISPLAY")))
+    (if (and wayland-display
+             (not (string=? wayland-display "wayland-1")))
+        (string-append base "/" wayland-display)
+        base))
   "Directory path for Gliver runtime state.")
 
 (define-var *gliver-state-dir*
-  (string-append *xdg-state-home* "/gliver")
+  (let ((base (string-append *xdg-state-home* "/gliver"))
+        (wayland-display (getenv "WAYLAND_DISPLAY")))
+    (if (and wayland-display
+             (not (string=? wayland-display "wayland-1")))
+        (string-append base "/" wayland-display)
+        base))
   "Directory path for Gliver persistent state.")
 
 ;;; configuration file loading

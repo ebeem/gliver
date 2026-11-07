@@ -52,6 +52,15 @@
   (format #t "  -v, --version            Show version~%")
   (format #t "  -h, --help               Show this help~%"))
 
+(define (mkdir-p path)
+  "Create directory PATH and any missing parent directories."
+  (unless (file-exists? path)
+    (let ((parent (dirname path)))
+      (when (and (not (string=? parent path))
+                 (not (file-exists? parent)))
+        (mkdir-p parent)))
+    (mkdir path)))
+
 ;;; startup sequence
 (define (startup! options)
   "Main startup sequence, following the spec §20.1."
@@ -60,11 +69,8 @@
         (config-path (option-ref options 'config #f)))
 
     ;; step 2: initialize logging
-    (for-each
-      (lambda (dir)
-        (unless (file-exists? dir)
-          (mkdir dir)))
-      (list *gliver-config-dir* *gliver-runtime-dir* *gliver-state-dir*))
+    (for-each mkdir-p
+			  (list *gliver-config-dir* *gliver-runtime-dir* *gliver-state-dir*))
     (log-level-set! (string->symbol log-level))
     (log-file-set! (string-append *gliver-state-dir* "/gliver.log"))
     (log-info "Gliver ~a starting..." *version*)
