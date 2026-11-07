@@ -73,8 +73,8 @@
 (define-record-type <gleui-shm-slot>
   (%make-shm-slot buffer ptr bv size width height stride)
   gleui-shm-slot?
-  (buffer gleui-shm-slot-buffer)
-  (ptr    gleui-shm-slot-ptr)
+  (buffer gleui-shm-slot-buffer %gleui-shm-slot-buffer-set!)
+  (ptr    gleui-shm-slot-ptr    %gleui-shm-slot-ptr-set!)
   (bv     gleui-shm-slot-bv)
   (size   gleui-shm-slot-size)
   (width  gleui-shm-slot-width)
@@ -115,6 +115,8 @@
     (let ((ptr (gleui-shm-slot-ptr slot))
           (size (gleui-shm-slot-size slot))
           (buf (gleui-shm-slot-buffer slot)))
+      (%gleui-shm-slot-ptr-set! slot %null-pointer)
+      (%gleui-shm-slot-buffer-set! slot %null-pointer)
       (when (and ptr (pointer? ptr) (not (null-pointer? ptr)) (> size 0))
         (catch #t (lambda () (munmap ptr size)) (lambda _ #f)))
       (when (and buf (pointer? buf) (not (null-pointer? buf)))
