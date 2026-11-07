@@ -65,6 +65,34 @@
 			manager-output-number-next!
 			manager-tag-next!
 			container-id-next!
+			%output-done-set!
+			output-done?
+			%output-transform-set!
+			output-transform
+			%output-model-set!
+			output-model
+			%output-make-set!
+			output-make
+			%output-subpixel-set!
+			output-subpixel
+			%output-physical-height-set!
+			output-physical-height
+			%output-physical-width-set!
+			output-physical-width
+			%output-mode-refresh-set!
+			output-mode-refresh
+			%output-mode-height-set!
+			output-mode-height
+			%output-mode-width-set!
+			output-mode-width
+			%output-mode-flags-set!
+			output-mode-flags
+			%output-scale-set!
+			output-scale
+			%output-description-set!
+			output-description
+			%output-wl-name-set!
+			output-wl-name
 			%output-metadata-set!
 			output-metadata
 			%output-statusbar-set!
@@ -497,7 +525,7 @@ Returns next unique integer container ID."
 
 ;;; output record (<output>) and helper functions
 ;;  - id: unique integer identifier
-;;  - name: string screen name (e.g. \"output-0\", \"eDP-1\")
+;;  - name: string screen name (e.g. \"output-0\", \"output-1\")
 ;;  - x, y: compositor coordinates of top-left corner
 ;;  - width, height: pixel dimensions of output
 ;;  - workspaces: list of <workspace> records assigned to this screen
@@ -509,12 +537,28 @@ Returns next unique integer container ID."
 ;;  - wallpaper: output-specific wallpaper path or hex string (or #f)
 ;;  - usable-x, usable-y, usable-width, usable-height: dimensions after subtracting statusbar/docks/panels
 ;;  - statusbar: attached statusbar state record (or #f)
-;;  - metadata: alist for any metadata to be stored by extensions (wallpaper and statusbar should be here)
+;;  - metadata: alist for any metadata to be stored by extensions
+;;  - wl-name: hardware connector name string from wl_output (e.g. \"eDP-1\", \"HDMI-A-1\")
+;;  - description: human-readable monitor description from wl_output
+;;  - scale: integer scaling factor from wl_output (default 1)
+;;  - mode-flags: current active mode flags bitfield (1 = current, 2 = preferred)
+;;  - mode-width, mode-height: current active mode resolution in hardware pixels (use width & height instead)
+;;  - mode-refresh: current active mode vertical refresh rate in mHz
+;;  - physical-width, physical-height: physical size in millimeters
+;;  - subpixel: subpixel orientation symbol ('unknown, 'horizontal-rgb, etc.)
+;;  - make: manufacturer string from wl_output
+;;  - model: model string from wl_output
+;;  - transform: buffer transform symbol ('normal, '90, etc.)
+;;  - done?: boolean indicating if wl_output initial properties have been sent
 (define-record-type <output>
   (%make-output id name x y width height workspaces workspace-current
                 workspace-previous wl-proxy wl-ls-proxy wl-output wl-output-proxy wallpaper
                 usable-x usable-y usable-width usable-height
-                statusbar metadata)
+                statusbar metadata
+                wl-name description scale
+                mode-flags mode-width mode-height mode-refresh
+                physical-width physical-height subpixel make model transform
+                done?)
   output?
   (id                 output-id                 %output-id-set!)
   (name               output-name               output-name-set!)
@@ -535,13 +579,31 @@ Returns next unique integer container ID."
   (usable-width       output-usable-width       %output-usable-width-set!)
   (usable-height      output-usable-height      %output-usable-height-set!)
   (statusbar          output-statusbar          %output-statusbar-set!)
-  (metadata           output-metadata           %output-metadata-set!))
+  (metadata           output-metadata           %output-metadata-set!)
+  (wl-name            output-wl-name            %output-wl-name-set!)
+  (description        output-description        %output-description-set!)
+  (scale              output-scale              %output-scale-set!)
+  (mode-flags         output-mode-flags         %output-mode-flags-set!)
+  (mode-width         output-mode-width         %output-mode-width-set!)
+  (mode-height        output-mode-height        %output-mode-height-set!)
+  (mode-refresh       output-mode-refresh       %output-mode-refresh-set!)
+  (physical-width     output-physical-width     %output-physical-width-set!)
+  (physical-height    output-physical-height    %output-physical-height-set!)
+  (subpixel           output-subpixel           %output-subpixel-set!)
+  (make               output-make               %output-make-set!)
+  (model              output-model              %output-model-set!)
+  (transform          output-transform          %output-transform-set!)
+  (done?              output-done?              %output-done-set!))
 
 (define* (make-output name
                       #:key (id (manager-output-number-next!)) (wl-proxy #f) (wl-ls-proxy #f) (x 0) (y 0) (width 1920) (height 1080)
                       (workspaces '()) (workspace-current #f) (workspace-previous #f) (wl-output #f) (wl-output-proxy #f) (wallpaper #f)
                       (usable-x #f) (usable-y #f) (usable-width #f) (usable-height #f)
-                      (statusbar #f) (metadata '()))
+                      (statusbar #f) (metadata '())
+                      (wl-name #f) (description #f) (scale 1)
+                      (mode-flags 0) (mode-width 0) (mode-height 0) (mode-refresh 0)
+                      (physical-width 0) (physical-height 0) (subpixel 'unknown) (make #f) (model #f) (transform 'normal)
+                      (done? #f))
   "Create a new <output> record with the given NAME.
 Other parameters can be provided as keyword arguments.
 Returns newly created <output> record."
@@ -555,7 +617,11 @@ Returns newly created <output> record."
                 (or usable-width width)
                 (or usable-height height)
                 statusbar
-				metadata))
+                metadata
+                wl-name description scale
+                mode-flags mode-width mode-height mode-refresh
+                physical-width physical-height subpixel make model transform
+                done?))
 
 (define (output-usable-area-set! output x y width height)
   "Set the usable area coordinates (X, Y) and dimensions (WIDTH, HEIGHT) for OUTPUT.
