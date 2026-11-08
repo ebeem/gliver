@@ -174,8 +174,8 @@ Parameters: (DATA MANAGER PROXY-OUTPUT)
   "Release wl_output proxy associated with OUTPUT.
 Parameters: (OUTPUT)
   - OUTPUT: <output> record to release its wl_output proxy."
-  (and-let* (((output? output)
-			  (proxy (output-wl-output-proxy output))))
+  (and-let* (((output? output))
+			 (proxy (output-wl-output-proxy output)))
 	(wm-output-wl-output-release proxy)
 	(%output-wl-output-proxy-set! output #f)))
 
@@ -251,8 +251,8 @@ Parameters: (DATA PROXY-OUTPUT OBJECT-ID)
     (%output-mode-flags-set! output flags)
     (%output-mode-width-set! output width)
     (%output-mode-height-set! output height)
-    (%output-mode-refresh-set! output refresh))
-  (gliver-hook-run! *output-mode-changed-hook* output flags width height refresh))
+    (%output-mode-refresh-set! output refresh)
+	(gliver-hook-run! *output-mode-changed-hook* output flags width height refresh)))
 
 (define (output-on-wl-output-done data proxy)
   "Invoked when all wl_output properties in the current batch have been received."
