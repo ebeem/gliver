@@ -12,6 +12,7 @@
 (define-module (gliver core output)
   #:use-module (ice-9 format)
   #:use-module (srfi srfi-1)
+  #:use-module (srfi srfi-2)
   #:use-module (gliver core-base)
   #:use-module (gliver river wm-output-manager)
   #:autoload (gliver core workspace) (workspace-add! workspace-focus!)
@@ -30,6 +31,14 @@
 			output-release-wl-output-proxy!
 			output-on-output-removed
 			output-on-output-wl-output
+			output-subpixel-code->symbol
+			output-transform-code->symbol
+			output-on-wl-output-geometry
+			output-on-wl-output-mode
+			output-on-wl-output-done
+			output-on-wl-output-scale
+			output-on-wl-output-name
+			output-on-wl-output-description
 			output-on-output-position
 			output-on-output-dimensions
 ))
@@ -165,11 +174,10 @@ Parameters: (DATA MANAGER PROXY-OUTPUT)
   "Release wl_output proxy associated with OUTPUT.
 Parameters: (OUTPUT)
   - OUTPUT: <output> record to release its wl_output proxy."
-  (when (and output (output? output))
-    (let ((proxy (output-wl-output-proxy output)))
-      (when proxy
-        (wm-output-wl-output-release proxy)
-        (%output-wl-output-proxy-set! output #f)))))
+  (and-let* (((output? output)
+			  (proxy (output-wl-output-proxy output))))
+	(wm-output-wl-output-release proxy)
+	(%output-wl-output-proxy-set! output #f)))
 
 (define (output-on-output-removed data proxy-output)
   "Invoked when OUTPUT is removed.
@@ -177,10 +185,9 @@ Parameters: (DATA PROXY-OUTPUT)
   - DATA: User context pointer (unused).
   - PROXY-OUTPUT: Pointer to river_output_v1 proxy."
   (log-info "Output removed: ~a" proxy-output)
-  (let ((output (output-find-by-proxy proxy-output)))
-    (when output
-      (output-remove! output)
-	  (gliver-hook-run! *output-destroy-hook* output))))
+  (and-let* ((output (output-find-by-proxy proxy-output)))
+    (output-remove! output)
+	(gliver-hook-run! *output-destroy-hook* output)))
 
 (define (output-on-output-wl-output data proxy-output object-id)
   "Invoked when wl_output Wayland object is advertisement for river_output_v1.
@@ -189,16 +196,89 @@ Parameters: (DATA PROXY-OUTPUT OBJECT-ID)
   - PROXY-OUTPUT: Pointer to river_output_v1 proxy.
   - OBJECT-ID: Numeric Wayland object ID of the wl_output."
   (log-debug "Output wl_output object-id: ~a = ~a" proxy-output object-id)
-  (let ((output (output-find-by-proxy proxy-output)))
-    (when output
-	  (log-debug "Setting output ~a object-id to ~a" output object-id)
-	  (%output-wl-output-set! output object-id)
-	  (when (number? object-id)
-		;; NOTE: no need to ensure the previous wl-output is cleaned
-		;; as this event is supposed to be sent only once
-		(let ((proxy (wm-output-wl-output-bind object-id 4)))
-		  (%output-wl-output-proxy-set! output proxy)))
-	  (gliver-hook-run! *output-object-id-changed-hook* output #f))))
+  (and-let* ((output (output-find-by-proxy proxy-output)))
+	(log-debug "Setting output ~a object-id to ~a" output object-id)
+	(%output-wl-output-set! output object-id)
+	(when (number? object-id)
+	  ;; NOTE: no need to ensure the previous wl-output is cleaned
+	  ;; as this event is supposed to be sent only once
+	  (let ((proxy (wm-output-wl-output-bind object-id 4)))
+		(%output-wl-output-proxy-set! output proxy)))
+	(gliver-hook-run! *output-object-id-changed-hook* output #f)))
+
+(define (output-subpixel-code->symbol code)
+  "Convert Wayland subpixel enum integer CODE to symbol."
+  (case code
+    ((0) 'unknown)
+    ((1) 'none)
+    ((2) 'horizontal-rgb)
+    ((3) 'horizontal-bgr)
+    ((4) 'vertical-rgb)
+    ((5) 'vertical-bgr)
+    (else 'unknown)))
+
+(define (output-transform-code->symbol code)
+  "Convert Wayland transform enum integer CODE to symbol."
+  (case code
+    ((0) 'normal)
+    ((1) '90)
+    ((2) '180)
+    ((3) '270)
+    ((4) 'flipped)
+    ((5) 'flipped-90)
+    ((6) 'flipped-180)
+    ((7) 'flipped-270)
+    (else 'normal)))
+
+(define (output-on-wl-output-geometry data proxy x y physical-width physical-height subpixel make model transform)
+  "Invoked when wl_output geometric properties are advertised."
+  (and-let* ((output (output-find-by-wl-output-proxy proxy))
+			 (sp-sym (output-subpixel-code->symbol subpixel))
+			 (tr-sym (output-transform-code->symbol transform)))
+    (%output-physical-width-set! output physical-width)
+    (%output-physical-height-set! output physical-height)
+    (%output-subpixel-set! output sp-sym)
+    (%output-make-set! output make)
+    (%output-model-set! output model)
+    (%output-transform-set! output tr-sym)
+    (gliver-hook-run! *output-geometry-changed-hook*
+                      output physical-width physical-height sp-sym make model tr-sym)))
+
+(define (output-on-wl-output-mode data proxy flags width height refresh)
+  "Invoked when wl_output mode is advertised."
+  (and-let* ((output (output-find-by-wl-output-proxy proxy))
+			 (current? (positive? (logand flags 1))))
+    (%output-mode-flags-set! output flags)
+    (%output-mode-width-set! output width)
+    (%output-mode-height-set! output height)
+    (%output-mode-refresh-set! output refresh))
+  (gliver-hook-run! *output-mode-changed-hook* output flags width height refresh))
+
+(define (output-on-wl-output-done data proxy)
+  "Invoked when all wl_output properties in the current batch have been received."
+  (and-let* ((output (output-find-by-wl-output-proxy proxy)))
+    (%output-done-set! output #t)
+    (gliver-hook-run! *output-done-hook* output)))
+
+(define (output-on-wl-output-scale data proxy factor)
+  "Invoked when wl_output scale is advertised."
+  (and-let* ((output (output-find-by-wl-output-proxy proxy)))
+    (%output-scale-set! output factor)
+    (gliver-hook-run! *output-scale-changed-hook* output factor)))
+
+(define (output-on-wl-output-name data proxy name)
+  "Invoked when wl_output hardware name is advertised."
+  (and-let* ((output (output-find-by-wl-output-proxy proxy)))
+    (log-info "wl_output ~a name event: ~a (output: ~a)" proxy name (output-name output))
+    (%output-wl-name-set! output name)
+    (gliver-hook-run! *output-wl-name-changed-hook* output name)))
+
+(define (output-on-wl-output-description data proxy desc)
+  "Invoked when wl_output description is advertised."
+  (and-let* ((output (output-find-by-wl-output-proxy proxy)))
+    (log-info "wl_output ~a description event: ~a (output: ~a)" proxy desc (output-name output))
+    (%output-description-set! output desc)
+    (gliver-hook-run! *output-description-changed-hook* output desc)))
 
 (define (output-on-output-position data proxy-output x y)
   "Invoked when the position of the output in the compositor's logical coordinate space changed.
@@ -209,17 +289,16 @@ Parameters: (DATA PROXY-OUTPUT X Y)
   - X: Logical horizontal position in compositor space.
   - Y: Logical vertical position in compositor space."
   (log-info "Output position: ~a = ~a,~a" proxy-output x y)
-  (let ((output (output-find-by-proxy proxy-output)))
-    (when output
-	  (let* ((prev-x (output-x output))
+  (and-let* ((output (output-find-by-proxy proxy-output))
+			 (prev-x (output-x output))
 			 (prev-y (output-y output))
 			 (dx (- x prev-x))
 			 (dy (- y prev-y)))
-		(%output-x-set! output x)
-		(%output-y-set! output y)
-		(%output-usable-x-set! output (+ (output-usable-x output) dx))
-		(%output-usable-y-set! output (+ (output-usable-y output) dy))
-		(gliver-hook-run! *output-position-changed-hook* output prev-x prev-y)))))
+	(%output-x-set! output x)
+	(%output-y-set! output y)
+	(%output-usable-x-set! output (+ (output-usable-x output) dx))
+	(%output-usable-y-set! output (+ (output-usable-y output) dy))
+	(gliver-hook-run! *output-position-changed-hook* output prev-x prev-y)))
 
 (define (output-on-output-dimensions data proxy-output width height)
   "Invoked when the output dimension of PROXY-OUTPUT is changed.
@@ -229,20 +308,25 @@ Parameters: (DATA PROXY-OUTPUT WIDTH HEIGHT)
   - WIDTH: Logical output width in pixels.
   - HEIGHT: Logical output height in pixels."
   (log-info "Output dimensions: ~a = ~ax~a" proxy-output width height)
-  (let ((output (output-find-by-proxy proxy-output)))
-    (when output
-	  (let ((prev-width (output-width output))
-			(prev-height (output-height output)))
-		(%output-width-set! output width)
-		(%output-height-set! output height)
-		(when (= (output-usable-width output) prev-width)
-		  (%output-usable-width-set! output width))
-		(when (= (output-usable-height output) prev-height)
-		  (%output-usable-height-set! output height))
-		(gliver-hook-run! *output-dimensions-changed-hook* output prev-width prev-height)))))
+  (and-let* ((output (output-find-by-proxy proxy-output))
+			 (prev-width (output-width output))
+			 (prev-height (output-height output)))
+	(%output-width-set! output width)
+	(%output-height-set! output height)
+	(when (= (output-usable-width output) prev-width)
+	  (%output-usable-width-set! output width))
+	(when (= (output-usable-height output) prev-height)
+	  (%output-usable-height-set! output height))
+	(gliver-hook-run! *output-dimensions-changed-hook* output prev-width prev-height)))
 
 (gliver-hook-add! %output-created-hook 'output-on-output 0)
 (gliver-hook-add! %output-object-id-changed-hook 'output-on-output-wl-output 0)
 (gliver-hook-add! %output-position-changed-hook 'output-on-output-position 0)
 (gliver-hook-add! %output-dimensions-changed-hook 'output-on-output-dimensions 0)
+(gliver-hook-add! %output-geometry-changed-hook 'output-on-wl-output-geometry 0)
+(gliver-hook-add! %output-mode-changed-hook 'output-on-wl-output-mode 0)
+(gliver-hook-add! %output-done-hook 'output-on-wl-output-done 0)
+(gliver-hook-add! %output-scale-changed-hook 'output-on-wl-output-scale 0)
+(gliver-hook-add! %output-name-changed-hook 'output-on-wl-output-name 0)
+(gliver-hook-add! %output-description-changed-hook 'output-on-wl-output-description 0)
 (gliver-hook-add! %output-removed-hook 'output-on-output-removed 0)
