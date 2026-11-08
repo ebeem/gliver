@@ -28,7 +28,8 @@ LIBPANGOCAIRO_LIBDIR = $(shell $(PKG_CONFIG) --variable libdir pangocairo)
 LIBGOBJECT_LIBDIR = $(shell $(PKG_CONFIG) --variable libdir gobject-2.0)
 LIBRSVG_LIBDIR = $(shell $(PKG_CONFIG) --variable libdir librsvg-2.0)
 
-MODULES =	gliver/core/ffi.scm \
+MODULES =	gliver/config.scm \
+			gliver/core/ffi.scm \
 			gliver/core/logs.scm \
 			gliver/core/helpers.scm \
 			gliver/core/hooks.scm \
@@ -136,6 +137,13 @@ build/%.go: %.scm
 	@echo "Compiling $<..."
 	@mkdir -p $(dir $@)
 	@guild compile -L . -o $@ $<
+
+# prepare gliver/config.scm
+# to support prefixed installations.
+gliver/config.scm: gliver/config.scm.in
+	sed -e "s|[@]GUILEDIR@|$(GUILEDIR)|" \
+		-e "s|[@]GUILECCDIR@|$(GUILECCDIR)|" \
+		-e "s|[@]PREFIX@|$(PREFIX)|" $< > $@
 
 # build ffi.scm and include its dependencies
 # gliver/deps/libxkbcommon.scm -> xkb

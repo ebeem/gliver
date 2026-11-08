@@ -21,6 +21,7 @@
 (use-modules (ice-9 format)
              (ice-9 getopt-long)
              (ice-9 match)
+             (gliver config)
              (gliver core)
              (gliver river)
              (gliver contrib commands)
@@ -29,6 +30,9 @@
              (gliver contrib debug repl-server))
 
 (define *version* "0.0.4")
+(add-to-load-path %gliver-source-directory)
+(set! %load-compiled-path
+      (cons %gliver-compiled-directory %load-compiled-path))
 
 ;;; cli argument parsing
 (define option-spec

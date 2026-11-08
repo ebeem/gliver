@@ -12,6 +12,7 @@
 
 (define-module (gliver core config)
   #:use-module (ice-9 format)
+  #:use-module (gliver config)
   #:use-module (gliver core logs)
   #:use-module (gliver core types)
   #:use-module (gliver core helpers)
@@ -507,6 +508,12 @@ following the same order in a keyboard numpad
   (string-append *gliver-config-dir* "/init.scm")
   "File path to the user's primary configuration file.")
 
+(define *example-config-file*
+  ;; in-vicinity doesn't accept multiple arguments
+  ;; in 3.0.11
+  (in-vicinity %gliver-installation-prefix
+               "share/gliver/examples/init.scm"))
+
 (define-command (config-load!)
   "Load the user configuration file."
   (let ((path *config-file-path*))
@@ -520,7 +527,11 @@ following the same order in a keyboard numpad
             (log-error "Error loading config ~a: ~a ~a" path key args)
             (format (current-error-port)
                     "Gliver: Error loading config: ~a ~a~%" key args)))
-        (log-info "No config file found at ~a, using defaults." path))))
+        (begin
+          (log-info "No config file found at ~a, loading example file."
+                    path)
+          (load *example-config-file*)
+          (log-info "Example config file loaded.")))))
 
 (define-command (config-reload!)
   "Reload the configuration file."
