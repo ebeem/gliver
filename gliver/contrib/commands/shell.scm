@@ -98,7 +98,6 @@ Returns the PID."
 (define-command (config-reload)
   "Reload the configuration file."
   (config-reload!)
-  (gliver-hook-run! *config-loaded-hook*)
   (log-debug "Config reloaded."))
 
 (define-command (gliver-quit)

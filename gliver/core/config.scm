@@ -15,6 +15,7 @@
   #:use-module (gliver config)
   #:use-module (gliver core logs)
   #:use-module (gliver core types)
+  #:use-module (gliver core hooks)
   #:use-module (gliver core helpers)
   #:declarative? #f
   #:export (
@@ -522,6 +523,7 @@ following the same order in a keyboard numpad
           (lambda ()
             (log-info "Loading config: ~a" path)
             (load path)
+			(gliver-hook-run! *config-loaded-hook*)
             (log-info "Config loaded successfully."))
           (lambda (key . args)
             (log-error "Error loading config ~a: ~a ~a" path key args)
@@ -531,6 +533,7 @@ following the same order in a keyboard numpad
           (log-info "No config file found at ~a, loading example file."
                     path)
           (load *example-config-file*)
+		  (gliver-hook-run! *config-loaded-hook*)
           (log-info "Example config file loaded.")))))
 
 (define-command (config-reload!)
