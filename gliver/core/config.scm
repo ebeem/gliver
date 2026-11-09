@@ -335,7 +335,7 @@
             "Color used for background of the currently selected candidate entry.")
 (define-var *palette-selected-radius* 0
             "Radius used for background of the currently selected candidate entry.")
-(define-var *palette-anchor-margin* 50
+(define-var *palette-anchor-margin* 80
             "Margin used in palette form anchor direction defined in *palette-location*.")
 (define-var *palette-urgent-color* *theme-urgent-color*
             "Color used for urgent or high-priority candidate rows.")

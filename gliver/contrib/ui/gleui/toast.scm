@@ -94,7 +94,7 @@
 			"Corner border radius in pixels for gleui toast notifications.")
 (define-var *gleui-toast-location* 9
 			"Gliver position (1-9) for gleui toast notifications.")
-(define-var *gleui-toast-margin* 45
+(define-var *gleui-toast-margin* 90
 			"Margin in pixels from the screen edge for gleui toast notifications.")
 (define-var *gleui-toast-padding-x* 22
 			"Padding horizontal content in pixels for gleui toast notifications.")
