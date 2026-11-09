@@ -388,7 +388,7 @@ Example: (list 'window (make-module-mpd))"
         (lambda (key . args)
           (log-error "Statusbar: Render and commit failed: ~a ~a" key args))))))
 
-(define (statusbar-init-output! output)
+(define* (statusbar-init-output! output #:optional statusbar)
   "Initialize the statusbar layer surface on OUTPUT."
   (define (valid-pointer? p)
     (and (pointer? p) (not (null-pointer? p))))
@@ -412,11 +412,13 @@ Example: (list 'window (make-module-mpd))"
 		   *wlr-layer-shell-anchor-left*
 		   *wlr-layer-shell-anchor-right*)))
 
-  (let ((bar (output-statusbar output)))
+  (let ((bar (or statusbar (output-statusbar output))))
     (when (and bar
                (statusbar? bar)
                (globals-ready?)
                (not (hash-table-ref/default *statusbar-output-table* (output-id output) #f)))
+      (unless (output-statusbar output)
+        (%output-statusbar-set! output bar))
       (let ((target-wl-out (resolve-target-wl-output)))
         (when (valid-pointer? target-wl-out)
           (log-info "Statusbar: Initializing statusbar on output ~a..." (output-name output))

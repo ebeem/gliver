@@ -112,7 +112,9 @@ Parameters: (OUTPUT)
                        (output-usable-x output)
                        (output-usable-y output)
                        (output-usable-width output)
-                       (output-usable-height output))))))
+                       (output-usable-height output)
+                       (output-statusbar output)
+                       (output-wallpaper output))))))
 
 (define* (output-restore-state! wl-name #:optional output)
   "Restore saved detached workspace state for OUTPUT matching WL-NAME.
@@ -134,6 +136,8 @@ Returns #t if state was restored, #f otherwise."
           (saved-uy (list-ref saved-state 9))
           (saved-uw (list-ref saved-state 10))
           (saved-uh (list-ref saved-state 11))
+          (saved-bar (and (> (length saved-state) 12) (list-ref saved-state 12)))
+          (saved-wp  (and (> (length saved-state) 13) (list-ref saved-state 13)))
           (initial-ws (output-workspaces out)))
 
       (log-info "Restoring detached workspaces for output ~a (~a)" out wl-name)
@@ -171,6 +175,10 @@ Returns #t if state was restored, #f otherwise."
         (workspace-focus! target-ws
                           #:focus-child #t
                           #:focus-parent #t))
+      (when saved-wp
+        (output-wallpaper-set! out saved-wp))
+      (when saved-bar
+        (output-statusbar-set! out saved-bar))
       #t)))
 
 ;;; output management
@@ -411,7 +419,7 @@ Parameters: (DATA PROXY-OUTPUT OBJECT-ID)
   (and-let* ((output (output-find-by-wl-output-proxy proxy)))
     (log-info "wl_output ~a name event: ~a (output: ~a)" proxy name (output-name output))
     (%output-wl-name-set! output name)
-    (output-restore-state! name)
+    (output-restore-state! name output)
     (gliver-hook-run! *output-wl-name-changed-hook* output name)))
 
 (define (output-on-wl-output-description data proxy desc)
