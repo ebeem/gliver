@@ -15,12 +15,21 @@
   #:use-module (srfi srfi-2)
   #:use-module (gliver core-base)
   #:use-module (gliver river wm-output-manager)
-  #:autoload (gliver core workspace) (workspace-add! workspace-focus!)
+  #:autoload (gliver core workspace) (workspace-add!
+									  workspace-focus!
+									  workspace-windows
+									  workspace-remove!)
+  #:autoload (gliver core window)    (window-hide!
+								      window-show!)
+  #:autoload (gliver core container) (container-remove!)
   #:declarative? #f
   #:export (
 			*output-focus-new?*
+			*detached-output-workspaces*
 			output-add!
 			output-remove!
+			output-save-state!
+			output-restore-state!
 			output-focused?
 			output-prev-focused?
 			output-focus!
@@ -45,6 +54,124 @@
 
 (define-var *output-focus-new?* #f
 			"Whether newly connected monitors/outputs are automatically focused.")
+
+(define-var *detached-output-workspaces* (make-hash-table)
+			"Hash table storing detached workspaces and output
+state for disconnected outputs. Key is output wl-name
+and value is a list of workspaces and output state.")
+
+(define (%output-find-free-name)
+  "Find the lowest available output name in the form output-N.
+Parameters: None.
+Returns a string (e.g. \"output-0\")."
+  ;; NOTE: this is used over the previous system which kept incrementing
+  ;; the output index even if previous allocated names aren't used anymore
+  (let ((names (map output-name (manager-outputs *manager*))))
+	(do ((idx 0 (1+ idx))
+		 (candidate "output-0" (format #f "output-~a" (1+ idx))))
+		((not (member candidate names)) candidate))))
+
+(define (%detached-workspaces-pop! wl-name)
+  "Retrieve and remove saved detached workspace state for WL-NAME.
+Parameters: (WL-NAME)
+  - WL-NAME: String Wayland output hardware name (e.g. \"eDP-1\").
+Returns saved state list or #f."
+  (and-let* ((entry (hash-ref *detached-output-workspaces* wl-name)))
+    (hash-remove! *detached-output-workspaces* wl-name)
+    entry))
+
+(define (output-save-state! output)
+  "Save workspaces and geometry state for OUTPUT before detachment,
+and hide its active windows.
+Parameters: (OUTPUT)
+  - OUTPUT: <output> record to save state for."
+  (when (output? output)
+    ;; hide all windows on all workspaces of this output
+    (for-each
+     (lambda (ws)
+       (for-each
+        (lambda (w)
+          (when (and w (window? w) (not (window-destroyed? w)))
+            (window-hide! w)))
+        (workspace-windows ws)))
+     (output-workspaces output))
+
+    ;; preserve workspaces and geometry if this output had workspaces
+    (and-let* ((workspaces (output-workspaces output))
+			   (name (output-wl-name output)))
+      (hash-set! *detached-output-workspaces*
+                 name
+                 (list workspaces
+                       (output-workspace-current output)
+                       (output-workspace-previous output)
+                       (output-id output)
+                       (output-x output)
+                       (output-y output)
+                       (output-width output)
+                       (output-height output)
+                       (output-usable-x output)
+                       (output-usable-y output)
+                       (output-usable-width output)
+                       (output-usable-height output))))))
+
+(define* (output-restore-state! wl-name #:optional output)
+  "Restore saved detached workspace state for OUTPUT matching WL-NAME.
+Parameters: (WL-NAME [OUTPUT])
+  - WL-NAME: String hardware output name (e.g. \"eDP-1\").
+  - OUTPUT: Optional <output> record (looked up by WL-NAME if omitted).
+Returns #t if state was restored, #f otherwise."
+  (and-let* ((saved-state (%detached-workspaces-pop! wl-name))
+			 (out (or output (output-find-by-wl-name wl-name))))
+	(let ((workspaces (list-ref saved-state 0))
+          (current-ws (list-ref saved-state 1))
+          (prev-ws (list-ref saved-state 2))
+          (saved-id (list-ref saved-state 3))
+          (saved-x (list-ref saved-state 4))
+          (saved-y (list-ref saved-state 5))
+          (saved-w (list-ref saved-state 6))
+          (saved-h (list-ref saved-state 7))
+          (saved-ux (list-ref saved-state 8))
+          (saved-uy (list-ref saved-state 9))
+          (saved-uw (list-ref saved-state 10))
+          (saved-uh (list-ref saved-state 11))
+          (initial-ws (output-workspaces out)))
+
+      (log-info "Restoring detached workspaces for output ~a (~a)" out wl-name)
+      (when saved-id (%output-id-set! out saved-id))
+      (when saved-x (%output-x-set! out saved-x))
+      (when saved-y (%output-y-set! out saved-y))
+      (when saved-w (%output-width-set! out saved-w))
+      (when saved-h (%output-height-set! out saved-h))
+      (when saved-ux (%output-usable-x-set! out saved-ux))
+      (when saved-uy (%output-usable-y-set! out saved-uy))
+      (when saved-uw (%output-usable-width-set! out saved-uw))
+      (when saved-uh (%output-usable-height-set! out saved-uh))
+
+	  ;; clean up any empty initial placeholder workspace created during output-add!
+      (for-each
+       (lambda (ws)
+         (when (null? (workspace-windows ws))
+           (workspace-remove! ws)))
+       initial-ws)
+
+      ;; re-link restored workspaces to this output (in case it was changed)
+      (for-each
+       (lambda (ws)
+         (%workspace-output-set! ws out))
+       workspaces)
+
+	  ;; set output workspaces to the new ones
+      (%output-workspaces-set! out workspaces)
+	  ;; restore previous focused workspace
+      (%output-workspace-previous-set! out prev-ws)
+	  ;; focus the previously focused workspace (fallback to first)
+      (and-let* ((target-ws (or current-ws
+								(and (pair? workspaces)
+									 (car workspaces)))))
+        (workspace-focus! target-ws
+                          #:focus-child #t
+                          #:focus-parent #t))
+      #t)))
 
 ;;; output management
 (define* (output-add! output #:key (focus #t))
@@ -85,6 +212,10 @@ Parameters: (OUTPUT)
   - OUTPUT: <output> record to remove."
   ;;TODO: transfers current output focus to another remaining output if OUTPUT was active.
   (output-release-wl-output-proxy! output)
+
+  ;; save output workspaces and geometry state before removing
+  (output-save-state! output)
+
   (let ((remaining (delq output (manager-outputs *manager*))))
     (%manager-outputs-set! *manager* remaining)
 	;; if output is currently focused, focus another one
@@ -97,6 +228,16 @@ Parameters: (OUTPUT)
 	;; if the output deleted is the previously focused, dereference it
 	(when (output-prev-focused? output)
 	  (%manager-output-previous-set! *manager* #f))
+
+	;; if no remaining outputs, clear window focus on seats
+	(when (null? remaining)
+	  (for-each
+	   (lambda (seat)
+		 (when (seat? seat)
+		   (%seat-window-focused-set! seat #f)
+		   (%seat-window-entered-set! seat #f)))
+	   (manager-seats *manager*)))
+
     (gliver-hook-run! *output-removed-hook* output)))
 
 (define (output-focused? output)
@@ -164,8 +305,7 @@ Parameters: (DATA MANAGER PROXY-OUTPUT)
   - DATA: User context pointer (unused, null in Gliver).
   - MANAGER: Pointer to river_window_manager_v1 proxy.
   - PROXY-OUTPUT: Pointer to river_output_v1 proxy."
-  (let* ((outputs (manager-outputs *manager*))
-         (name (format #f "output-~a" (length outputs)))
+  (let* ((name (%output-find-free-name))
          (output (make-output name #:wl-proxy proxy-output)))
 	(log-info "Output created: ~a" output)
 	(output-add! output)))
@@ -271,6 +411,7 @@ Parameters: (DATA PROXY-OUTPUT OBJECT-ID)
   (and-let* ((output (output-find-by-wl-output-proxy proxy)))
     (log-info "wl_output ~a name event: ~a (output: ~a)" proxy name (output-name output))
     (%output-wl-name-set! output name)
+    (output-restore-state! name)
     (gliver-hook-run! *output-wl-name-changed-hook* output name)))
 
 (define (output-on-wl-output-description data proxy desc)
