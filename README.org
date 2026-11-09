@@ -62,11 +62,14 @@ Because ~River~ relies on a non-monolithic architecture, it separates the compos
 - pkgconf
 
 Optional dependencies (recommended for starters)
-- foot (default terminal)
+- foot (default terminal) \\
   Can be configured via =*terminal*= variable.
-- iosevka font (default font)
+- iosevka font (default font) \\
   Can be configured via =*theme-font*= variable.
+
+#+begin_quote
 Note: It's highly recommended to use a nerd font (e.g. Iosevka Nerd Font). The statusbar in ~Gliver~ uses many icons that will otherwise won't be properly rendered.
+#+end_quote
 
 **** Guix
 Use ~guix.scm~ via =guix shell=
@@ -77,7 +80,10 @@ sudo pacman -S --needed guile river wayland wayland-protocols libxkbcommon librs
 sudo make install
 #+END_SRC
 
+#+begin_quote
 Note: guile-cairo is only available in AUR, either build it yourself or use an AUR helper to install it
+#+end_quote
+
 #+BEGIN_SRC sh
 yay -S guile-cairo
 # paru -S guile-cairo
@@ -106,8 +112,9 @@ Because ~gliver~ depends on ~river~, the cleanest way to run them is by passing 
 river -c gliver
 #+END_SRC
 
+#+begin_quote
 Note: ~make install~ installs a Wayland session file (=gliver.desktop=) into =$(SESSIONDIR)= (by default =$(PREFIX)/share/wayland-sessions=), you can use your favorite display manager to run ~gliver~ and you should see it listed along with other window managers/candidates available on your system.
-
+#+end_quote
 
 *** Running
 
@@ -117,14 +124,18 @@ You can run Gliver directly from source without installing it on your system, wh
 make && make run
 #+END_SRC
 
+#+begin_quote
 *Note:* If you are running ~River~ in a nested session (which is useful for debugging), you must set the correct ~WAYLAND_DISPLAY~ environment variable before starting ~Gliver~:
+#+end_quote
 
 #+BEGIN_SRC sh
 export WAYLAND_DISPLAY=wayland-1
 make && make run
 #+END_SRC
 
+#+begin_quote
 Note: exporting =WAYLAND_DISPLAY= allows you to also run ~Gliver~ from another display like ~tty~ in case ~Gliver~ crashes and your keybindings are lost.
+#+end_quote
 
 ** Default Keybindings
 
@@ -165,11 +176,19 @@ Here's a wishlist of features for the ~Gliver~ project:
 ** Known Issues
 *** Some clients will propose their own sizes and not respect the tiling system.
 This was observed so far in ~vlc~ where it will resize itself based on video resolution. While it's possible to disable this behavior from ~vlc~ itself, I am looking for a solution that will work on all clients.
+
+#+begin_quote
 Note: this issue doesn't seem to be easy to resolve, clients in this case violate the wayland protocol and it doesn't seem to me that there is a way to stop them from doing so.
+#+end_quote
 
 *** Some clients include their own decorations
 This was observered so far in ~Emacs~ and ~librewolf~ where they will include a titlebar, I believe all ~gtk~ applications will do so. While it's possible to have a workaround from ~gtk~ css, I again want to have a solution that will work on other clients as well.
+
+#+begin_quote
 Note: this issue doesn't seem to be easy to resolve, clients in this case violate the wayland protocol and it doesn't seem to me that there is a way to stop them from doing so.
+#+end_quote
+
+Workaround for gtk applications can be [[https://codeberg.org/river/wiki#global-workaround-using-gtk-css][found here]]. 
 
 ** GUI Components & Daemons
 
