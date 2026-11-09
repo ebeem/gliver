@@ -114,11 +114,13 @@ Parameters: (OUTPUT)
 	(layer-shell-output-destroy proxy)
 	(%output-wl-ls-proxy-set! output #f))
 
-	;; if deleted output is set as default, pick another one
-	(when (eq? *shell-current-default-output* output)
-	  (and-let* ((outputs (manager-outputs *manager*))
-				 ((pair? outputs)))
-		(shell-output-set-default! (car outputs)))))
+  ;; if deleted output is set as default, pick another one
+  (when (eq? *shell-current-default-output* output)
+	(let ((outputs (manager-outputs *manager*)))
+	  (if (pair? outputs)
+		  (shell-output-set-default! (car outputs))
+		  ;; if not output is available, set default to #f
+		  (set! *shell-current-default-output* #f)))))
 
 (define (shell-on-seat-created seat)
   "Invoked when an <seat> record is created.
