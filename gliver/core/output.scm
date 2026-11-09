@@ -219,8 +219,6 @@ Parameters: (OUTPUT [#:focus #t])
 Parameters: (OUTPUT)
   - OUTPUT: <output> record to remove."
   ;;TODO: transfers current output focus to another remaining output if OUTPUT was active.
-  (output-release-wl-output-proxy! output)
-
   ;; save output workspaces and geometry state before removing
   (output-save-state! output)
 
@@ -246,7 +244,10 @@ Parameters: (OUTPUT)
 		   (%seat-window-entered-set! seat #f)))
 	   (manager-seats *manager*)))
 
-    (gliver-hook-run! *output-removed-hook* output)))
+    (gliver-hook-run! *output-removed-hook* output)
+
+    ;; release wl_output proxy after output hooks have cleaned up layer surfaces
+    (output-release-wl-output-proxy! output)))
 
 (define (output-focused? output)
   "Return #t if OUTPUT is currently the active focused output in *manager*.
