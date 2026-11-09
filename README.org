@@ -40,7 +40,7 @@ You may also connect the ~REPL~ via socket if you use a tool like ~Emacs Geiser~
 - A standalone Wayland compositor; it runs alongside River as a client and delegates all rendering and hardware duties.
 
 - A drop-in replacement for any other window manager, even though you may find built-in configurations that can replicate most of the features found in other window managers.
-    
+
 ** Architecture
 
 ~Gliver~ runs alongside ~River~ as the window manager client.
@@ -51,14 +51,37 @@ Because ~River~ relies on a non-monolithic architecture, it separates the compos
 
 *** Prerequisites
 
+- GNU Guile (3.0+)
 - River (v0.4+)
 - libwayland
 - libxkbcommon
 - librsvg
-- GNU Guile (3.0+)
 - Guile-Cairo
 - Pango
 - GNU Make
+- pkgconf
+
+Optional dependencies (recommended for starters)
+- foot (default terminal)
+  Can be configured via =*terminal*= variable.
+- iosevka font (default font)
+  Can be configured via =*theme-font*= variable.
+Note: It's highly recommended to use a nerd font (e.g. Iosevka Nerd Font). The statusbar in ~Gliver~ uses many icons that will otherwise won't be properly rendered.
+
+**** Guix
+Use ~guix.scm~ via =guix shell=
+
+**** Arch Linux
+#+BEGIN_SRC sh
+sudo pacman -S --needed guile river wayland wayland-protocols libxkbcommon librsvg pango make pkgconf
+sudo make install
+#+END_SRC
+
+Note: guile-cairo is only available in AUR, either build it yourself or use an AUR helper to install it
+#+BEGIN_SRC sh
+yay -S guile-cairo
+# paru -S guile-cairo
+#+END_SRC
 
 *** Building
 
@@ -77,7 +100,7 @@ mkdir -p ~/.config/gliver && cp -n doc/examples/init.scm ~/.config/gliver/init.s
 
 *** Starting
 
-Because ~gliver~ depends on ~river~, the cleanest way to run them is by passing the -c flag which ensures ~river~ initializes first and immediately runs ~gliver~ as its init executable.
+Because ~gliver~ depends on ~river~, the cleanest way to run them is by passing the -c flag which ensures ~river~ initializes first and immediately runs ~gliver~ as its init executable (you must install ~gliver~ via =sudo make install= for this to work).
 
 #+BEGIN_SRC sh
 river -c gliver
@@ -88,18 +111,20 @@ Note: ~make install~ installs a Wayland session file (=gliver.desktop=) into =$(
 
 *** Running
 
-You can run Gliver directly from source without installing it on your system, which is ideal for rapid development and testing. Ensure that River is running first, then execute:
+You can run Gliver directly from source without installing it on your system, which is ideal for rapid development and testing. Ensure that ~River~ is running first, then execute:
 
 #+BEGIN_SRC sh
 make && make run
 #+END_SRC
 
-*Note:* If you are running River in a nested session (which is useful for debugging), you must set the correct ~WAYLAND_DISPLAY~ environment variable before starting Gliver:
+*Note:* If you are running ~River~ in a nested session (which is useful for debugging), you must set the correct ~WAYLAND_DISPLAY~ environment variable before starting ~Gliver~:
 
 #+BEGIN_SRC sh
 export WAYLAND_DISPLAY=wayland-1
 make && make run
 #+END_SRC
+
+Note: exporting =WAYLAND_DISPLAY= allows you to also run ~Gliver~ from another display like ~tty~ in case ~Gliver~ crashes and your keybindings are lost.
 
 ** Default Keybindings
 
@@ -110,78 +135,15 @@ make && make run
 - =C-= ~Control~ key
 - =M-= ~Meta~ / ~Alt~ key
 
-*** Basic Operations
+For example: =s-C-q= is equivalent to pressing =super+control+q=
+You can always view the current configured =*top-map*= keybindings via =s-SPC h ?= (=super+space= followed by =h= followed by =?=).
 
-| Key Combination | Command                  | Description                            |
-|-----------------+--------------------------+----------------------------------------|
-| =s-Return=        | =terminal-spawn=           | Spawn terminal emulator                |
-| =s-q=             | =window-kill=              | Close/kill focused window              |
-| =s-o=             | =launcher-run=             | Open application via launcher launcher |
-| =s-f=             | =window-fullscreen-toggle= | Toggle fullscreen for focused window   |
-| =s-S-r=           | =config-reload!=           | Reload configuration                   |
-| =s-S-q=           | =gliver-quit=              | Quit Gliver session                    |
+#+ATTR_ORG: :width 900
+[[./.preview/keybindings.jpeg]]
 
-*** Focus Navigation
+~Gliver~ encourages discovery, so you better use the available built-in features to discover and recall features/keybindings.
 
-| Key Combination  | Command               | Description                                            |
-|------------------+-----------------------+--------------------------------------------------------|
-| =s-h=, =s-Left=      | =container-focus-left=  | Focus container to the left                            |
-| =s-j=, =s-Down=      | =container-focus-down=  | Focus container below                                  |
-| =s-k=, =s-Up=        | =container-focus-up=    | Focus container above                                  |
-| =s-l=, =s-Right=     | =container-focus-right= | Focus container to the right                           |
-| =s-n=, =s-Tab=       | =window-focus-next=     | Focus next window in container stack                   |
-| =s-p=, =s-S-Tab=     | =window-focus-prev=     | Focus previous window in container stack               |
-| =s-C-n=, =s-C-Tab=   | =window-swap-next=      | Swap current window with next window in container      |
-| =s-C-p=, =s-C-S-Tab= | =window-swap-prev=      | Swap current window with  previous window in container |
-
-*** Moving Windows Between Containers
-
-| Key Combination  | Command                     | Description                               |
-|------------------+-----------------------------+-------------------------------------------|
-| =s-M-h=, =s-M-Left=  | =window-container-move-left=  | Move focused window to container on left  |
-| =s-M-j=, =s-M-Down=  | =window-container-move-down=  | Move focused window to container below    |
-| =s-M-k=, =s-M-Up=    | =window-container-move-up=    | Move focused window to container above    |
-| =s-M-l=, =s-M-Right= | =window-container-move-right= | Move focused window to container on right |
-
-*** Workspace Focus Navigation
-
-| Key Combination  | Command               | Description                  |
-|------------------+-----------------------+------------------------------|
-| =s-C-h=, =s-C-Left=  | =workspace-focus-left=  | Focus workspace to the left  |
-| =s-C-j=, =s-C-Down=  | =workspace-focus-down=  | Focus workspace below        |
-| =s-C-k=, =s-C-Up=    | =workspace-focus-up=    | Focus workspace above        |
-| =s-C-l=, =s-C-Right= | =workspace-focus-right= | Focus workspace to the right |
-
-*** Moving Windows Across Workspaces
-
-| Key Combination      | Command                     | Description                           |
-|----------------------+-----------------------------+---------------------------------------|
-| =s-C-M-h=, =s-C-M-Left=  | =window-workspace-move-left=  | Move window to workspace on the left  |
-| =s-C-M-j=, =s-C-M-Down=  | =window-workspace-move-down=  | Move window to workspace below        |
-| =s-C-M-k=, =s-C-M-Up=    | =window-workspace-move-up=    | Move window to workspace above        |
-| =s-C-M-l=, =s-C-M-Right= | =window-workspace-move-right= | Move window to workspace on the right |
-
-*** Container Layout
-
-| Key Combination | Command                    | Description                               |
-|-----------------+----------------------------+-------------------------------------------|
-| =s-s=             | =container-split-horizontal= | Split container horizontally              |
-| =s-v=             | =container-split-vertical=   | Split container vertically                |
-| =s-d=             | =container-destroy=          | Destroy active container slot             |
-| =s-D=             | =container-destroy-others=   | Destroy all other containers in workspace |
-
-*** Media & Hardware Controls
-
-| Key Combination       | Command                     | Description                |
-|-----------------------+-----------------------------+----------------------------|
-| =XF86AudioMute=         | =media-audio-mute=            | Toggle audio mute          |
-| =XF86AudioLowerVolume=  | =media-audio-volume-decrease= | Lower audio volume         |
-| =XF86AudioRaiseVolume=  | =media-audio-volume-increase= | Raise audio volume         |
-| =XF86AudioMicMute=      | =media-mic-mute=              | Toggle microphone mute     |
-| =XF86MonBrightnessDown= | =media-brightness-decrease=   | Decrease screen brightness |
-| =XF86MonBrightnessUp=   | =media-brightness-increase=   | Increase screen brightness |
-| =Print=                 | =media-screenshot=            | Take screenshot            |
-
+For your reference, you can view [[file:../doc/keybindings.org][detailed keybindings documentation here]] (if you prefer documentation over built-in discovery tools).
 
 ** Contributing
 
@@ -203,11 +165,11 @@ Here's a wishlist of features for the ~Gliver~ project:
 ** Known Issues
 *** Some clients will propose their own sizes and not respect the tiling system.
 This was observed so far in ~vlc~ where it will resize itself based on video resolution. While it's possible to disable this behavior from ~vlc~ itself, I am looking for a solution that will work on all clients.
-NOTE: this issue doesn't seem to be easy to resolve, clients in this case violate the wayland protocol and it doesn't seem to me that there is a way to stop them from doing so.
+Note: this issue doesn't seem to be easy to resolve, clients in this case violate the wayland protocol and it doesn't seem to me that there is a way to stop them from doing so.
 
 *** Some clients include their own decorations
 This was observered so far in ~Emacs~ and ~librewolf~ where they will include a titlebar, I believe all ~gtk~ applications will do so. While it's possible to have a workaround from ~gtk~ css, I again want to have a solution that will work on other clients as well.
-NOTE: this issue doesn't seem to be easy to resolve, clients in this case violate the wayland protocol and it doesn't seem to me that there is a way to stop them from doing so.
+Note: this issue doesn't seem to be easy to resolve, clients in this case violate the wayland protocol and it doesn't seem to me that there is a way to stop them from doing so.
 
 ** GUI Components & Daemons
 
@@ -227,10 +189,11 @@ NOTE: this issue doesn't seem to be easy to resolve, clients in this case violat
 
 As in ~Emacs~ and ~StumpWM~, you can always get documentation natively through ~Gliver~:
 
-| Key       | Help                             |
-|-----------+----------------------------------|
-| =s-SPC h v= | Variables                        |
-| =s-SPC h f= | Functions                        |
-| =s-SPC h k= | Key sequences                    |
+| Key       | Help                     |
+|-----------+--------------------------|
+| =s-SPC h v= | Variables                |
+| =s-SPC h f= | Functions                |
+| =s-SPC h k= | Key sequences            |
+| =s-SPC h ?= | Show top map keybidnings |
 
 You can also drop into the Live REPL at any time to inspect state.
