@@ -170,13 +170,13 @@ cleared from client side and the server should also clear everything.
 Parameters: (PROXY-LAYER-SURFACE)
   - PROXY-LAYER-SURFACE: Pointer to zwlr_layer_surface_v1 proxy."
   (when (and (valid-pointer? proxy-layer-surface)
-             (memq proxy-layer-surface *wlr-layer-surfaces*))
+             (member proxy-layer-surface *wlr-layer-surfaces*))
     (when *log-river-calls*
 	  (log-debug "Destroying layer surface proxy: ~a" proxy-layer-surface))
     (zwlr-layer-surface-v1-destroy proxy-layer-surface)
 	;; untrack the proxy
 	(set! *wlr-layer-surfaces*
-		  (delq proxy-layer-surface *wlr-layer-surfaces*))))
+		  (delete proxy-layer-surface *wlr-layer-surfaces*))))
 
 (define (wlr-layer-surface-set-size proxy-layer-surface width height)
   "Set size of the layer surface in pixels. Setting 0 for either dimension
