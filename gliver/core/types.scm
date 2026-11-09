@@ -24,12 +24,13 @@
   #:use-module (gliver core helpers)
   #:use-module (gliver core hooks)
   #:export (
-			command-docstring
-			command-interactive-spec
-			command-procedure
-			command-name
-			command?
+			<command>
 			make-command
+			command?
+			command-name
+			command-procedure
+			command-interactive-spec
+			command-docstring
 			*command-registry*
 			command-register!
 			define-command
@@ -38,22 +39,23 @@
 			command-run
 			%command-run-by-string
 			command-run-by-name
-			%manager-keymaps-set!
-			manager-keymaps
-			%manager-wl-proxy-set!
-			manager-wl-proxy
-			%manager-windows-set!
-			manager-windows
-			%manager-seats-set!
-			manager-seats
-			%manager-output-previous-set!
-			manager-output-previous
-			%manager-output-current-set!
-			manager-output-current
-			%manager-outputs-set!
-			manager-outputs
-			manager-state?
+			<manager-state>
 			%make-manager-state
+			manager-state?
+			manager-outputs
+			%manager-outputs-set!
+			manager-output-current
+			%manager-output-current-set!
+			manager-output-previous
+			%manager-output-previous-set!
+			manager-seats
+			%manager-seats-set!
+			manager-windows
+			%manager-windows-set!
+			manager-wl-proxy
+			%manager-wl-proxy-set!
+			manager-keymaps
+			%manager-keymaps-set!
 			*manager*
 			*window-number-next*
 			*container-id-next*
@@ -65,76 +67,77 @@
 			manager-output-number-next!
 			manager-tag-next!
 			container-id-next!
-			%output-done-set!
-			output-done?
-			%output-transform-set!
-			output-transform
-			%output-model-set!
-			output-model
-			%output-make-set!
-			output-make
-			%output-subpixel-set!
-			output-subpixel
-			%output-physical-height-set!
-			output-physical-height
-			%output-physical-width-set!
-			output-physical-width
-			%output-mode-refresh-set!
-			output-mode-refresh
-			%output-mode-height-set!
-			output-mode-height
-			%output-mode-width-set!
-			output-mode-width
-			%output-mode-flags-set!
-			output-mode-flags
-			%output-scale-set!
-			output-scale
-			%output-description-set!
-			output-description
-			%output-wl-name-set!
-			output-wl-name
-			%output-metadata-set!
-			output-metadata
-			%output-statusbar-set!
-			output-statusbar
-			%output-usable-height-set!
-			output-usable-height
-			%output-usable-width-set!
-			output-usable-width
-			%output-usable-y-set!
-			output-usable-y
-			%output-usable-x-set!
-			output-usable-x
-			%output-wallpaper-set!
-			output-wallpaper
-			%output-wl-ls-proxy-set!
-			output-wl-ls-proxy
-			%output-wl-proxy-set!
-			output-wl-proxy
-			%output-wl-output-proxy-set!
-			output-wl-output-proxy
-			%output-wl-output-set!
-			output-wl-output
-			%output-workspace-previous-set!
-			output-workspace-previous
-			%output-workspace-current-set!
-			output-workspace-current
-			%output-workspaces-set!
-			output-workspaces
-			%output-height-set!
-			output-height
-			%output-width-set!
-			output-width
-			%output-y-set!
-			output-y
-			%output-x-set!
-			output-x
-			output-name-set!
-			output-name
-			%output-id-set!
-			output-id
-			output?
+			<output>
 			%make-output
+			output?
+			output-id
+			%output-id-set!
+			output-name
+			output-name-set!
+			output-x
+			%output-x-set!
+			output-y
+			%output-y-set!
+			output-width
+			%output-width-set!
+			output-height
+			%output-height-set!
+			output-workspaces
+			%output-workspaces-set!
+			output-workspace-current
+			%output-workspace-current-set!
+			output-workspace-previous
+			%output-workspace-previous-set!
+			output-wl-output
+			%output-wl-output-set!
+			output-wl-output-proxy
+			%output-wl-output-proxy-set!
+			output-wl-proxy
+			%output-wl-proxy-set!
+			output-wl-ls-proxy
+			%output-wl-ls-proxy-set!
+			output-wallpaper
+			%output-wallpaper-set!
+			output-usable-x
+			%output-usable-x-set!
+			output-usable-y
+			%output-usable-y-set!
+			output-usable-width
+			%output-usable-width-set!
+			output-usable-height
+			%output-usable-height-set!
+			output-statusbar
+			%output-statusbar-set!
+			output-metadata
+			%output-metadata-set!
+			output-wl-name
+			%output-wl-name-set!
+			output-description
+			%output-description-set!
+			output-scale
+			%output-scale-set!
+			output-mode-flags
+			%output-mode-flags-set!
+			output-mode-width
+			%output-mode-width-set!
+			output-mode-height
+			%output-mode-height-set!
+			output-mode-refresh
+			%output-mode-refresh-set!
+			output-physical-width
+			%output-physical-width-set!
+			output-physical-height
+			%output-physical-height-set!
+			output-subpixel
+			%output-subpixel-set!
+			output-make
+			%output-make-set!
+			output-model
+			%output-model-set!
+			output-transform
+			%output-transform-set!
+			output-done?
+			%output-done-set!
 			make-output
 			output-usable-area-set!
 			output-usable-area
@@ -148,163 +151,167 @@
 			output-wallpaper-set!
 			output-statusbar-set!
 			output-current
-			%seat-metadata-set!
-			seat-metadata
-			%seat-wl-ls-proxy-set!
-			seat-wl-ls-proxy
-			%seat-wl-proxy-set!
-			seat-wl-proxy
-			%seat-wl-seat-set!
-			seat-wl-seat
-			%seat-pointer-op-set!
-			seat-pointer-op?
-			%seat-focus-type-set!
-			seat-focus-type
-			%seat-window-focused-set!
-			seat-window-focused
-			%seat-window-entered-set!
-			seat-window-entered
-			seat?
+			<seat>
 			%make-seat
+			seat?
+			seat-window-entered
+			%seat-window-entered-set!
+			seat-window-focused
+			%seat-window-focused-set!
+			seat-focus-type
+			%seat-focus-type-set!
+			seat-pointer-op?
+			%seat-pointer-op-set!
+			seat-wl-seat
+			%seat-wl-seat-set!
+			seat-wl-proxy
+			%seat-wl-proxy-set!
+			seat-wl-ls-proxy
+			%seat-wl-ls-proxy-set!
+			seat-metadata
+			%seat-metadata-set!
 			make-seat
 			seat-find-by-proxy
 			seat-find-by-ls-proxy
 			seat-current
-			%workspace-metadata-set!
-			workspace-metadata
-			%workspace-wallpaper-set!
-			workspace-wallpaper
-			%workspace-container-previous-set!
-			workspace-container-previous
-			%workspace-container-current-set!
-			workspace-container-current
-			workspace-layout-set!
-			workspace-layout
-			%workspace-output-set!
-			workspace-output
-			%workspace-containers-set!
-			workspace-containers
-			%workspace-tag-mask-set!
-			workspace-tag-mask
-			workspace-name-set!
-			workspace-name
-			%workspace-id-set!
-			workspace-id
-			workspace?
+			<workspace>
 			%make-workspace
+			workspace?
+			workspace-id
+			%workspace-id-set!
+			workspace-name
+			workspace-name-set!
+			workspace-tag-mask
+			%workspace-tag-mask-set!
+			workspace-containers
+			%workspace-containers-set!
+			workspace-output
+			%workspace-output-set!
+			workspace-layout
+			workspace-layout-set!
+			workspace-container-current
+			%workspace-container-current-set!
+			workspace-container-previous
+			%workspace-container-previous-set!
+			workspace-wallpaper
+			%workspace-wallpaper-set!
+			workspace-metadata
+			%workspace-metadata-set!
 			make-workspace
 			workspace-find-by-name
 			workspace-wallpaper-set!
 			workspace-current
-			%container-metadata-set!
-			container-metadata
-			%container-usable-height-set!
-			container-usable-height
-			%container-usable-width-set!
-			container-usable-width
-			%container-usable-y-set!
-			container-usable-y
-			%container-usable-x-set!
-			container-usable-x
-			%container-wl-node-proxy-set!
-			container-wl-node-proxy
-			%container-urgent-set!
-			container-urgent?
-			%container-height-set!
-			container-height
-			%container-width-set!
-			container-width
-			%container-y-set!
-			container-y
-			%container-x-set!
-			container-x
-			%container-window-previous-set!
-			container-window-previous
-			%container-window-current-set!
-			container-window-current
-			%container-windows-set!
-			container-windows
-			%container-workspace-set!
-			container-workspace
-			%container-id-set!
-			container-id
-			container?
+			<container>
 			%make-container
+			container?
+			container-id
+			%container-id-set!
+			container-workspace
+			%container-workspace-set!
+			container-windows
+			%container-windows-set!
+			container-window-current
+			%container-window-current-set!
+			container-window-previous
+			%container-window-previous-set!
+			container-x
+			%container-x-set!
+			container-y
+			%container-y-set!
+			container-width
+			%container-width-set!
+			container-height
+			%container-height-set!
+			container-urgent?
+			%container-urgent-set!
+			container-wl-node-proxy
+			%container-wl-node-proxy-set!
+			container-usable-x
+			%container-usable-x-set!
+			container-usable-y
+			%container-usable-y-set!
+			container-usable-width
+			%container-usable-width-set!
+			container-usable-height
+			%container-usable-height-set!
+			container-metadata
+			%container-metadata-set!
 			container-usable-area-set!
 			container-usable-area
 			make-container
 			container-find-by-number
 			container-current
-			%window-metadata-set!
-			window-metadata
-			%window-wl-decoration-below-proxy-set!
-			window-wl-decoration-below-proxy
-			%window-wl-decoration-above-proxy-set!
-			window-wl-decoration-above-proxy
-			%window-wl-node-proxy-set!
-			window-wl-node-proxy
-			%window-wl-proxy-set!
-			window-wl-proxy
-			%window-identifier-set!
-			window-identifier
-			%window-presentation-hint-set!
-			window-presentation-hint
-			%window-parent-set!
-			window-parent
-			%window-pid-set!
-			window-pid
-			%window-visbile-set!
-			window-visible?
-			%window-maximized-set!
-			window-maximized?
-			%window-fullscreen-set!
-			window-fullscreen?
-			%window-destroyed-set!
-			window-destroyed?
-			%window-capabilities-set!
-			window-capabilities
-			%window-is-resizing-set!
-			window-is-resizing
-			%window-decoration-hint-set!
-			window-decoration-hint
-			%window-y-set!
-			window-y
-			%window-x-set!
-			window-x
-			%window-width-set!
-			window-width
-			%window-width-max-set!
-			window-width-max
-			%window-width-min-set!
-			window-width-min
-			%window-height-set!
-			window-height
-			%window-height-max-set!
-			window-height-max
-			%window-height-min-set!
-			window-height-min
-			%window-urgent-set!
-			window-urgent?
-			%window-marked-set!
-			window-marked?
-			%window-transient-set!
-			window-transient?
-			%window-floating-set!
-			window-floating?
-			%window-container-set!
-			window-container
-			%window-instance-set!
-			window-instance
-			%window-class-set!
-			window-class
-			%window-app-id-set!
-			window-app-id
-			%window-title-set!
-			window-title
-			%window-id-set!
-			window-id
-			window?
+			<window>
 			%make-window
+			window?
+			window-id
+			%window-id-set!
+			window-title
+			%window-title-set!
+			window-app-id
+			%window-app-id-set!
+			window-class
+			%window-class-set!
+			window-instance
+			%window-instance-set!
+			window-container
+			%window-container-set!
+			window-floating?
+			%window-floating-set!
+			window-transient?
+			%window-transient-set!
+			window-marked?
+			%window-marked-set!
+			window-urgent?
+			%window-urgent-set!
+			window-height-min
+			%window-height-min-set!
+			window-height-max
+			%window-height-max-set!
+			window-height
+			%window-height-set!
+			window-width-min
+			%window-width-min-set!
+			window-width-max
+			%window-width-max-set!
+			window-width
+			%window-width-set!
+			window-x
+			%window-x-set!
+			window-y
+			%window-y-set!
+			window-decoration-hint
+			%window-decoration-hint-set!
+			window-is-resizing
+			%window-is-resizing-set!
+			window-capabilities
+			%window-capabilities-set!
+			window-destroyed?
+			%window-destroyed-set!
+			window-fullscreen?
+			%window-fullscreen-set!
+			window-maximized?
+			%window-maximized-set!
+			window-visible?
+			%window-visbile-set!
+			window-pid
+			%window-pid-set!
+			window-parent
+			%window-parent-set!
+			window-presentation-hint
+			%window-presentation-hint-set!
+			window-identifier
+			%window-identifier-set!
+			window-wl-proxy
+			%window-wl-proxy-set!
+			window-wl-node-proxy
+			%window-wl-node-proxy-set!
+			window-wl-decoration-above-proxy
+			%window-wl-decoration-above-proxy-set!
+			window-wl-decoration-below-proxy
+			%window-wl-decoration-below-proxy-set!
+			window-metadata
+			%window-metadata-set!
 			make-window
 			window-find-by-proxy
 			window-find-by-id
@@ -312,24 +319,27 @@
 			window-workspace
 			window-output
 			*key-modifier-map*
-			key-keysym
-			key-modifiers
-			key?
+			<key>
 			%make-key
+			key?
+			key-modifiers
+			key-keysym
 			make-key
-			keymap-passthrough?
-			keymap-bindings
-			keymap-name
-			keymap?
+			<keymap>
 			%make-keymap
+			keymap?
+			keymap-name
+			keymap-bindings
+			keymap-passthrough?
 			make-keymap
-			keybinding-keymap
-			keybinding-mode
-			keybinding-persist
-			keybinding-action
-			keybinding-key
-			keybinding?
+			<keybinding>
 			%make-keybinding
+			keybinding?
+			keybinding-key
+			keybinding-action
+			keybinding-persist
+			keybinding-mode
+			keybinding-keymap
 			make-keybinding
 			manager-print-tree
 ))
