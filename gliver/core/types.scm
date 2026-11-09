@@ -142,6 +142,7 @@
 			output-find-by-ls-proxy
 			output-find-by-wl-output
 			output-find-by-wl-output-proxy
+			output-find-by-wl-name
 			output-find-by-name
 			output-find-by-id
 			output-wallpaper-set!
@@ -687,6 +688,15 @@ Returns matching <output> record or #f."
     (find (lambda (out) (equal? (output-wl-output-proxy out) proxy))
           (manager-outputs *manager*))))
 
+(define (output-find-by-wl-name target-wl-name)
+  "Find an <output> record by its hardware TARGET-WL-NAME string.
+Parameters: (TARGET-WL-NAME)
+  - TARGET-WL-NAME: String hardware connector name (e.g. \"eDP-1\").
+Returns matching <output> record or #f."
+  (find (lambda (s) (and (output-wl-name s)
+						 (string=? (output-wl-name s) target-wl-name)))
+        (manager-outputs *manager*)))
+
 (define (output-find-by-name target-name)
   "Find an <output> record by its TARGET-NAME string.
 Parameters: (TARGET-NAME)
@@ -1153,8 +1163,8 @@ Returns newly created <key> record."
 (set-record-type-printer!
  <output>
  (lambda (out port)
-   (format port "#<output name=~s pos=~ax~a+~a+~a usable=~ax~a+~a+~a workspaces=~a current-workspace=~a prev-workspace=~a>"
-		   (output-name out)
+   (format port "#<output name=~s wl-name=~s pos=~ax~a+~a+~a usable=~ax~a+~a+~a workspaces=~a current-workspace=~a prev-workspace=~a>"
+		   (output-name out) (output-wl-name out)
 		   (output-width out) (output-height out)
 		   (output-x out) (output-y out)
 		   (output-usable-width out) (output-usable-height out)
