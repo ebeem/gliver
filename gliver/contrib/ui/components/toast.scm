@@ -1,3 +1,8 @@
+;;; gliver/contrib/ui/components/toast.scm --- Generic toast notification component
+;;;
+;;; Copyright (C) 2026 Gliver Contributors
+;;; SPDX-License-Identifier: GPL-3.0-or-later
+
 (define-module (gliver contrib ui components toast)
   #:use-module (ice-9 popen)
   #:use-module (ice-9 rdelim)
@@ -26,12 +31,18 @@ toast is called. This should be any function that will call
 make-toast-backend.")
 
 (define* (toast-show message #:key (timeout 0)
-					 (name "default") (theme-overrides '()) (backend #f) (icon #f) (output #f))
+					 (name "default") (theme-overrides '()) (backend #f) (icon #f) (output #f)
+					 (on-close #f) (eat-next-key? #f))
   "Display the user a dialog with MESSAGE.
-BACKEND defaults to the globally configured `*toast-backend*`."
+BACKEND defaults to the globally configured `*toast-backend*`.
+When EAT-NEXT-KEY? is true, requests the backend to eat the next key press
+and dismiss the toast when any key is pressed or eaten."
   (let ((toast (or backend *toast-backend*)))
     (if (procedure? toast)
-        (toast message #:timeout timeout #:name name #:icon icon #:theme-overrides theme-overrides #:output output)
+        (toast message #:timeout timeout #:name name #:icon icon
+               #:theme-overrides theme-overrides #:output output
+               #:on-close on-close
+               #:eat-next-key? eat-next-key?)
         (log-debug "No toast backend configured for toast-show"))))
 
 (define* (toast-make-span text #:key color weight)

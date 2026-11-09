@@ -10,17 +10,16 @@
   #:use-module (srfi srfi-1)
   #:use-module (srfi srfi-69)
   #:use-module (gliver contrib ui components palette)
+  #:use-module (gliver contrib ui overlay which-key)
   #:declarative? #f
   #:export (
 			describe-variable
-			describe-key
 			describe-command
-			where-is
-			list-commands
-			safe-var-value-string
+			describe-key
+			describe-top-map
 ))
 
-(define (safe-var-value-string val)
+(define (%safe-var-value-string val)
   "Return a compact, safe string representation of VAL for display in palette and logs."
   (cond
    ((string? val)
@@ -51,7 +50,7 @@
                            (lambda (name val-pair acc)
                              (let* ((module (car val-pair))
                                     (val (catch #t (lambda () (var-get name)) (lambda _ "<unbound>")))
-                                    (safe-val (safe-var-value-string val))
+                                    (safe-val (%safe-var-value-string val))
                                     (docstring (string-replace-substring (or (cdr val-pair) "") "\n" " "))
                                     (opt (make-dmenu-options
                                           (list (list " " name safe-val (module-name module) docstring))
@@ -75,7 +74,7 @@
                       (let* ((rec (hash-table-ref/default *variable-registry* selected #f))
                              (val (catch #t (lambda () (var-get selected)) (lambda _ "<unbound>")))
                              (doc (and rec (cdr rec))))
-                        (log-info "Variable ~a = ~a~%~a" selected (safe-var-value-string val) (or doc "No documentation."))))))))
+                        (log-info "Variable ~a = ~a~%~a" selected (%safe-var-value-string val) (or doc "No documentation."))))))))
 
 (define-command (describe-command)
   "Describe a command, or prompt to select from all commands."
@@ -135,25 +134,6 @@
                     (when selected
                       (log-info "Key ~a is bound in active keymap." selected))))))
 
-(define-command (where-is name)
-  #:interactive (string)
-  "Find the keybinding for a command."
-  (let ((bindings (filter (lambda (pair)
-                            (let ((action (keybinding-action (cdr pair))))
-                              (or (and (string? action)
-                                       (string=? action (if (symbol? name)
-                                                            (symbol->string name)
-                                                            name)))
-                                  (and (symbol? action) (eq? action name)))))
-                          (keymap->alist *root-map*))))
-    (if (null? bindings)
-        (log-debug "~a is not on any key." name)
-        (log-debug "~a is on ~a" name
-                   (string-join (map (lambda (b) (key->string (car b))) bindings)
-								", ")))))
-
-(define-command (list-commands)
-  "List all available commands."
-  (log-debug "~a" (string-join (sort (map symbol->string (command-all))
-									 string<?)
-                               " ")))
+(define-command (describe-top-map)
+  "Describe *top-map* keybindings."
+  (which-key-show-keymap *top-map*))

@@ -5,7 +5,8 @@
 ;;;
 ;;; Listens for keymap changes and, when entering a non-top-map mode
 ;;; (prefix or submap), displays all available keybindings using the
-;;; configured toast backend.
+;;; configured toast backend. Also provides which-key-show-keymap to
+;;; display *top-map* or any keymap on demand.
 ;;;
 ;;; Usage:
 ;;;   (use-modules (gliver contrib ui overlay which-key))
@@ -46,7 +47,9 @@
 			*which-key-padding-y*
 			describe-action
 			format-bindings
+			*which-key-current-keymap*
 			which-key-on-keymap-change
+			which-key-show-keymap
 			which-key-enable!
 			which-key-disable!
 ))
@@ -178,24 +181,53 @@
          (rows (%chunk-list cols *which-key-columns*)))
 	rows))
 
-(define (which-key-on-keymap-change mode-name)
+(define-var *which-key-current-keymap* #f
+  "The <keymap> currently displayed in which-key, or #f.")
+
+(define (which-key-on-keymap-change keymap)
   "Hook handler: show bindings when entering a non-top-map mode."
-  (cond
-   ((eq? mode-name '*top-map*)
-    ;; returned to *top-map* mode, kill the current which-key toast
-	(toast-kill #:name *which-key-identifier-name*)
-    #f)
-   (else
-    (let ((keymap (or (keymap-find mode-name) (var-get mode-name))))
-      (if keymap
-          (let ((text (format-bindings keymap)))
-			(toast-show text
-                        #:name *which-key-identifier-name*
-                        #:theme-overrides (%which-key-theme-overrides)))
+  (let ((km (keymap-find keymap)))
+    (cond
+     ((eq? km *top-map*)
+      ;; returned to *top-map* mode, kill the current which-key toast unless
+      ;; *top-map* is what we are explicitly showing
+      (unless (eq? *which-key-current-keymap* *top-map*)
+        (set! *which-key-current-keymap* #f)
+        (toast-kill #:name *which-key-identifier-name*))
+      #f)
+     (else
+      (if (keymap? km)
           (begin
-            (log-debug "No keymap found for mode ~a"
-                       mode-name)
+            (set! *which-key-current-keymap* km)
+            (toast-show (format-bindings km)
+                        #:name *which-key-identifier-name*
+                        #:theme-overrides (%which-key-theme-overrides)
+                        #:on-close (lambda ()
+                                     (when (eq? *which-key-current-keymap* km)
+                                       (set! *which-key-current-keymap* #f)))))
+          (begin
+            (log-warn "No keymap found for mode ~a" keymap)
+            (set! *which-key-current-keymap* #f)
             (toast-kill #:name *which-key-identifier-name*)))))))
+
+(define* (which-key-show-keymap #:optional (keymap *top-map*))
+  "Display keybindings for KEYMAP (defaults to *top-map*) using toast.
+Passes eat-next-key? so that any key press dismisses the toast."
+  (let ((km (keymap-find keymap)))
+    (if km
+        (begin
+          ;; return to top-map if in a submap so normal mode is restored
+          (unless (eq? *keybinding-current-mode* '*top-map*)
+            (keybinding-switch-to-mode! *top-map*))
+          (set! *which-key-current-keymap* km)
+          (toast-show (format-bindings km)
+                      #:name *which-key-identifier-name*
+                      #:theme-overrides (%which-key-theme-overrides)
+                      #:eat-next-key? #t
+                      #:on-close (lambda ()
+                                   (when (eq? *which-key-current-keymap* km)
+                                     (set! *which-key-current-keymap* #f)))))
+        (log-warn "No keymap found for mode ~a" keymap))))
 
 (define (which-key-enable!)
   "Enable which-key: show available keys when entering keymaps."
@@ -208,6 +240,7 @@
   "Disable which-key."
   (when *%which-key-enabled*
     (gliver-hook-remove! *keymap-change-hook* 'which-key-on-keymap-change)
+    (set! *which-key-current-keymap* #f)
     (toast-kill #:name *which-key-identifier-name*)
     (set! *%which-key-enabled* #f)
     (log-info "Which key disabled.")))

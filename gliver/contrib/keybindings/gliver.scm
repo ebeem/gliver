@@ -87,7 +87,8 @@
   (define-keys *help-map*
 	"v"         'describe-variable
 	"f"         'describe-command
-	"k"         'describe-key)
+	"k"         'describe-key
+	"?"         'describe-top-map)
 
   (define-keys *hotkeygrab-map*
 	"s-S-z"     '(enter-keymap *top-map*))

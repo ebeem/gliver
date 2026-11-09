@@ -14,6 +14,7 @@
   #:use-module (ice-9 match)
   #:use-module (ice-9 string-fun)
   #:use-module (srfi srfi-1)
+  #:use-module (srfi srfi-2)
   #:use-module (srfi srfi-9)
   #:use-module (srfi srfi-11)
   #:use-module (srfi srfi-13)
@@ -26,6 +27,8 @@
   #:use-module (gliver wayland gen wayland)
   #:use-module (gliver wayland gen wlr-layer-shell-unstable-v1)
   #:use-module (gliver river connector)
+  #:use-module (gliver river window-manager)
+  #:use-module (gliver river xkb-bindings-manager)
   #:use-module (gliver river wlr-layer-shell)
   #:use-module (gliver contrib ui components toast)
   #:use-module (gliver contrib ui gleui base)
@@ -53,23 +56,25 @@
 			*gleui-toast-icon-border-color*
 			*gleui-toast-icon-size*
 			*gleui-toast-icon-theme*
-			gleui-toast-load-icon
-			gleui-toast-set-margin!
-			gleui-toast-get-height
+			<gleui-toast-state>
 			gleui-toast-state?
 			*gleui-toast-instances*
 			gleui-toast-get-instance
 			gleui-toast-visible?
 			gleui-toast-configured?
+			gleui-toast-get-height
 			gleui-toast-has-markup-tags?
 			gleui-toast-markup-ensure
 			gleui-toast-span-render
 			gleui-toast-column-render
 			gleui-toast-message-parse
+			gleui-toast-load-icon
 			gleui-toast-calc-dimensions
 			gleui-toast-draw-surface!
 			gleui-toast-render!
 			gleui-toast-ensure-surface!
+			gleui-toast-set-margin!
+			*gleui-toast-eat-key-instances*
 			gleui-toast-show
 			gleui-toast-kill
 			gleui-toast-kill-all!
@@ -405,14 +410,14 @@
            (cat  categories)
            (sz   sizes)
            (ext  exts))
-      (let* ((both-null? (and (string-null? cat) (string-null? sz)))
-             (f1 (if both-null?
-                     (string-append tdir "/" cand ext)
-                     (string-append tdir "/" cat "/" sz "/" cand ext)))
-             (f2 (if both-null?
-                     #f
-                     (string-append tdir "/" sz "/" cat "/" cand ext))))
-        (or (try-file f1) (try-file f2))))))
+		  (let* ((both-null? (and (string-null? cat) (string-null? sz)))
+				 (f1 (if both-null?
+						 (string-append tdir "/" cand ext)
+						 (string-append tdir "/" cat "/" sz "/" cand ext)))
+				 (f2 (if both-null?
+						 #f
+						 (string-append tdir "/" sz "/" cat "/" cand ext))))
+			(or (try-file f1) (try-file f2))))))
 
 (define (%load-icon-from-file path)
   (let ((lower (string-downcase path)))
@@ -623,11 +628,11 @@
             (apply (lambda (r g b a) (cairo-set-source-rgba cr r g b a)) b-rgba)
             (cairo-set-line-width cr icon-border-width)
             (gleui-draw-rounded-rect cr
-                                    (+ icon-x half-bw)
-                                    (+ icon-y half-bw)
-                                    (- icon-size icon-border-width)
-                                    (- icon-size icon-border-width)
-                                    icon-border-radius)
+                                     (+ icon-x half-bw)
+                                     (+ icon-y half-bw)
+                                     (- icon-size icon-border-width)
+                                     (- icon-size icon-border-width)
+                                     icon-border-radius)
             (cairo-stroke cr)))))
 
     ;; content
@@ -781,9 +786,9 @@
 
 (define* (gleui-toast-set-margin! name
                                   #:key (margin-top #f)
-                                        (margin-right #f)
-                                        (margin-bottom #f)
-                                        (margin-left #f))
+                                  (margin-right #f)
+                                  (margin-bottom #f)
+                                  (margin-left #f))
   "Update margins for toast instance NAME."
   (let ((state (if (string? name)
                    (hash-ref *gleui-toast-instances* name #f)
@@ -805,20 +810,55 @@
           (wl-surface-commit surf)
 		  (wl-display-flush *wl-display*))))))
 
+(define-var *gleui-toast-eat-key-instances* '()
+			"List of toast instance names that should eat the next key and disappear.")
+
+(define (%gleui-toast-ensure-key-eaten!)
+  "Request that the compositor eat the next non-modifier key press on the active seat."
+  (and-let* ((seat *xkb-bindings-manager-bindings-seat*)
+             ((valid-pointer? seat)))
+    (with-manage-sequence
+     (xkb-bindings-manager-bindings-seat-ensure-next-key-eaten seat))
+    (unless *in-manage-sequence*
+      (wm-manager-manage-dirty (manager-wl-proxy *manager*)))))
+
+(define (%gleui-toast-cancel-ensure-key-eaten!)
+  "Cancel any active ensure-next-key-eaten request on the seat."
+  (and-let* ((seat *xkb-bindings-manager-bindings-seat*)
+             ((valid-pointer? seat)))
+    (with-manage-sequence
+     (xkb-bindings-manager-bindings-seat-cancel-ensure-next-key-eaten seat))
+    (unless *in-manage-sequence*
+      (wm-manager-manage-dirty (manager-wl-proxy *manager*)))))
+
+(define (%gleui-toast-on-key-event . _)
+  "Dismiss all toasts waiting to eat the next key press."
+  (unless (null? *gleui-toast-eat-key-instances*)
+    (let ((names *gleui-toast-eat-key-instances*))
+      (set! *gleui-toast-eat-key-instances* '())
+      (for-each (lambda (name)
+                  (gleui-toast-kill #:name name))
+                names))))
+
+(gliver-hook-add! %keybinding-eaten-hook '%gleui-toast-on-key-event)
+(gliver-hook-add! %keybinding-pressed-hook '%gleui-toast-on-key-event)
+
 (define* (gleui-toast-show message
                            #:key (timeout 0)
                            (name "default")
                            (icon #f)
                            (theme-overrides '())
                            (on-close #f)
-                           (output #f))
+                           (output #f)
+                           (eat-next-key? #f))
   "Display toast notification with MESSAGE using native Cairo & Pango.
 MESSAGE can be a string, a list of strings, or a list of structured rows/columns.
 If TIMEOUT > 0, auto-hides after TIMEOUT (seconds or ms).
 NAME specifies the unique toast instance name to support multiple toast instances.
 ICON can be a file path, icon name, or existing Cairo image surface.
 ON-CLOSE is an optional zero-argument procedure called when this toast is closed.
-OUTPUT specifies the target output to display the toast on (defaults to current output)."
+OUTPUT specifies the target output to display the toast on (defaults to current output).
+When EAT-NEXT-KEY? is #t, ensures the next key is eaten and automatically dismisses the toast."
   (let* ((toast-name (if (or (not name) (not (string? name)) (string-null? name))
                          "default"
                          name)))
@@ -826,6 +866,18 @@ OUTPUT specifies the target output to display the toast on (defaults to current 
 	;; kill previous toast if one exists
     (when (hash-ref *gleui-toast-instances* toast-name #f)
       (gleui-toast-kill #:name toast-name))
+
+    (if eat-next-key?
+        (begin
+          (unless (member toast-name *gleui-toast-eat-key-instances*)
+            (set! *gleui-toast-eat-key-instances* (cons toast-name *gleui-toast-eat-key-instances*)))
+          (%gleui-toast-ensure-key-eaten!))
+		;; if eat-next-key is #f, delete the toast-name from instances if it exists
+        (when (member toast-name *gleui-toast-eat-key-instances*)
+          (set! *gleui-toast-eat-key-instances* (delete toast-name *gleui-toast-eat-key-instances*))
+		  ;; disable key eating if eat-key-instances is empty
+          (when (null? *gleui-toast-eat-key-instances*)
+            (%gleui-toast-cancel-ensure-key-eaten!))))
 
     (let* ((state (%make-toast-view-state #f #f #f 0 #f #f 0 0 0 0 #f #f #f toast-name 0 '() (make-mutex) #f #f))
            (parsed (gleui-toast-message-parse message)))
@@ -880,6 +932,11 @@ OUTPUT specifies the target output to display the toast on (defaults to current 
                          "default"
                          name))
          (state (hash-ref *gleui-toast-instances* toast-name #f)))
+    (when (member toast-name *gleui-toast-eat-key-instances*)
+      (set! *gleui-toast-eat-key-instances* (delete toast-name *gleui-toast-eat-key-instances*))
+	  ;; disable key eating if eat-key-instances is empty
+      (when (null? *gleui-toast-eat-key-instances*)
+        (%gleui-toast-cancel-ensure-key-eaten!)))
     (when state
       (when (%tvs-visible? state)
         (%tvs-timeout-thread-gen-set! state (1+ (%tvs-timeout-thread-gen state)))
@@ -919,6 +976,7 @@ OUTPUT specifies the target output to display the toast on (defaults to current 
 
 (define (gleui-toast-cleanup!)
   "Clean up all toast view resources on unbind/shutdown."
+  (set! *gleui-toast-eat-key-instances* '())
   (gleui-toast-kill-all!)
   (hash-clear! *gleui-toast-instances*))
 

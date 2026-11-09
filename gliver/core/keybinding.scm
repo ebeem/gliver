@@ -210,7 +210,7 @@ Parameters: (ACTION PERSIST)
         (cond
          ((procedure? action) (action))
          ((pair? action)      (apply command-run-by-name (car action) (cdr action)))
-         ((keymap? action)    (keybinding-switch-to-mode! (keymap-mode action)))
+         ((keymap? action)    (keybinding-switch-to-mode! action))
          (else                (command-run-by-name action))))
       (lambda (key . args)
         (log-error "Keybinding action error: ~a ~a" key args)))
@@ -222,17 +222,22 @@ Parameters: (ACTION PERSIST)
                 (keymap-passthrough-mode? *keybinding-current-mode*))
       (if persist
           (xkb-bindings-manager-bindings-seat-ensure-next-key-eaten *xkb-bindings-manager-bindings-seat*)
-          (keybinding-switch-to-mode! '*top-map*)))))
+          (keybinding-switch-to-mode! *top-map*)))))
 
-(define* (keybinding-switch-to-mode! mode-name #:key (force #f))
-  "Switch to keybinding mode MODE-NAME by enabling and disabling corresponding binding sets.
-Parameters: (MODE-NAME [#:force FORCE])
-  - MODE-NAME: Symbol ('*top-map*, '*root-map*, keymap name) or <keymap>.
+(define* (keybinding-switch-to-mode! keymap #:key (force #f))
+  "Switch to keybinding KEYMAP by enabling and disabling corresponding binding sets.
+Parameters: (KEYMAP [#:force FORCE])
+  - KEYMAP: Symbol ('*top-map*, '*root-map*, keymap name) or <keymap>.
   - FORCE: When #t, switches even if mode matches *keybinding-current-mode* (default #f)."
-  (let ((target-mode (keymap-mode mode-name)))
-    (when (or force (not (eq? target-mode *keybinding-current-mode*)))
+  (let* ((resolved-keymap (keymap-find keymap))
+         (target-mode (cond
+                       ((keymap? keymap) (keymap-name keymap))
+                       (resolved-keymap (keymap-name resolved-keymap))
+                       ((symbol? keymap) keymap)
+                       (else #f)))
+         (hook-keymap (or resolved-keymap keymap)))
+    (when (and target-mode (or force (not (eq? target-mode *keybinding-current-mode*))))
       (log-debug "Switching to mode: ~a" target-mode)
-      (gliver-hook-run! *keymap-change-hook* target-mode)
       (set! *keybinding-current-mode* target-mode)
 
       ;; enable bindings matching the target mode, disable others
@@ -248,7 +253,9 @@ Parameters: (MODE-NAME [#:force FORCE])
       (if (or (eq? target-mode '*top-map*)
               (keymap-passthrough-mode? target-mode))
           (xkb-bindings-manager-bindings-seat-cancel-ensure-next-key-eaten *xkb-bindings-manager-bindings-seat*)
-          (xkb-bindings-manager-bindings-seat-ensure-next-key-eaten *xkb-bindings-manager-bindings-seat*)))))
+          (xkb-bindings-manager-bindings-seat-ensure-next-key-eaten *xkb-bindings-manager-bindings-seat*))
+
+      (gliver-hook-run! *keymap-change-hook* hook-keymap))))
 
 (define (keybinding-sync-all!)
   "Synchronize all configured Gliver keybindings with the River compositor.

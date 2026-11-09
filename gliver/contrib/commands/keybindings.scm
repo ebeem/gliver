@@ -16,18 +16,19 @@
 ;;; prefix mode commands
 (define-command (prefix-activated)
   "Handle prefix key activation."
-  (keybinding-switch-to-mode! '*root-map*)
+  (keybinding-switch-to-mode! *root-map*)
   (log-debug "Prefix mode activated."))
 
 (define-command (prefix-abort)
   "Abort prefix mode."
-  (keybinding-switch-to-mode! '*top-map*)
+  (keybinding-switch-to-mode! *top-map*)
   (log-debug "Aborted."))
 
-(define-command (enter-keymap name)
+(define-command (enter-keymap keymap)
   #:interactive (symbol)
   "Enter a keymap by symbol."
-  (let ((mode (if (keymap? name) (keymap-name name) name)))
+  (let ((mode (if (keymap? keymap) keymap
+				  (keymap-find keymap))))
     (keybinding-switch-to-mode! mode)
     (log-debug "Entering keymap: ~a" mode)))
 

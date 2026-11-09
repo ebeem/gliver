@@ -48,10 +48,18 @@ Returns registered <keymap> record."
 Parameters: (NAME)
   - NAME: Keymap name symbol or string.
 Returns matching <keymap> record or #f."
-  (let ((sym (if (symbol? name) name (string->symbol name))))
+  (cond
+   ((keymap? name) name)
+   ((symbol? name)
     (find (lambda (keymap)
-            (eq? (keymap-name keymap) sym))
-          (manager-keymaps *manager*))))
+            (eq? (keymap-name keymap) name))
+          (manager-keymaps *manager*)))
+   ((string? name)
+    (let ((sym (string->symbol name)))
+      (find (lambda (keymap)
+              (eq? (keymap-name keymap) sym))
+            (manager-keymaps *manager*))))
+   (else #f)))
 
 (define (keymap-mode keymap)
   "Return the active mode symbol for KEYMAP.
