@@ -845,7 +845,6 @@ Runs at most once per second and only re-renders when module contents change."
 (gliver-hook-add! *output-created-hook* 'statusbar-on-output-created)
 (gliver-hook-add! *output-object-id-changed-hook* 'statusbar-on-output-id-changed)
 (gliver-hook-add! *output-dimensions-changed-hook* 'statusbar-on-output-dimensions)
-(gliver-hook-add! *output-destroy-hook* 'statusbar-cleanup-output!)
 (gliver-hook-add! *output-removed-hook* 'statusbar-cleanup-output!)
 (gliver-hook-add! *output-statusbar-changed-hook* 'statusbar-on-output-statusbar-changed)
 (gliver-hook-add! *gliver-globals-unbind-hook* 'statusbar-cleanup-all!)

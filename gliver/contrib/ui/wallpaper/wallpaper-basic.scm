@@ -551,7 +551,6 @@ Parameters: None."
 (gliver-hook-add! *output-object-id-changed-hook* 'wallpaper-on-output-created)
 (gliver-hook-add! *output-dimensions-changed-hook* 'wallpaper-on-output-dimensions)
 (gliver-hook-add! *gliver-globals-unbind-hook* 'wallpaper-cleanup-all!)
-(gliver-hook-add! *output-destroy-hook* 'wallpaper-cleanup-output!)
 (gliver-hook-add! *output-removed-hook* 'wallpaper-cleanup-output!)
 (gliver-hook-add! %wlr-layer-surface-configure-hook 'wallpaper-on-layer-surface-configure)
 (gliver-hook-add! %wlr-layer-surface-closed-hook 'wallpaper-on-layer-surface-closed)
