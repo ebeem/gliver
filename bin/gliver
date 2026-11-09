@@ -121,12 +121,6 @@
     (log-info "Requesting keybinding sync...")
     (keybinding-sync!)
 
-    ;; step 12: load configuration
-    (log-info "Loading configuration...")
-    (when config-path
-      (set! *config-file-path* config-path))
-    (config-load!)
-
     (log-info "Running startup hooks...")
     (gliver-hook-run! *startup-hook*)
 
@@ -136,7 +130,13 @@
     (when *startup-message*
       (log-info "Welcome to Gliver ~a. Press C-t ? for help." *version*))
 
-    (log-info "Startup complete.")))
+    (log-info "Startup complete.")
+
+	;; step 12: load configuration
+    (log-info "Loading configuration...")
+    (when config-path
+      (set! *config-file-path* config-path))
+	(with-manage-sequence (config-load!))))
 
 (define (shutdown!)
   "Clean shutdown sequence."
