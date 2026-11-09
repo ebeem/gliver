@@ -143,7 +143,7 @@ You can always view the current configured =*top-map*= keybindings via =s-SPC h 
 
 ~Gliver~ encourages discovery, so you better use the available built-in features to discover and recall features/keybindings.
 
-For your reference, you can view [[file:../doc/keybindings.org][detailed keybindings documentation here]] (if you prefer documentation over built-in discovery tools).
+For your reference, you can view [[file:./doc/keybindings.org][detailed keybindings documentation here]] (if you prefer documentation over built-in discovery tools).
 
 ** Contributing
 

@@ -1,3 +1,6 @@
+#+TITLE: The Gliver Keybindings
+#+STARTUP: inlineimages
+
 * Keybindings
 
 ~Gliver~ provides a ~super~ key driven keybindings . ~Gliver~'s keybindings use ~Emacs~ style to describe keybindings.
@@ -10,9 +13,7 @@
 For example: =s-C-q= is equivalent to pressing =super+control+q=
 You can always view the current configured =*top-map*= keybindings via =s-SPC h ?= (=super+space= followed by =h= followed by =?=).
 
-#+ATTR_ORG: :width 900
-[[./.preview/keybindings.jpeg]]
-
+[[../.preview/keybindings.jpeg]]
 
 ** Gliver Keybindings (Default)
 
