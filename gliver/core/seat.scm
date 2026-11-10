@@ -66,18 +66,19 @@ Parameters: (SEAT)
   (gliver-hook-run! *seat-destroy-hook* seat))
 
 ;;; window manager api calls
-(define (seat-wm-window-focus seat window)
+(define* (seat-wm-window-focus seat window #:key (force #f))
   "Focus WINDOW so all SEAT interaction happen with it.
-Parameters: (SEAT WINDOW)
+Parameters: (SEAT WINDOW [#:force #f])
   - SEAT: <seat> record.
-  - WINDOW: <window> record to focus."
+  - WINDOW: <window> record to focus.
+  - FORCE: Force focusing even if already recorded as the focused window on seat."
   (and-let* (((seat? seat))
 			 ((window? window))
 			 ((not (window-destroyed? window)))
 			 (proxy-seat (seat-wl-proxy seat))
 			 (proxy-window (window-wl-proxy window)))
-	(log-debug "Seat ~a focusing surface ~a" seat window)
-	(unless (eq? window (seat-window-focused seat))
+	(log-debug "Seat ~a focusing surface ~a (force=~a)" seat window force)
+	(when (or force (not (eq? window (seat-window-focused seat))))
 	  (%seat-window-focused-set! seat window)
 	  (with-manage-sequence
 	   (wm-seat-window-focus proxy-seat proxy-window)

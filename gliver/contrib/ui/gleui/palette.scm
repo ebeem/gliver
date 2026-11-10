@@ -33,6 +33,7 @@
   #:export (
 			gleui-palette-state?
 			*gleui-palette-instance*
+			*gleui-palette-previous-window*
 			gleui-palette-visible?
 			gleui-palette-configured?
 			gleui-palette-candidate-matches?
@@ -119,6 +120,7 @@
 ;; the palette is built assuming that there will be no 2 instances
 ;; running at the same time, the resources are all reused to improve performance
 (define *gleui-palette-instance* #f)
+(define *gleui-palette-previous-window* #f)
 
 (define (gleui-palette-visible?)
   "Returns #t if the global palette instance exists and
@@ -1281,6 +1283,7 @@ PATTERN can be a string, a <key>, or a list of either."
           (%gps-async-callback-set! state combined-cb))
         (%gps-width-set! state w)
         (%gps-visible?-set! state #t)
+        (set! *gleui-palette-previous-window* (window-current))
 
         (gleui-palette-ensure-keyboard! state)
 
@@ -1313,7 +1316,12 @@ PATTERN can be a string, a <key>, or a list of either."
           (surface (%gps-surface state)))
       (gleui-layer-surface-destroy! surface layer-surf)
       (%gps-layer-surface-set! state #f)
-      (%gps-surface-set! state #f))))
+      (%gps-surface-set! state #f))
+
+    (let ((prev-win (window-current)))
+      (set! *gleui-palette-previous-window* #f)
+      (when (and prev-win (window? prev-win))
+        (window-focus! prev-win #:force #t)))))
 
 (define gleui-palette-close! gleui-palette-hide!)
 (define* (gleui-palette-kill #:key (name #f))

@@ -300,7 +300,7 @@ Parameters: (WINDOW [#:seat (seat-current)] [#:focus-parent #t] [#:force #f])
         (gliver-hook-run! *window-unfocused-hook* current))
 	  ;; make seat focus the window so input is forwarded to it
       (when (seat? seat)
-        (seat-wm-window-focus seat window))
+        (seat-wm-window-focus seat window #:force force))
       (gliver-hook-run! *window-focused-hook* window))))
 
 (define* (window-move-to-container! window container #:key (focus #t))
