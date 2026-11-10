@@ -1,0 +1,11 @@
+2026-11-10  ebeem  <lord.ebeem@gmail.com>
+	Version 0.0.5 released.
+
+	* gleui/toast: Add #:eat-next-key? key to emit toast on next key
+	press.
+	* commands/help: Add describe-top-map command to show the
+	keybindings available under the top-map.
+	* contrib/keybindings: Add the keybindings s-SPC h ? to show the
+	top-map keybindings.
+	* gleui/palette: Fix a problem where the last focused window isn't
+	automatically focused after the palette is closed.
