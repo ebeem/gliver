@@ -80,6 +80,7 @@
 			gleui-toast-kill-all!
 			gleui-toast-open!
 			gleui-toast-cleanup!
+			gleui-toast-on-output-scale-changed
 			gleui-toast-install!
 ))
 
@@ -712,9 +713,15 @@
              (layer-surf (%tvs-layer-surface state))
              (w (%tvs-width state))
              (h (%tvs-height state))
-             (overrides (%tvs-theme-overrides state)))
+             (overrides (%tvs-theme-overrides state))
+             (out-obj (or (%tvs-output state) (output-current)))
+			 ;; scale is an int with rounded up, 2.3 becomes 3
+			 ;; it must be a valid int >= 1
+             (scale (max 1 (and out-obj (output-scale out-obj))))
+             (w-scaled (* w scale))
+             (h-scaled (* h scale)))
         (when (and surface (pointer? surface) (not (null-pointer? surface)) (> w 0) (> h 0))
-          (let ((valid-slots (gleui-shm-slots-ensure! (%tvs-shm-slots state) w h)))
+          (let ((valid-slots (gleui-shm-slots-ensure! (%tvs-shm-slots state) w-scaled h-scaled)))
             (%tvs-shm-slots-set! state valid-slots)
             (when (and (pair? valid-slots) (car valid-slots) (cdr valid-slots))
               (let* ((next-idx (if (zero? (%tvs-shm-active-idx state)) 1 0))
@@ -723,15 +730,18 @@
                      (stride (gleui-shm-slot-stride curr-slot))
                      (wl-buf (gleui-shm-slot-buffer curr-slot)))
                 (%tvs-shm-active-idx-set! state next-idx)
-                (let* ((dst-surf (cairo-image-surface-create-for-data bv 'argb32 w h stride))
+                (let* ((dst-surf (cairo-image-surface-create-for-data bv 'argb32 w-scaled h-scaled stride))
                        (cr (cairo-create dst-surf)))
+                  (when (> scale 1)
+					;; scale cairo surface
+                    (cairo-scale cr (exact->inexact scale) (exact->inexact scale)))
                   (gleui-toast-draw-surface! cr w h state overrides)
                   (cairo-surface-flush dst-surf)
                   (cairo-destroy cr)
                   (cairo-surface-destroy dst-surf))
                 (when (and layer-surf (pointer? layer-surf) (not (null-pointer? layer-surf)))
                   (zwlr-layer-surface-v1-set-size layer-surf w h))
-                (gleui-buffer-commit! surface wl-buf w h)))))))))
+                (gleui-buffer-commit! surface wl-buf w h scale)))))))))
 
 (define (gleui-toast-ensure-surface! state)
   "Ensure Wayland surface and layer-surface are created and configured for toast STATE."
@@ -980,6 +990,15 @@ When EAT-NEXT-KEY? is #t, ensures the next key is eaten and automatically dismis
   (gleui-toast-kill-all!)
   (hash-clear! *gleui-toast-instances*))
 
+(define* (gleui-toast-on-output-scale-changed output #:optional factor)
+  "Invoked when OUTPUT scale changes."
+  (hash-for-each
+   (lambda (_key state)
+     (when state
+       (gleui-toast-render! state)))
+   *gleui-toast-instances*))
+
+(gliver-hook-add! *output-scale-changed-hook* 'gleui-toast-on-output-scale-changed)
 (gliver-hook-add! *gliver-globals-unbind-hook* 'gleui-toast-cleanup!)
 
 (define-command (gleui-toast-install!)

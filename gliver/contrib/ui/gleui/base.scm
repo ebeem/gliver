@@ -242,19 +242,18 @@ Returns (values surface layer-surface) or (values #f #f) on failure."
   (when (and layer-surface (pointer? layer-surface) (not (null-pointer? layer-surface)))
     (catch #t (lambda () (zwlr-layer-surface-v1-destroy layer-surface)) (lambda _ #f)))
   (when (and surface (pointer? surface) (not (null-pointer? surface)))
-    (catch #t (lambda () (wl-surface-destroy surface)) (lambda _ #f)))
-  (when *wl-display*
-    (catch #t (lambda () (wl-display-flush *wl-display*)) (lambda _ #f))))
+    (catch #t (lambda () (wl-surface-destroy surface)) (lambda _ #f))))
 
-(define (gleui-buffer-commit! surface buffer width height)
-  "Attach buffer to SURFACE, damage, and commit."
+(define* (gleui-buffer-commit! surface buffer width height #:optional (scale #f))
+  "Attach buffer to SURFACE, damage, and commit.
+Optionally sets buffer scale if SCALE is provided."
   (when (and surface (pointer? surface) (not (null-pointer? surface))
              buffer (pointer? buffer) (not (null-pointer? buffer)))
+    (when (and scale (number? scale) (> scale 0))
+      (wl-surface-set-buffer-scale surface (inexact->exact (ceiling scale))))
     (wl-surface-attach surface buffer 0 0)
     (wl-surface-damage surface 0 0 width height)
-    (wl-surface-commit surface)
-    (when *wl-display*
-      (wl-display-flush *wl-display*))))
+    (wl-surface-commit surface)))
 
 (define (gleui-draw-rounded-rect cr x y w h r)
   "Draw a rounded rectangle path with radius R."

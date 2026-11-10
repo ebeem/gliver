@@ -15,6 +15,7 @@
   #:use-module (ice-9 match)
   #:use-module (ice-9 threads)
   #:use-module (srfi srfi-1)
+  #:use-module (srfi srfi-2)
   #:use-module (srfi srfi-9)
   #:use-module (srfi srfi-9 gnu)
   #:use-module (srfi srfi-11)
@@ -90,6 +91,7 @@
 			statusbar-on-output-created
 			statusbar-on-output-id-changed
 			statusbar-on-output-dimensions
+			statusbar-on-output-scale-changed
 			statusbar-on-output-statusbar-changed
 			statusbar-enable!
 			statusbar-disable!
@@ -133,13 +135,16 @@
 (define *statusbar-timer-thread* #f)
 (define *statusbar-seat-proxies* '())
 
-(define (statusbar-shm-buffer-create width height render-fn)
-  "Allocate a shared memory wl_buffer of size WxH and populate it using RENDER-FN.
+(define* (statusbar-shm-buffer-create width height render-fn #:optional (scale 1))
+  "Allocate a shared memory wl_buffer of size WxH (scaled by SCALE) and populate it using RENDER-FN.
 RENDER-FN receives (cr width height). Returns the new wl_buffer foreign pointer."
   (catch #t
     (lambda ()
-      (let* ((stride (* width 4))     ;; width * 4 bytes per pixel ARGB32
-             (size (* stride height)) ;; stride * height
+      (let* ((s (max 1 (if (number? scale) scale 1)))
+             (w-scaled (* width s))
+             (h-scaled (* height s))
+             (stride (* w-scaled 4))     ;; width * 4 bytes per pixel ARGB32
+             (size (* stride h-scaled))  ;; stride * height
              (fd (memfd-create "gliver-statusbar-shm" *mfd-cloexec*)))
         (if (< fd 0)
             %null-pointer
@@ -151,8 +156,10 @@ RENDER-FN receives (cr width height). Returns the new wl_buffer foreign pointer.
                   (catch #t
                     (lambda ()
                       (let* ((bv (pointer->bytevector ptr size))
-                             (surf (cairo-image-surface-create-for-data bv 'argb32 width height stride))
+                             (surf (cairo-image-surface-create-for-data bv 'argb32 w-scaled h-scaled stride))
                              (cr (cairo-create surf)))
+                        (when (> s 1)
+                          (cairo-scale cr (exact->inexact s) (exact->inexact s)))
                         ;; render into mmap memory
                         (render-fn cr width height)
                         (cairo-surface-flush surf)
@@ -161,7 +168,7 @@ RENDER-FN receives (cr width height). Returns the new wl_buffer foreign pointer.
                         (munmap ptr size)
                         ;; create wayland buffer and clean up
                         (let* ((pool   (wl-shm-create-pool *wl-shm* fd size))
-                               (buffer (wl-shm-pool-create-buffer pool 0 width height stride WL_SHM_FORMAT_ARGB8888)))
+                               (buffer (wl-shm-pool-create-buffer pool 0 w-scaled h-scaled stride WL_SHM_FORMAT_ARGB8888)))
                           (wl-shm-pool-destroy pool)
                           (close-fd fd)
                           buffer)))
@@ -359,18 +366,23 @@ Example: (list 'window (make-module-mpd))"
   "Render statusbar surface for OUTPUT and commit to Wayland compositor."
   (let* ((width (statusbar-output-state-rendered-width state))
          (height (statusbar-output-state-rendered-height state))
-         (surface (statusbar-output-state-surface state)))
+         (surface (statusbar-output-state-surface state))
+         (scale (max 1 (and output (output-scale output))))
+         (w-scaled (* width scale))
+         (h-scaled (* height scale)))
     (when (and (> width 0) (> height 0) (pointer? surface) (not (null-pointer? surface)))
       (catch #t
         (lambda ()
-          (let* ((slots (gleui-shm-slots-ensure! (statusbar-output-state-shm-slots state) width height))
+          (let* ((slots (gleui-shm-slots-ensure! (statusbar-output-state-shm-slots state) w-scaled h-scaled))
                  (active-idx (if (= (or (statusbar-output-state-shm-active-idx state) 0) 0) 1 0))
                  (slot (if (= active-idx 0) (car slots) (cdr slots))))
             (when (and slot (gleui-shm-slot? slot))
               (let* ((stride (gleui-shm-slot-stride slot))
                      (bv (gleui-shm-slot-bv slot))
-                     (dst-surf (cairo-image-surface-create-for-data bv 'argb32 width height stride))
+                     (dst-surf (cairo-image-surface-create-for-data bv 'argb32 w-scaled h-scaled stride))
                      (cr (cairo-create dst-surf)))
+                (when (> scale 1)
+                  (cairo-scale cr (exact->inexact scale) (exact->inexact scale)))
                 (statusbar-render-surface! output state cr width height)
                 (cairo-surface-flush dst-surf)
                 (cairo-destroy cr)
@@ -380,11 +392,7 @@ Example: (list 'window (make-module-mpd))"
                 (let ((buf (gleui-shm-slot-buffer slot)))
                   (when (and (pointer? buf) (not (null-pointer? buf)))
                     (%statusbar-output-state-buffer-set! state buf)
-                    (wl-surface-attach surface buf 0 0)
-                    (wl-surface-damage surface 0 0 width height)
-                    (wl-surface-commit surface)
-                    (when *wl-display*
-                      (wl-display-flush *wl-display*))))))))
+                    (gleui-buffer-commit! surface buf width height scale)))))))
         (lambda (key . args)
           (log-error "Statusbar: Render and commit failed: ~a ~a" key args))))))
 
@@ -830,6 +838,12 @@ Runs at most once per second and only re-renders when module contents change."
 								  (output-width output)
 								  (output-height output)))))))))
 
+(define* (statusbar-on-output-scale-changed output #:optional factor)
+  "Handle output scale changes for statusbar on OUTPUT."
+  (when (and *statusbar-enabled* output)
+    (and-let* ((state (hash-table-ref/default *statusbar-output-table* (output-id output) #f)))
+      (statusbar-render-and-commit! output state))))
+
 (define (statusbar-on-output-statusbar-changed output bar)
   (when *statusbar-enabled*
     (when (and output (output? output))
@@ -845,6 +859,7 @@ Runs at most once per second and only re-renders when module contents change."
 (gliver-hook-add! *output-created-hook* 'statusbar-on-output-created)
 (gliver-hook-add! *output-object-id-changed-hook* 'statusbar-on-output-id-changed)
 (gliver-hook-add! *output-dimensions-changed-hook* 'statusbar-on-output-dimensions)
+(gliver-hook-add! *output-scale-changed-hook* 'statusbar-on-output-scale-changed)
 (gliver-hook-add! *output-removed-hook* 'statusbar-cleanup-output!)
 (gliver-hook-add! *output-statusbar-changed-hook* 'statusbar-on-output-statusbar-changed)
 (gliver-hook-add! *gliver-globals-unbind-hook* 'statusbar-cleanup-all!)

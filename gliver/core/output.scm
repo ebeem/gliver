@@ -412,6 +412,7 @@ Parameters: (DATA PROXY-OUTPUT OBJECT-ID)
 (define (output-on-wl-output-scale data proxy factor)
   "Invoked when wl_output scale is advertised."
   (and-let* ((output (output-find-by-wl-output-proxy proxy)))
+    (log-info "wl_output ~a scale event: ~a (output: ~a)" proxy factor (output-name output))
     (%output-scale-set! output factor)
     (gliver-hook-run! *output-scale-changed-hook* output factor)))
 

@@ -70,6 +70,7 @@
 			gleui-palette-show
 			gleui-palette-cleanup!
 			gleui-palette-install!
+			gleui-palette-on-output-scale-changed
 ))
 
 (define-record-type <gleui-palette-state>
@@ -644,9 +645,16 @@ The formatted string is cached in disp-cache to avoid recalculation."
       (let* ((surface (%gps-surface state))
              (overrides (%gps-theme-overrides state))
              (w (%gps-width state))
-			 (h (gleui-palette-calc-height state)))
+             (h (gleui-palette-calc-height state))
+             (overrides (%gps-theme-overrides state))
+             (out-obj (or (%gps-output state) (output-current)))
+			 ;; scale is an int with rounded up, 2.3 becomes 3
+			 ;; it must be a valid int >= 1
+             (scale (max 1 (and out-obj (output-scale out-obj))))
+             (w-scaled (* w scale))
+             (h-scaled (* h scale)))
         (when (and surface (pointer? surface) (not (null-pointer? surface)) (> w 0) (> h 0))
-          (let ((valid-slots (gleui-shm-slots-ensure! (%gps-shm-slots state) w h)))
+          (let ((valid-slots (gleui-shm-slots-ensure! (%gps-shm-slots state) w-scaled h-scaled)))
             (%gps-shm-slots-set! state valid-slots)
             (when (and (pair? valid-slots) (car valid-slots) (cdr valid-slots))
               (let* ((next-idx (if (zero? (%gps-shm-active-idx state)) 1 0))
@@ -659,8 +667,10 @@ The formatted string is cached in disp-cache to avoid recalculation."
                 (%gps-shm-active-idx-set! state next-idx)
                 (%gps-height-set! state h)
 
-                (let* ((dst-surf (cairo-image-surface-create-for-data bv 'argb32 w h stride))
+                (let* ((dst-surf (cairo-image-surface-create-for-data bv 'argb32 w-scaled h-scaled stride))
                        (cr (cairo-create dst-surf)))
+                  (when (> scale 1)
+                    (cairo-scale cr (exact->inexact scale) (exact->inexact scale)))
                   (gleui-palette-draw-surface! cr w h state overrides)
                   (cairo-surface-flush dst-surf)
                   (cairo-destroy cr)
@@ -669,7 +679,7 @@ The formatted string is cached in disp-cache to avoid recalculation."
                 (when (and layer-surf (pointer? layer-surf) (not (null-pointer? layer-surf)))
                   (zwlr-layer-surface-v1-set-size layer-surf w h))
 
-                (gleui-buffer-commit! surface wl-buf w h)))))))))
+                (gleui-buffer-commit! surface wl-buf w h scale)))))))))
 
 (define (gleui-palette-adjust-scroll! state)
   "Ensure selected-index is visible within current scroll window."
@@ -1273,6 +1283,7 @@ PATTERN can be a string, a <key>, or a list of either."
         (%gps-scroll-offset-set! state 0)
         (%gps-prompt-set! state (or prompt (and theme-overrides (assq-ref theme-overrides 'prompt)) *palette-prompt*))
         (%gps-theme-overrides-set! state theme-overrides)
+        (%gps-output-set! state (or *palette-output* cur-out))
         (%gps-done?-set! state #f)
         (%gps-result-set! state #f)
         (let ((combined-cb
@@ -1441,4 +1452,9 @@ Otherwise, runs a synchronous event loop until selection or cancellation."
     (catch #t gleui-palette-init! (lambda _ #f)))
   (log-info "Installed as dmenu/palette backend."))
 
+(define* (gleui-palette-on-output-scale-changed output #:optional factor)
+  "Invoked when OUTPUT scale changes."
+  (gleui-palette-render! *gleui-palette-instance*))
+
+(gliver-hook-add! *output-scale-changed-hook* 'gleui-palette-on-output-scale-changed)
 (gliver-hook-add! *gliver-globals-unbind-hook* 'gleui-palette-cleanup!)
