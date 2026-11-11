@@ -19,6 +19,7 @@
   #:use-module (gliver core helpers)
   #:declarative? #f
   #:export (
+			*quit-exits-river*
 			*terminal*
 			*startup-message*
 			*wallpaper*
@@ -162,11 +163,14 @@
 			*gliver-runtime-dir*
 			*gliver-state-dir*
 			*config-file-path*
+			*example-config-file*
 			config-load!
 			config-reload!
 ))
 
 ;;; config variables
+(define-var *quit-exits-river* #t
+			"Whether the quit command should also exit river.")
 (define-var *terminal* "foot"
 			"Terminal emulator to be used when spawning terminals.")
 (define-var *startup-message* #t

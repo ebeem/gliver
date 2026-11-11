@@ -4,7 +4,10 @@
 ;;; SPDX-License-Identifier: GPL-3.0-or-later
 
 (define-module (gliver contrib commands shell)
+  #:use-module (gliver river)
   #:use-module (gliver core)
+  #:use-module (gliver contrib debug ipc-server)
+  #:use-module (gliver contrib debug repl-server)
   #:use-module (ice-9 format)
   #:use-module (ice-9 popen)
   #:use-module (ice-9 textual-ports)
@@ -103,6 +106,11 @@ Returns the PID."
 (define-command (gliver-quit)
   "Quit Gliver."
   (gliver-hook-run! *shutdown-hook*)
+  (ipc-stop!)
+  (repl-stop!)
+  (if *quit-exits-river*
+	  (wm-manager-exit (manager-wl-proxy *manager*))
+	  (river-disconnect!))
   (log-debug "Goodbye."))
 
 (define-command (restart)
