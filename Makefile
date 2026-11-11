@@ -66,6 +66,7 @@ MODULES =	gliver/config.scm \
 			gliver/river/layer-shell-manager.scm \
 			gliver/river/input-manager.scm \
 			gliver/river/wlr-layer-shell.scm \
+			gliver/river/fractional-scale-manager.scm \
 			gliver/river.scm \
 			gliver/core/key.scm \
 			gliver/core/keymap.scm \

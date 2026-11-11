@@ -9,3 +9,5 @@
 	top-map keybindings.
 	* gleui/palette: Fix a problem where the last focused window isn't
 	automatically focused after the palette is closed.
+	* river/viewporter-manager: Implement Wayland viewporter protocol
+	to support fractional scaling.

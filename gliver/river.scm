@@ -17,6 +17,7 @@
   #:use-module (gliver river layer-shell-manager)
   #:use-module (gliver river input-manager)
   #:use-module (gliver river wlr-layer-shell)
+  #:use-module (gliver river viewporter-manager)
   #:declarative? #f)
 
 (define-syntax re-export-modules
@@ -39,4 +40,5 @@
                    (gliver river wm-window-manager)
                    (gliver river layer-shell-manager)
                    (gliver river input-manager)
-                   (gliver river wlr-layer-shell))
+                   (gliver river wlr-layer-shell)
+                   (gliver river viewporter-manager))
