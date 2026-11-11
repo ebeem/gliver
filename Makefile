@@ -43,6 +43,7 @@ MODULES =	gliver/config.scm \
 			gliver/deps/pango.scm \
 			gliver/wayland/client.scm \
 			gliver/wayland/gen/fractional-scale-v1.scm \
+			gliver/wayland/gen/viewporter.scm \
 			gliver/wayland/gen/wayland.scm \
 			gliver/wayland/gen/xdg-shell.scm \
 			gliver/wayland/gen/river-input-management-v1.scm \
@@ -177,6 +178,7 @@ gen:
         protocols/wlr-layer-shell-unstable-v1.xml \
         protocols/xdg-shell.xml \
         protocols/fractional-scale-v1.xml \
+        protocols/viewporter.xml \
 		gliver/wayland/gen
 
 install: compile
