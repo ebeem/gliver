@@ -17,6 +17,7 @@
   #:use-module (gliver river layer-shell-manager)
   #:use-module (gliver river input-manager)
   #:use-module (gliver river wlr-layer-shell)
+  #:use-module (gliver river fractional-scale-manager)
   #:use-module (gliver river viewporter-manager)
   #:declarative? #f)
 
@@ -41,4 +42,5 @@
                    (gliver river layer-shell-manager)
                    (gliver river input-manager)
                    (gliver river wlr-layer-shell)
+                   (gliver river fractional-scale-manager)
                    (gliver river viewporter-manager))

@@ -20,12 +20,13 @@
   #:use-module (gliver core helpers)
   #:declarative? #f
   #:export (
-			set-gliver-hook-functions!
-			gliver-hook-functions
-			gliver-hook-arity
-			gliver-hook-name
-			gliver-hook?
+			<gliver-hook>
 			%make-gliver-hook
+			gliver-hook?
+			gliver-hook-name
+			gliver-hook-arity
+			gliver-hook-functions
+			set-gliver-hook-functions!
 			make-gliver-hook
 			%gliver-hook-add!
 			gliver-hook-add!
@@ -114,14 +115,14 @@
 			%output-created-hook
 			%output-removed-hook
 			%output-object-id-changed-hook
-			%output-position-changed-hook
-			%output-dimensions-changed-hook
 			%output-geometry-changed-hook
 			%output-mode-changed-hook
 			%output-done-hook
 			%output-scale-changed-hook
 			%output-name-changed-hook
 			%output-description-changed-hook
+			%output-position-changed-hook
+			%output-dimensions-changed-hook
 			*output-created-hook*
 			*output-removed-hook*
 			*output-object-id-changed-hook*
@@ -192,6 +193,8 @@
 			%input-device-name-hook
 			%wlr-layer-surface-configure-hook
 			%wlr-layer-surface-closed-hook
+			%fractional-scale-preferred-scale-hook
+			*surface-scale-changed-hook*
 ))
 
 ;;; hook record definition
@@ -1436,3 +1439,18 @@ Parameters: (DATA PROXY-LAYER-SURFACE SERIAL WIDTH HEIGHT)
 Parameters: (DATA PROXY-LAYER-SURFACE)
   - DATA: User context pointer (unused, null in Gliver).
   - PROXY-LAYER-SURFACE: Pointer to zwlr_layer_surface_v1 proxy.")
+
+(define-var %fractional-scale-preferred-scale-hook
+  (make-gliver-hook '%fractional-scale-preferred-scale-hook 3)
+  "Invoked when wp_fractional_scale_v1 preferred_scale event is sent by compositor.
+Parameters: (DATA PROXY-FRACTIONAL-SCALE SCALE)
+  - DATA: User context pointer (unused, null in Gliver).
+  - PROXY-FRACTIONAL-SCALE: Pointer to wp_fractional_scale_v1 proxy.
+  - SCALE: Preferred scale numerator with denominator 120 (uint32).")
+
+(define-var *surface-scale-changed-hook*
+  (make-gliver-hook '*surface-scale-changed-hook* 2)
+  "Invoked when a Wayland surface scale changes via fractional scale protocol.
+Parameters: (SURFACE SCALE)
+  - SURFACE: Pointer to wl_surface proxy.
+  - SCALE: Preferred scale factor as a real number (e.g. 1.0, 1.25, 2.0).")

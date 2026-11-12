@@ -11,5 +11,7 @@
 	automatically focused after the palette is closed.
 	* river/viewporter-manager: Implement Wayland viewporter protocol
 	to support fractional scaling.
+	* river/fractional-scale-manager: Implement Wayland protocol
+	fractional-scale-v1 to support fractional scaling of UI.
 	* commands/shell: Fix gliver-quit command and introduce config
 	parameter *quit-exits-river* to exit only Gliver or river completly.
