@@ -314,14 +314,14 @@ Parameters: (CONTAINER [#:focus-child #t] [#:focus-parent #t])
 	(let* ((windows (container-windows container))
 		   (window (or (container-window-current container)
 					   (and (pair? windows) (car windows))))
-		   (seat (seat-current)))
+		   (seats (manager-seats *manager*)))
 
 	  ;; proceed with focusing if container isn't focused or
-	  ;; container window is focused by seat
+	  ;; container window is not focused across all seats
 	  ;; window may be focused by seat when switching workspaces
-      (unless (and seat
-				   (container-focused? container)
-				   (eq? window (seat-window-focused seat)))
+      (unless (and (container-focused? container)
+                   (pair? seats)
+                   (every (lambda (s) (eq? window (seat-window-focused s))) seats))
 		(let* ((workspace (container-workspace container))
 			   (workspace-container (and workspace (workspace-container-current workspace)))
 			   (current-container (container-current))
@@ -353,11 +353,15 @@ Parameters: (CONTAINER [#:focus-child #t] [#:focus-parent #t])
 			 ((window? window)
 			  ;; focus new window if target window is valid
 			  (window-focus! window #:focus-parent #f))
-			 ((and seat (seat-window-focused seat))
+			 ((pair? seats)
 			  ;; clear focus if no valid window is found
 			  ;; this will usually occur when the container is empty
 			  ;; we don't want input to be sent to last focused window
-			  (seat-wm-window-focus-clear seat)))))))))
+			  (for-each
+			   (lambda (s)
+			     (when (seat-window-focused s)
+			       (seat-wm-window-focus-clear s)))
+			   seats)))))))))
 
 (define* (container-usable-area-update-windows! container #:key (animate #t))
   "Apply the container's usable area to all non-fullscreen windows inside CONTAINER.

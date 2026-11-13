@@ -221,7 +221,7 @@ Parameters: (ACTION PERSIST)
                 (not (eq? *keybinding-current-mode* mode-before))
                 (keymap-passthrough-mode? *keybinding-current-mode*))
       (if persist
-          (xkb-bindings-manager-bindings-seat-ensure-next-key-eaten *xkb-bindings-manager-bindings-seat*)
+          (xkb-bindings-manager-bindings-seat-ensure-next-key-eaten-all!)
           (keybinding-switch-to-mode! *top-map*)))))
 
 (define* (keybinding-switch-to-mode! keymap #:key (force #f))
@@ -252,43 +252,49 @@ Parameters: (KEYMAP [#:force FORCE])
       ;; if entering passthrough mode or *top-map* mode, cancel any active ensure_next_key_eaten request
       (if (or (eq? target-mode '*top-map*)
               (keymap-passthrough-mode? target-mode))
-          (xkb-bindings-manager-bindings-seat-cancel-ensure-next-key-eaten *xkb-bindings-manager-bindings-seat*)
-          (xkb-bindings-manager-bindings-seat-ensure-next-key-eaten *xkb-bindings-manager-bindings-seat*))
+          (xkb-bindings-manager-bindings-seat-cancel-ensure-next-key-eaten-all!)
+          (xkb-bindings-manager-bindings-seat-ensure-next-key-eaten-all!))
 
       (gliver-hook-run! *keymap-change-hook* hook-keymap))))
 
 (define (keybinding-sync-all!)
   "Synchronize all configured Gliver keybindings with the River compositor.
 Destroys existing bindings, generates binding records from registered keymaps,
-and creates `river_xkb_binding_v1` objects for the active seat.
+and creates `river_xkb_binding_v1` objects for all seats.
 Parameters: None."
   ;; destroy all existing keybindings first
   (xkb-bindings-manager-bindings-destroy-all!)
 
   ;; generate bindings
-  (and-let* ((bindings (keybinding-generate-all *top-map* *root-map*))
-             (seat (seat-current))
-             (seat-proxy (seat-wl-proxy seat)))
+  (let ((bindings (keybinding-generate-all *top-map* *root-map*))
+        (seats (manager-seats *manager*)))
+    (when (pair? seats)
+      (log-info "Syncing ~a keybindings to River across ~a seat(s)..."
+                (length bindings) (length seats))
 
-    (log-info "Syncing ~a keybindings to River..." (length bindings))
+      (set! *keybinding-mapping*
+            ;; map each <keybinding> to xkb binding object for each seat
+            (append-map
+             (lambda (seat)
+               (let ((seat-proxy (seat-wl-proxy seat)))
+                 (if (valid-pointer? seat-proxy)
+                     (map (lambda (binding)
+                            (let* ((xkb (key->xkb-binding-args (keybinding-key binding)))
+                                   (proxy (xkb-bindings-manager-bindings-create-binding
+                                           seat-proxy
+                                           (cdr xkb)
+                                           (car xkb))))
 
-    (set! *keybinding-mapping*
-          ;; map each <keybinding> to xkb binding object
-          (map (lambda (binding)
-                 (let* ((xkb (key->xkb-binding-args (keybinding-key binding)))
-                        (proxy (xkb-bindings-manager-bindings-create-binding
-                                seat-proxy
-                                (cdr xkb)
-                                (car xkb))))
+                              ;; enable bindings matching the current mode
+                              (when (eq? (keybinding-mode binding) *keybinding-current-mode*)
+                                (xkb-bindings-manager-binding-enable proxy))
+                              (cons binding proxy)))
+                          bindings)
+                     '())))
+             seats))
 
-                   ;; enable bindings matching the current mode
-                   (when (eq? (keybinding-mode binding) *keybinding-current-mode*)
-                     (xkb-bindings-manager-binding-enable proxy))
-                   (cons binding proxy)))
-               bindings))
-
-    (log-info "Keybindings synced (~a bindings created)."
-              (length *keybinding-mapping*))))
+      (log-info "Keybindings synced (~a bindings created)."
+                (length *keybinding-mapping*)))))
 
 (define (keybinding-sync!)
   "Request a keybinding sync during the next compositor manage sequence.
@@ -304,6 +310,9 @@ Parameters: None."
 
   ;; create xkb bindings seat for ensure_next_key_eaten
   ;; this will return the existing seat if it's already created
-  (and-let* ((seat (seat-current))
-             (seat-proxy (seat-wl-proxy seat)))
-    (xkb-bindings-manager-bindings-create-seat seat-proxy)))
+  (for-each
+   (lambda (seat)
+     (let ((seat-proxy (seat-wl-proxy seat)))
+       (when (valid-pointer? seat-proxy)
+         (xkb-bindings-manager-bindings-create-seat seat-proxy))))
+   (manager-seats *manager*)))

@@ -268,23 +268,28 @@ Parameters: (WINDOW CONTAINER [#:focus #t])
 		  (unless (container-window-current container)
 			(%container-window-current-set! container window))))))
 
-(define* (window-focus! window #:key (seat (seat-current)) (focus-parent #t) (force #f))
+(define* (window-focus! window #:key (seat #f) (focus-parent #t) (force #f))
   "Focus a window so it receives seat input.
-Parameters: (WINDOW [#:seat (seat-current)] [#:focus-parent #t] [#:force #f])
+Parameters: (WINDOW [#:seat #f] [#:focus-parent #t] [#:force #f])
   - WINDOW: <window> record to focus.
-  - SEAT: <seat> record directing input (defaults to current seat).
+  - SEAT: <seat> record directing input, or #f to focus across all seats.
   - FOCUS-PARENT: Boolean, whether to focus parent container (default #t).
   - FORCE: Boolean, whether to force refocusing even if already focused (default #f)."
   (let ((container (and (window? window)
 						(window-container window)))
-        (current (window-current)))
+        (current (window-current))
+        (seats (manager-seats *manager*)))
     (and-let* (((window? window))
                ((not (window-destroyed? window)))
                ((or force
-                    (not (and (seat? seat)
-                              (eq? (seat-window-focused seat) window)
-                              (eq? current window)
-                              (container-focused? container))))))
+                    (if (seat? seat)
+                        (not (and (eq? (seat-window-focused seat) window)
+                                  (eq? current window)
+                                  (container-focused? container)))
+                        (not (and (pair? seats)
+                                  (every (lambda (s) (eq? (seat-window-focused s) window)) seats)
+                                  (eq? current window)
+                                  (container-focused? container)))))))
 	  ;; set window as current for its container to focus it if it's
 	  ;; focusing another window
       (when (container? container)
@@ -298,9 +303,13 @@ Parameters: (WINDOW [#:seat (seat-current)] [#:focus-parent #t] [#:force #f])
       (when (and (window? current)
 				 (not (eq? current window)))
         (gliver-hook-run! *window-unfocused-hook* current))
-	  ;; make seat focus the window so input is forwarded to it
-      (when (seat? seat)
-        (seat-wm-window-focus seat window #:force force))
+	  ;; make seat(s) focus the window so input is forwarded to it
+      (if (seat? seat)
+          (seat-wm-window-focus seat window #:force force)
+          (for-each
+           (lambda (s)
+             (seat-wm-window-focus s window #:force force))
+           (manager-seats *manager*)))
       (gliver-hook-run! *window-focused-hook* window))))
 
 (define* (window-move-to-container! window container #:key (focus #t))
@@ -758,8 +767,10 @@ Parameters: (PROXY-WINDOW TITLE)
   - PROXY-WINDOW: Pointer to river_window_v1 proxy.
   - TITLE: New window title string."
   (and-let* ((window (window-find-by-proxy proxy-window)))
-    (%window-title-set! window title)
-	(gliver-hook-run! *window-title-changed-hook* window title)))
+	;; avoid unnecessary calls
+	(unless (string= title (window-title window))
+      (%window-title-set! window title)
+	  (gliver-hook-run! *window-title-changed-hook* window title))))
 (gliver-hook-add! %window-title-changed-hook 'window-on-window-title-changed)
 
 ;; TODO: check how this should be handled
@@ -862,7 +873,7 @@ Parameters: (SEAT WINDOW)
   (log-debug "Window seat has focused ~a" window)
   (if (and window (window? window) (not (window-destroyed? window)))
 	  ;; just try to focus window, window-check! already has guard checks
-	  (window-focus! window #:seat (or seat (seat-current)))
+	  (window-focus! window #:seat seat)
 	  ;; if the window passed isn't a window (maybe surface)
 	  ;; then clear the focus from window so surface receives input
 	  (let ((current (window-current)))

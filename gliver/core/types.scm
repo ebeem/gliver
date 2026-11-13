@@ -173,7 +173,6 @@
 			make-seat
 			seat-find-by-proxy
 			seat-find-by-ls-proxy
-			seat-current
 			<workspace>
 			%make-workspace
 			workspace?
@@ -795,15 +794,6 @@ Returns matching <seat> record or #f."
 			;; equals? can compare foreign pointers
             (equal? (seat-wl-ls-proxy seat) ls-proxy))
           (manager-seats *manager*))))
-
-(define (seat-current)
-  "Return the active <seat> record, or #f if no seats exist.
-Parameters: None.
-Returns active <seat> record, or #f if no seats exist."
-  (let ((seats (manager-seats *manager*)))
-    (if (pair? seats)
-        (car seats)
-        #f)))
 
 ;;; workspace record (<workspace>) and helpers
 ;;  - id: unique integer workspace identifier
