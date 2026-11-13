@@ -244,10 +244,7 @@ Parameters: (OUTPUT)
 		   (%seat-window-entered-set! seat #f)))
 	   (manager-seats *manager*)))
 
-    (gliver-hook-run! *output-removed-hook* output)
-
-    ;; release wl_output proxy after output hooks have cleaned up layer surfaces
-    (output-release-wl-output-proxy! output)))
+    (gliver-hook-run! *output-removed-hook* output)))
 
 (define (output-focused? output)
   "Return #t if OUTPUT is currently the active focused output in *manager*.
@@ -336,7 +333,9 @@ Parameters: (DATA PROXY-OUTPUT)
   (log-info "Output removed: ~a" proxy-output)
   (and-let* ((output (output-find-by-proxy proxy-output)))
     (output-remove! output)
-	(gliver-hook-run! *output-destroy-hook* output)))
+	(gliver-hook-run! *output-destroy-hook* output)
+	;; release wl_output proxy after output hooks have cleaned up layer surfaces
+    (output-release-wl-output-proxy! output)))
 
 (define (output-on-output-wl-output data proxy-output object-id)
   "Invoked when wl_output Wayland object is advertisement for river_output_v1.
