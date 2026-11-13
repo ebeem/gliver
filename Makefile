@@ -76,6 +76,7 @@ MODULES =	gliver/config.scm \
 			gliver/core/window.scm \
 			gliver/core/container.scm \
 			gliver/core/output.scm \
+			gliver/core/surface.scm \
 			gliver/core/workspace.scm \
 			gliver/core/shell.scm \
 			gliver/core/keyboard.scm \
@@ -166,6 +167,12 @@ gliver/core/ffi.scm: gliver/core/ffi.scm.in
 COMPILED = $(patsubst %.scm, build/%.go, $(MODULES))
 $(COMPILED): gliver/core/ffi.scm
 compile: $(COMPILED)
+
+# run automated test suites against headless river
+test: compile
+	GUILE_AUTO_COMPILE=0 $(GUILE) -L . -C build tests/runner.scm
+
+check: test
 
 # auto-generate the river wayland protocol bindings
 gen:

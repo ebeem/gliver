@@ -14,4 +14,14 @@
 	* river/fractional-scale-manager: Implement Wayland protocol
 	fractional-scale-v1 to support fractional scaling of UI.
 	* commands/shell: Fix gliver-quit command and introduce config
-	parameter *quit-exits-river* to exit only Gliver or river completly.
+	parameter *quit-exits-river* to exit only Gliver or river
+	completly.
+	* river/*: Add more guard checks and improve tracking of created
+	and destroyed objects.
+	* core/types: Drop the function (seat-current) as there's no
+	actual concept of current seat in Wayland. Having such a function
+	will most likely cause errors in the future.
+	* core/surface: Add core module surface to provide fractional
+	scaling information.
+	* core/config: Use different suffix for state (repl & logs) if the
+	use Wayland display is different than wayland-1 (avoid conflicts).
