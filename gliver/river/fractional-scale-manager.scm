@@ -48,9 +48,10 @@
 (define-var *fractional-scale-listener* #f
             "Shared Wayland listener for wp_fractional_scale_v1 preferred_scale events.")
 
-;; surface tracking tables
-;; maps fractional proxy-scale -> proxy-surface
-(define *fractional-scale-surfaces* (make-hash-table))
+(define-var *fractional-scale-surfaces* (make-hash-table)
+            "Hash-map of fractional-scale-surface-proxy for tracking
+proxy-scale -> proxy-surface.")
+
 (define (fractional-scale-find-by-surface proxy-surface)
   "Get the wp_fractional_scale_v1 proxy associated with SURFACE.
 This is a reverse lookup for *fractional-scale-surfaces*
@@ -141,8 +142,9 @@ Returns: wp_fractional_scale_v1 proxy pointer."
             (log-debug "Creating fractional scale on ~a: surface=~a"
                        proxy-manager proxy-surface))
           (when (valid-pointer? proxy-scale)
-            (wl-proxy-add-listener proxy-scale *fractional-scale-listener* %null-pointer)
-            (hash-set! *fractional-scale-surfaces* proxy-scale proxy-surface))
+            (hash-set! *fractional-scale-surfaces* proxy-scale proxy-surface)
+            (when *fractional-scale-listener*
+              (wl-proxy-add-listener proxy-scale *fractional-scale-listener* %null-pointer)))
           proxy-scale))))
 
 ;;; wp_fractional_scale_v1 requests

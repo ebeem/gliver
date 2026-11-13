@@ -14,38 +14,48 @@
 ;;;   - river_output_v1
 
 (define-module (gliver river wm-output-manager)
+  #:use-module (srfi srfi-1)
   #:use-module (gliver core-base)
   #:use-module (gliver river connector)
   #:use-module (gliver wayland client)
   #:use-module (gliver wayland gen river-window-management-v1)
   #:use-module (gliver wayland gen wayland)
   #:use-module (system foreign)
+  #:declarative? #f
   #:export (
-			*wm-output-listener*
-			*wl-output-listener*
-			wm-output-on-listeners-attach
-			wm-output-on-output
-			wm-output-destroy
-			wm-output-presentation-mode-set
-			wm-output-wl-output-bind
-			wm-output-wl-output-release
-			wm-output-on-output-removed
-			wm-output-on-output-wl-output
-			wm-output-on-output-position
-			wm-output-on-output-dimensions
-			wm-output-on-wl-output-geometry
-			wm-output-on-wl-output-mode
-			wm-output-on-wl-output-done
-			wm-output-on-wl-output-scale
-			wm-output-on-wl-output-name
-			wm-output-on-wl-output-description
+            *wm-outputs*
+            *wl-outputs*
+            *wm-output-listener*
+            *wl-output-listener*
+            wm-output-on-listeners-attach
+            wm-output-on-output
+            wm-output-destroy
+            wm-output-presentation-mode-set
+            wm-output-wl-output-bind
+            wm-output-wl-output-release
+            wm-output-on-output-removed
+            wm-output-on-output-wl-output
+            wm-output-on-output-position
+            wm-output-on-output-dimensions
+            wm-output-on-wl-output-geometry
+            wm-output-on-wl-output-mode
+            wm-output-on-wl-output-done
+            wm-output-on-wl-output-scale
+            wm-output-on-wl-output-name
+            wm-output-on-wl-output-description
 ))
 
+;;; global state
+(define-var *wm-outputs* '()
+            "List of river_output_v1 proxies for tracking.")
+(define-var *wl-outputs* '()
+            "List of wl_output proxies for tracking.")
+
 (define-var *wm-output-listener* #f
-			"Wayland listener for river_output_v1 events.")
+            "Wayland listener for river_output_v1 events.")
 
 (define-var *wl-output-listener* #f
-			"Wayland listener for wl_output events.")
+            "Wayland listener for wl_output events.")
 
 (define (wm-output-on-listeners-attach)
   "Attach river_output_v1 and wl_output event listeners.
@@ -75,11 +85,13 @@ Parameters: (DATA MANAGER PROXY-OUTPUT)
   - DATA: User context pointer (unused, null in Gliver).
   - MANAGER: Pointer to river_window_manager_v1 proxy.
   - PROXY-OUTPUT: Pointer to river_output_v1 proxy."
-  (when *log-river-calls*
-	(log-debug "New output pointer received: ~a" proxy-output))
-  (when *wm-output-listener*
-	;; add the new output to the global output listener
-    (wl-proxy-add-listener proxy-output *wm-output-listener* %null-pointer)))
+  (when (valid-pointer? proxy-output)
+    (set! *wm-outputs* (cons proxy-output *wm-outputs*))
+    (when *log-river-calls*
+      (log-debug "New output pointer received: ~a" proxy-output))
+    (when *wm-output-listener*
+      ;; add the new output to the global output listener
+      (wl-proxy-add-listener proxy-output *wm-output-listener* %null-pointer))))
 (gliver-hook-add! %output-created-hook 'wm-output-on-output 0)
 
 ;;; output requests
@@ -88,10 +100,12 @@ Parameters: (DATA MANAGER PROXY-OUTPUT)
 cleared from client side and the server should also clear everything.
 Parameters: (PROXY-OUTPUT)
   - PROXY-OUTPUT: Pointer to river_output_v1 proxy."
-  (when (valid-pointer? proxy-output)
+  (when (and (valid-pointer? proxy-output)
+             (member proxy-output *wm-outputs*))
     (when *log-river-calls*
-	  (log-debug "Destroying output proxy: ~a" proxy-output))
-    (river-output-v1-destroy proxy-output)))
+      (log-debug "Destroying output proxy: ~a" proxy-output))
+    (river-output-v1-destroy proxy-output)
+    (set! *wm-outputs* (delete proxy-output *wm-outputs*))))
 
 (define (wm-output-presentation-mode-set proxy-output mode)
   "Set the preferred presentation mode of the output.
@@ -100,9 +114,13 @@ Parameters: (PROXY-OUTPUT MODE)
   - PROXY-OUTPUT: Pointer to river_output_v1 proxy.
   - MODE: Presentation mode enum RIVER_OUTPUT_V1_PRESENTATION_MODE_VSYNC,
 or RIVER_OUTPUT_V1_PRESENTATION_MODE_ASYNC."
-  (when (valid-pointer? proxy-output)
+  (when (and (valid-pointer? proxy-output)
+             (member proxy-output *wm-outputs*)
+             (integer? mode)
+             (or (= mode RIVER_OUTPUT_V1_PRESENTATION_MODE_VSYNC)
+                 (= mode RIVER_OUTPUT_V1_PRESENTATION_MODE_ASYNC)))
     (when *log-river-calls*
-	  (log-debug "Setting output ~a presentation mode to ~a" proxy-output mode))
+      (log-debug "Setting output ~a presentation mode to ~a" proxy-output mode))
     (river-output-v1-set-presentation-mode proxy-output mode)))
 
 (define* (wm-output-wl-output-bind object-id #:optional (version 4))
@@ -111,23 +129,29 @@ Parameters: (OBJECT-ID [VERSION])
   - OBJECT-ID: Numeric Wayland object ID.
   - VERSION: Interface version (default 4).
 Returns: wl_output proxy pointer, or #f if registry is unavailable or invalid."
-  (when (number? object-id)
+  (when (and (valid-pointer? *wl-registry*)
+             (number? object-id) (> object-id 0)
+             (number? version) (> version 0))
     (when *log-river-calls*
       (log-debug "Binding wl_output object ~a (version ~a)" object-id version))
     (let ((proxy (gliver-wl-registry-bind *wl-registry* object-id *wl-output-interface* version)))
-	  ;; after receiving a valid proxy of wl-output, attach the listeners
-      (when (and (valid-pointer? proxy) *wl-output-listener*)
-        (wl-proxy-add-listener proxy *wl-output-listener* %null-pointer))
+      ;; after receiving a valid proxy of wl-output, attach the listeners
+      (when (valid-pointer? proxy)
+        (set! *wl-outputs* (cons proxy *wl-outputs*))
+        (when *wl-output-listener*
+          (wl-proxy-add-listener proxy *wl-output-listener* %null-pointer)))
       proxy)))
 
 (define (wm-output-wl-output-release proxy-wl-output)
   "Release wl_output proxy object if valid.
 Parameters: (PROXY-WL-OUTPUT)
   - PROXY-WL-OUTPUT: Pointer to wl_output proxy."
-  (when (valid-pointer? proxy-wl-output)
+  (when (and (valid-pointer? proxy-wl-output)
+             (member proxy-wl-output *wl-outputs*))
     (when *log-river-calls*
       (log-debug "Releasing wl_output proxy: ~a" proxy-wl-output))
-    (wl-output-release proxy-wl-output)))
+    (wl-output-release proxy-wl-output)
+    (set! *wl-outputs* (delete proxy-wl-output *wl-outputs*))))
 
 ;;; output events
 (define (wm-output-on-output-removed data proxy-output)
@@ -136,7 +160,7 @@ Parameters: (DATA PROXY-OUTPUT)
   - DATA: User context pointer (unused, null in Gliver).
   - PROXY-OUTPUT: Pointer to river_output_v1 proxy."
   (when *log-river-calls*
-	(log-debug "Output removed: ~a" proxy-output))
+    (log-debug "Output removed: ~a" proxy-output))
   (gliver-hook-run! %output-removed-hook data proxy-output)
   (wm-output-destroy proxy-output))
 
@@ -147,7 +171,7 @@ Parameters: (DATA PROXY-OUTPUT OBJECT-ID)
   - PROXY-OUTPUT: Pointer to river_output_v1 proxy.
   - OBJECT-ID: Numeric Wayland object ID of the wl_output global."
   (when *log-river-calls*
-	(log-debug "Output wl_output object-id: ~a = ~a" proxy-output object-id))
+    (log-debug "Output wl_output object-id: ~a = ~a" proxy-output object-id))
   (gliver-hook-run! %output-object-id-changed-hook data proxy-output object-id))
 
 (define (wm-output-on-output-position data proxy-output x y)
@@ -159,7 +183,7 @@ Parameters: (DATA PROXY-OUTPUT X Y)
   - X: Logical horizontal position in compositor space.
   - Y: Logical vertical position in compositor space."
   (when *log-river-calls*
-	(log-debug "Output position: ~a = ~a,~a" proxy-output x y))
+    (log-debug "Output position: ~a = ~a,~a" proxy-output x y))
   (gliver-hook-run! %output-position-changed-hook data proxy-output x y))
 
 (define (wm-output-on-output-dimensions data proxy-output width height)
@@ -171,16 +195,16 @@ Parameters: (DATA PROXY-OUTPUT WIDTH HEIGHT)
   - WIDTH: Logical output width in pixels.
   - HEIGHT: Logical output height in pixels."
   (when *log-river-calls*
-	(log-debug "Output dimensions: ~a = ~ax~a" proxy-output width height))
+    (log-debug "Output dimensions: ~a = ~ax~a" proxy-output width height))
   (gliver-hook-run! %output-dimensions-changed-hook data proxy-output width height))
 
 ;;; wl-output events
 (define (wm-output-on-wl-output-geometry data proxy x y physical-width physical-height subpixel make-ptr model-ptr transform)
   "Invoked when wl_output advertises geometric properties."
   (let ((make (and (valid-pointer? make-ptr)
-				   (pointer->string make-ptr)))
+                   (pointer->string make-ptr)))
         (model (and (valid-pointer? model-ptr)
-					(pointer->string model-ptr))))
+                    (pointer->string model-ptr))))
     (when *log-river-calls*
       (log-debug "wl_output ~a geometry: x=~a y=~a size=~ax~amm subpixel=~a make=~a model=~a transform=~a"
                  proxy x y physical-width physical-height subpixel make model transform))

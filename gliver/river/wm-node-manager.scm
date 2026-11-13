@@ -13,18 +13,25 @@
 ;;;   - river_node_v1
 
 (define-module (gliver river wm-node-manager)
+  #:use-module (srfi srfi-1)
   #:use-module (gliver core-base)
   #:use-module (gliver wayland client)
   #:use-module (gliver wayland gen river-window-management-v1)
   #:use-module (system foreign)
+  #:declarative? #f
   #:export (
-			wm-node-destroy!
-			wm-node-position-set!
-			wm-node-place-top!
-			wm-node-place-bottom!
-			wm-node-place-above!
-			wm-node-place-below!
+            *wm-nodes*
+            wm-node-destroy!
+            wm-node-position-set!
+            wm-node-place-top!
+            wm-node-place-bottom!
+            wm-node-place-above!
+            wm-node-place-below!
 ))
+
+;;; global state
+(define-var *wm-nodes* '()
+			"List of river_node_v1 proxies for tracking.")
 
 ;;; node requests
 (define (wm-node-destroy! proxy-node)
@@ -32,10 +39,12 @@
 client side and the server should also clear everything.
 Parameters: (PROXY-NODE)
   - PROXY-NODE: Pointer to river_node_v1 proxy."
-  (when proxy-node
+  (when (and (valid-pointer? proxy-node)
+             (member proxy-node *wm-nodes*))
     (when *log-river-calls*
-	  (log-debug "Destroying node proxy: ~a" proxy-node))
-	(river-node-v1-destroy proxy-node)))
+      (log-debug "Destroying node proxy: ~a" proxy-node))
+    (river-node-v1-destroy proxy-node)
+    (set! *wm-nodes* (delete proxy-node *wm-nodes*))))
 
 (define (wm-node-position-set! proxy-node x y)
   "Set the absolute position of the node in the compositor's logical
@@ -45,9 +54,11 @@ Parameters: (PROXY-NODE X Y)
   - PROXY-NODE: Pointer to river_node_v1 proxy.
   - X: Horizontal offset in compositor coordinates.
   - Y: Vertical offset in compositor coordinates."
-  (when proxy-node
+  (when (and (valid-pointer? proxy-node)
+             (member proxy-node *wm-nodes*)
+             (integer? x) (integer? y))
     (when *log-river-calls*
-	  (log-debug "Setting position of node ~a to ~ax~a" proxy-node x y))
+      (log-debug "Setting position of node ~a to ~ax~a" proxy-node x y))
     (river-node-v1-set-position proxy-node x y)))
 
 (define (wm-node-place-top! proxy-node)
@@ -55,9 +66,10 @@ Parameters: (PROXY-NODE X Y)
 Must be called in a render sequence.
 Parameters: (PROXY-NODE)
   - PROXY-NODE: Pointer to river_node_v1 proxy."
-  (when proxy-node
+  (when (and (valid-pointer? proxy-node)
+             (member proxy-node *wm-nodes*))
     (when *log-river-calls*
-	  (log-debug "Placing node ~a at top" proxy-node))
+      (log-debug "Placing node ~a at top" proxy-node))
     (river-node-v1-place-top proxy-node)))
 
 (define (wm-node-place-bottom! proxy-node)
@@ -65,9 +77,10 @@ Parameters: (PROXY-NODE)
 Must be called in a render sequence.
 Parameters: (PROXY-NODE)
   - PROXY-NODE: Pointer to river_node_v1 proxy."
-  (when proxy-node
+  (when (and (valid-pointer? proxy-node)
+             (member proxy-node *wm-nodes*))
     (when *log-river-calls*
-	  (log-debug "Placing node ~a at bottom" proxy-node))
+      (log-debug "Placing node ~a at bottom" proxy-node))
     (river-node-v1-place-bottom proxy-node)))
 
 (define (wm-node-place-above! proxy-node proxy-other)
@@ -76,9 +89,12 @@ Must be called in a render sequence.
 Parameters: (PROXY-NODE PROXY-OTHER)
   - PROXY-NODE: Pointer to river_node_v1 proxy to place above.
   - PROXY-OTHER: Pointer to reference river_node_v1 proxy."
-  (when (and proxy-node proxy-other)
+  (when (and (valid-pointer? proxy-node)
+             (member proxy-node *wm-nodes*)
+             (valid-pointer? proxy-other)
+             (member proxy-other *wm-nodes*))
     (when *log-river-calls*
-	  (log-debug "Placing node ~a above node ~a" proxy-node proxy-other))
+      (log-debug "Placing node ~a above node ~a" proxy-node proxy-other))
     (river-node-v1-place-above proxy-node proxy-other)))
 
 (define (wm-node-place-below! proxy-node proxy-other)
@@ -87,7 +103,10 @@ Must be called in a render sequence.
 Parameters: (PROXY-NODE PROXY-OTHER)
   - PROXY-NODE: Pointer to river_node_v1 proxy to place below.
   - PROXY-OTHER: Pointer to reference river_node_v1 proxy."
-  (when (and proxy-node proxy-other)
+  (when (and (valid-pointer? proxy-node)
+             (member proxy-node *wm-nodes*)
+             (valid-pointer? proxy-other)
+             (member proxy-other *wm-nodes*))
     (when *log-river-calls*
-	  (log-debug "Placing node ~a below node ~a" proxy-node proxy-other))
+      (log-debug "Placing node ~a below node ~a" proxy-node proxy-other))
     (river-node-v1-place-below proxy-node proxy-other)))

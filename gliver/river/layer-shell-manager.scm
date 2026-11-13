@@ -28,40 +28,69 @@
   #:use-module (gliver core-base)
   #:declarative? #f
   #:export (
-			*layer-shell*
-			*layer-shell-outputs*
-			*layer-shell-seats*
-			*layer-shell-output-listener*
-			*layer-shell-seat-listener*
-			layer-shell-on-globals-bind
-			layer-shell-on-globals-unbind
-			layer-shell-on-globals-verify
-			layer-shell-on-listeners-attach
-			layer-shell-destroy
-			layer-shell-get-output
-			layer-shell-get-seat
-			layer-shell-output-destroy
-			layer-shell-output-set-default
-			layer-shell-output-on-non-exclusive-area
-			layer-shell-seat-destroy
-			layer-shell-seat-on-focus-exclusive
-			layer-shell-seat-on-focus-non-exclusive
-			layer-shell-seat-on-focus-none
+            *layer-shell*
+            *layer-shell-output-map*
+            layer-shell-find-by-output
+            *layer-shell-seat-map*
+            layer-shell-find-by-seat
+            *layer-shell-output-listener*
+            *layer-shell-seat-listener*
+            layer-shell-on-globals-bind
+            layer-shell-on-globals-unbind
+            layer-shell-on-globals-verify
+            layer-shell-on-listeners-attach
+            layer-shell-destroy
+            layer-shell-get-output
+            layer-shell-get-seat
+            layer-shell-output-destroy
+            layer-shell-output-set-default
+            layer-shell-output-on-non-exclusive-area
+            layer-shell-seat-destroy
+            layer-shell-seat-on-focus-exclusive
+            layer-shell-seat-on-focus-non-exclusive
+            layer-shell-seat-on-focus-none
 ))
 
 ;;; global state
 (define-var *layer-shell* %null-pointer
-			"Proxy for river_layer_shell_v1.")
-(define-var *layer-shell-outputs* '()
-			"list of layer-shell-output-proxy for tracking.")
-(define-var *layer-shell-seats* '()
-			"list of layer-shell-seat-proxy for tracking.")
+            "Proxy for river_layer_shell_v1.")
+(define-var *layer-shell-output-map* (make-hash-table)
+            "Hash-map of layer-shell-output-proxy for tracking
+layer shell proxy -> output proxy.")
+
+(define (layer-shell-find-by-output proxy-output)
+  "Get the river_layer_shell_output_v1 proxy associated with PROXY-OUTPUT.
+This is a reverse lookup for *layer-shell-output-map*.
+Parameters: (PROXY-OUTPUT)
+  - PROXY-OUTPUT: Pointer to river_output_v1 proxy.
+Returns: Pointer to river_layer_shell_output_v1 proxy or #f."
+  (and (valid-pointer? proxy-output)
+       (hash-fold (lambda (ls-output output acc)
+                    (if (equal? output proxy-output) ls-output acc))
+                  #f
+                  *layer-shell-output-map*)))
+
+(define-var *layer-shell-seat-map* (make-hash-table)
+            "Hash-map of layer-shell-seat-proxy for tracking
+layer shell proxy -> seat proxy.")
+
+(define (layer-shell-find-by-seat proxy-seat)
+  "Get the river_layer_shell_seat_v1 proxy associated with PROXY-SEAT.
+This is a reverse lookup for *layer-shell-seat-map*.
+Parameters: (PROXY-SEAT)
+  - PROXY-SEAT: Pointer to river_seat_v1 proxy.
+Returns: Pointer to river_layer_shell_seat_v1 proxy or #f."
+  (and (valid-pointer? proxy-seat)
+       (hash-fold (lambda (ls-seat seat acc)
+                    (if (equal? seat proxy-seat) ls-seat acc))
+                  #f
+                  *layer-shell-seat-map*)))
 
 ;; NOTE: there is no listener or events for river_layer_shell_v1.
 (define-var *layer-shell-output-listener* #f
-			"Shared Wayland listener for river_layer_shell_output_v1 events.")
+            "Shared Wayland listener for river_layer_shell_output_v1 events.")
 (define-var *layer-shell-seat-listener* #f
-			"Shared Wayland listener for river_layer_shell_seat_v1 events.")
+            "Shared Wayland listener for river_layer_shell_seat_v1 events.")
 
 (define (layer-shell-on-globals-bind registry protocol-name object-id version)
   "Bind river_layer_shell_v1 global interface from REGISTRY.
@@ -84,18 +113,15 @@ Parameters: (REGISTRY PROTOCOL-NAME OBJECT-ID VERSION)
   ;; destroy active layer shell outputs
   (for-each (lambda (proxy)
               (layer-shell-output-destroy proxy))
-            *layer-shell-outputs*)
-  (set! *layer-shell-outputs* '())
+            (hash-map->list (lambda (proxy _val) proxy) *layer-shell-output-map*))
 
   ;; destroy active layer shell seats
   (for-each (lambda (proxy)
               (layer-shell-seat-destroy proxy))
-            *layer-shell-seats*)
-  (set! *layer-shell-seats* '())
+            (hash-map->list (lambda (proxy _val) proxy) *layer-shell-seat-map*))
 
   (when (valid-pointer? *layer-shell*)
-	(layer-shell-destroy *layer-shell*)
-	(set! *layer-shell* %null-pointer)))
+    (layer-shell-destroy *layer-shell*)))
 
 (define (layer-shell-on-globals-verify)
   "Verify the layer shell global was bound.
@@ -120,11 +146,12 @@ Note: layer shell is optional per the protocol spec, so we only warn."
 cleared from client side and the server should also clear everything.
 Parameters: (PROXY-LS)
   - PROXY-LS: Pointer to river_layer_shell_v1 proxy."
-  (when (valid-pointer? proxy-ls)
+  (when (and (valid-pointer? proxy-ls)
+             (equal? *layer-shell* proxy-ls))
     (when *log-river-calls*
-	  (log-debug "Destroying layer shell proxy: ~a" proxy-ls))
+      (log-debug "Destroying layer shell proxy: ~a" proxy-ls))
     (river-layer-shell-v1-destroy proxy-ls)
-	(set! *layer-shell* %null-pointer)))
+    (set! *layer-shell* %null-pointer)))
 
 (define (layer-shell-get-output proxy-ls proxy-output)
   "Get layer shell output state (called once per river_output_v1 object).
@@ -132,18 +159,20 @@ Parameters: (PROXY-LS PROXY-OUTPUT)
   - PROXY-LS: Pointer to river_layer_shell_v1 proxy.
   - PROXY-OUTPUT: Pointer to river_output_v1 proxy.
 Returns: Pointer to river_layer_shell_output_v1 proxy."
-  (and-let* (((valid-pointer? proxy-ls))
-			 ((valid-pointer? proxy-output))
-			 (ls-output (river-layer-shell-v1-get-output
-						 proxy-ls proxy-output))
-			 ((valid-pointer? ls-output)))
-	;; add listeners to layer shell output
-	(wl-proxy-add-listener ls-output *layer-shell-output-listener*
-						   %null-pointer)
-	;; add the new layer shell output to tracked list
-	(set! *layer-shell-outputs* (cons ls-output *layer-shell-outputs*))
-	;; return the created layer shell output
-	ls-output))
+  (when (and (valid-pointer? proxy-ls)
+             (equal? *layer-shell* proxy-ls)
+             (valid-pointer? proxy-output))
+    (or (layer-shell-find-by-output proxy-output)
+        (and-let* ((ls-output (river-layer-shell-v1-get-output
+                               proxy-ls proxy-output))
+                   ((valid-pointer? ls-output)))
+          ;; add the new layer shell output to tracked list
+          (hash-set! *layer-shell-output-map* ls-output proxy-output)
+          (when *layer-shell-output-listener*
+            ;; add listeners to layer shell output
+            (wl-proxy-add-listener ls-output *layer-shell-output-listener*
+                                   %null-pointer))
+          ls-output))))
 
 (define (layer-shell-get-seat proxy-ls proxy-seat)
   "Get layer shell seat state (called once per river_seat_v1 object).
@@ -151,18 +180,20 @@ Parameters: (PROXY-LS PROXY-SEAT)
   - PROXY-LS: Pointer to river_layer_shell_v1 proxy.
   - PROXY-SEAT: Pointer to river_seat_v1 proxy.
 Returns: Pointer to river_layer_shell_seat_v1 proxy."
-  (and-let* (((valid-pointer? proxy-ls))
-			 ((valid-pointer? proxy-seat))
-			 (ls-seat (river-layer-shell-v1-get-seat
-						 proxy-ls proxy-seat))
-			 ((valid-pointer? ls-seat)))
-	;; add listeners to layer shell seat
-	(wl-proxy-add-listener ls-seat *layer-shell-seat-listener*
-						   %null-pointer)
-	;; add the new layer shell seat to tracked list
-	(set! *layer-shell-seats* (cons ls-seat *layer-shell-seats*))
-	;; return the created layer shell seat
-	ls-seat))
+  (when (and (valid-pointer? proxy-ls)
+             (equal? *layer-shell* proxy-ls)
+             (valid-pointer? proxy-seat))
+    (or (layer-shell-find-by-seat proxy-seat)
+        (and-let* ((ls-seat (river-layer-shell-v1-get-seat
+                             proxy-ls proxy-seat))
+                   ((valid-pointer? ls-seat)))
+          ;; add the new layer shell seat to tracked list
+          (hash-set! *layer-shell-seat-map* ls-seat proxy-seat)
+          (when *layer-shell-seat-listener*
+            ;; add listeners to layer shell seat
+            (wl-proxy-add-listener ls-seat *layer-shell-seat-listener*
+                                   %null-pointer))
+          ls-seat))))
 
 ;;; layer shell output requests
 (define (layer-shell-output-destroy proxy-ls-output)
@@ -170,22 +201,23 @@ Returns: Pointer to river_layer_shell_seat_v1 proxy."
 cleared from client side and the server should also clear everything.
 Parameters: (PROXY-LS-OUTPUT)
   - PROXY-LS-OUTPUT: Pointer to river_layer_shell_output_v1 proxy."
-  (when (valid-pointer? proxy-ls-output)
+  (when (and (valid-pointer? proxy-ls-output)
+             (hash-ref *layer-shell-output-map* proxy-ls-output))
     (when *log-river-calls*
-	  (log-debug "Destroying output layer shell: ~a" proxy-ls-output))
+      (log-debug "Destroying output layer shell: ~a" proxy-ls-output))
     (river-layer-shell-output-v1-destroy proxy-ls-output)
-	;; untrack the proxy
-	(set! *layer-shell-outputs*
-		  (delete proxy-ls-output *layer-shell-outputs*))))
+    ;; untrack the proxy
+    (hash-remove! *layer-shell-output-map* proxy-ls-output)))
 
 (define (layer-shell-output-set-default proxy-ls-output)
   "Mark output with PROXY-LS-OUTPUT as the default for new layer surfaces.
 Must be called in a manage sequence.
 Parameters: (PROXY-LS-OUTPUT)
   - PROXY-LS-OUTPUT: Pointer to river_layer_shell_output_v1 proxy."
-  (when (valid-pointer? proxy-ls-output)
+  (when (and (valid-pointer? proxy-ls-output)
+             (hash-ref *layer-shell-output-map* proxy-ls-output))
     (when *log-river-calls*
-	  (log-debug "Setting default layer shell output: ~a" proxy-ls-output))
+      (log-debug "Setting default layer shell output: ~a" proxy-ls-output))
     (river-layer-shell-output-v1-set-default proxy-ls-output)))
 
 ;;; layer shell output events
@@ -201,10 +233,10 @@ Parameters: (DATA PROXY-LS-OUTPUT X Y WIDTH HEIGHT)
   - WIDTH: Remaining usable area width of the output.
   - HEIGHT: Remaining usable area height of the output."
   (when *log-river-calls*
-	(log-debug "Non-exclusive area for output ~a is updated to ~ax~a+(~a+~a)"
-			   proxy-ls-output width height x y))
+    (log-debug "Non-exclusive area for output ~a is updated to ~ax~a+(~a+~a)"
+               proxy-ls-output width height x y))
   (gliver-hook-run! %layer-shell-output-non-exclusive-area-changed-hook
-					data proxy-ls-output x y width height))
+                    data proxy-ls-output x y width height))
 
 ;;; layer shell seat requests
 (define (layer-shell-seat-destroy proxy-ls-seat)
@@ -212,13 +244,13 @@ Parameters: (DATA PROXY-LS-OUTPUT X Y WIDTH HEIGHT)
 cleared from client side and the server should also clear everything.
 Parameters: (PROXY-LS-SEAT)
   - PROXY-LS-SEAT: Pointer to river_layer_shell_seat_v1 proxy."
-  (when (valid-pointer? proxy-ls-seat)
+  (when (and (valid-pointer? proxy-ls-seat)
+             (hash-ref *layer-shell-seat-map* proxy-ls-seat))
     (when *log-river-calls*
-	  (log-debug "Destroying seat layer shell: ~a" proxy-ls-seat))
+      (log-debug "Destroying seat layer shell: ~a" proxy-ls-seat))
     (river-layer-shell-seat-v1-destroy proxy-ls-seat)
-	;; untrack the proxy
-	(set! *layer-shell-seats*
-		  (delete proxy-ls-seat *layer-shell-seats*))))
+    ;; untrack the proxy
+    (hash-remove! *layer-shell-seat-map* proxy-ls-seat)))
 
 ;;; layer shell seat events
 (define (layer-shell-seat-on-focus-exclusive data proxy-ls-seat)
@@ -227,9 +259,9 @@ Parameters: (DATA PROXY-LS-SEAT)
   - DATA: User context pointer (unused, null in Gliver).
   - PROXY-LS-SEAT: Pointer to river_layer_shell_seat_v1 proxy."
   (when *log-river-calls*
-	(log-debug "Focusing exclusive area for seat ~a" proxy-ls-seat))
+    (log-debug "Focusing exclusive area for seat ~a" proxy-ls-seat))
   (gliver-hook-run! %layer-shell-seat-focus-changed-hook
-					data proxy-ls-seat 'exclusive))
+                    data proxy-ls-seat 'exclusive))
 
 (define (layer-shell-seat-on-focus-non-exclusive data proxy-ls-seat)
   "Invoked when seat focus changes to non-exclusive areas.
@@ -237,9 +269,9 @@ Parameters: (DATA PROXY-LS-SEAT)
   - DATA: User context pointer (unused, null in Gliver).
   - PROXY-LS-SEAT: Pointer to river_layer_shell_seat_v1 proxy."
   (when *log-river-calls*
-	(log-debug "Focusing non-exclusive area for seat ~a" proxy-ls-seat))
+    (log-debug "Focusing non-exclusive area for seat ~a" proxy-ls-seat))
   (gliver-hook-run! %layer-shell-seat-focus-changed-hook
-					data proxy-ls-seat 'non-exclusive))
+                    data proxy-ls-seat 'non-exclusive))
 
 (define (layer-shell-seat-on-focus-none data proxy-ls-seat)
   "Invoked when seat focus changes to none.
@@ -247,9 +279,9 @@ Parameters: (DATA PROXY-LS-SEAT)
   - DATA: User context pointer (unused, null in Gliver).
   - PROXY-LS-SEAT: Pointer to river_layer_shell_seat_v1 proxy."
   (when *log-river-calls*
-	(log-debug "Focusing no area (none) for seat ~a" proxy-ls-seat))
+    (log-debug "Focusing no area (none) for seat ~a" proxy-ls-seat))
   (gliver-hook-run! %layer-shell-seat-focus-changed-hook
-					data proxy-ls-seat 'none))
+                    data proxy-ls-seat 'none))
 
 ;; handle river initialization steps
 (gliver-hook-add! *gliver-globals-bind-hook* 'layer-shell-on-globals-bind)

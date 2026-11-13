@@ -16,15 +16,22 @@
 ;;;   - river_decoration_v1
 
 (define-module (gliver river wm-decoration-manager)
+  #:use-module (srfi srfi-1)
   #:use-module (gliver core-base)
   #:use-module (gliver wayland client)
   #:use-module (gliver wayland gen river-window-management-v1)
   #:use-module (system foreign)
+  #:declarative? #f
   #:export (
-			wm-decoration-destroy!
-			wm-decoration-offset-set!
-			wm-decoration-sync-next-commit!
+            *wm-decorations*
+            wm-decoration-destroy!
+            wm-decoration-offset-set!
+            wm-decoration-sync-next-commit!
 ))
+
+;;; global state
+(define-var *wm-decorations* '()
+            "List of river_decoration_v1 proxies for tracking.")
 
 ;;; decoration requests
 (define (wm-decoration-destroy! proxy-decoration)
@@ -32,10 +39,12 @@
 client side and the server should also clear everything.
 Parameters: (PROXY-DECORATION)
   - PROXY-DECORATION: Pointer to river_decoration_v1 proxy."
-  (when proxy-decoration
+  (when (and (valid-pointer? proxy-decoration)
+             (member proxy-decoration *wm-decorations*))
     (when *log-river-calls*
-	  (log-debug "Destroying decoration proxy: ~a" proxy-decoration))
-	(river-decoration-v1-destroy proxy-decoration)))
+      (log-debug "Destroying decoration proxy: ~a" proxy-decoration))
+    (river-decoration-v1-destroy proxy-decoration)
+    (set! *wm-decorations* (delete proxy-decoration *wm-decorations*))))
 
 (define (wm-decoration-offset-set! proxy-decoration x y)
   "Set the offset of the decoration surface from the top-left corner.
@@ -44,9 +53,11 @@ Parameters: (PROXY-DECORATION X Y)
   - PROXY-DECORATION: Pointer to river_decoration_v1 proxy.
   - X: Horizontal offset in compositor coordinates.
   - Y: Vertical offset in compositor coordinates."
-  (when proxy-decoration
+  (when (and (valid-pointer? proxy-decoration)
+             (member proxy-decoration *wm-decorations*)
+             (integer? x) (integer? y))
     (when *log-river-calls*
-	  (log-debug "Setting offset of decoration ~a to ~ax~a" proxy-decoration x y))
+      (log-debug "Setting offset of decoration ~a to ~ax~a" proxy-decoration x y))
     (river-decoration-v1-set-offset proxy-decoration x y)))
 
 (define (wm-decoration-sync-next-commit! proxy-decoration)
@@ -55,9 +66,10 @@ with the next render sequence finish.
 Must be called in a render sequence.
 Parameters: (PROXY-DECORATION)
   - PROXY-DECORATION: Pointer to river_decoration_v1 proxy."
-  (when proxy-decoration
+  (when (and (valid-pointer? proxy-decoration)
+             (member proxy-decoration *wm-decorations*))
     (when *log-river-calls*
-	  (log-debug "Syncing decoration ~a" proxy-decoration))
+      (log-debug "Syncing decoration ~a" proxy-decoration))
     (river-decoration-v1-sync-next-commit proxy-decoration)))
 
 ;;; NOTE: this interface has no events/listeners

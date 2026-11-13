@@ -30,47 +30,60 @@
   #:use-module (gliver core-base)
   #:declarative? #f
   #:export (
-			*xkb-bindings-manager-bindings*
-			*xkb-bindings-manager-binding-list*
-			*xkb-bindings-manager-bindings-seat*
-			*xkb-bindings-manager-binding-listener*
-			*xkb-bindings-manager-bindings-seat-listener*
-			xkb-bindings-manager-on-globals-bind
-			xkb-bindings-manager-on-globals-unbind
-			xkb-bindings-manager-on-globals-verify
-			xkb-bindings-manager-on-listeners-attach
-			xkb-bindings-manager-bindings-destroy
-			xkb-bindings-manager-bindings-create-binding
-			xkb-bindings-manager-bindings-create-seat
-			xkb-bindings-manager-binding-destroy
-			xkb-bindings-manager-binding-set-layout-override
-			xkb-bindings-manager-binding-enable
-			xkb-bindings-manager-binding-disable
-			xkb-bindings-manager-on-binding-pressed
-			xkb-bindings-manager-on-binding-released
-			xkb-bindings-manager-on-binding-stop-repeat
-			xkb-bindings-manager-bindings-seat-destroy
-			xkb-bindings-manager-bindings-seat-ensure-next-key-eaten
-			xkb-bindings-manager-bindings-seat-cancel-ensure-next-key-eaten
-			xkb-bindings-manager-on-bindings-seat-ate
-			xkb-bindings-manager-bindings-destroy-all!
+            *xkb-bindings-manager-bindings*
+            *xkb-bindings-manager-binding-list*
+            *xkb-bindings-seat-map*
+            xkb-bindings-find-by-seat
+            *xkb-bindings-manager-binding-listener*
+            *xkb-bindings-manager-bindings-seat-listener*
+            xkb-bindings-manager-on-globals-bind
+            xkb-bindings-manager-on-globals-unbind
+            xkb-bindings-manager-on-globals-verify
+            xkb-bindings-manager-on-listeners-attach
+            xkb-bindings-manager-bindings-destroy
+            xkb-bindings-manager-bindings-create-binding
+            xkb-bindings-manager-bindings-create-seat
+            xkb-bindings-manager-binding-destroy
+            xkb-bindings-manager-binding-set-layout-override
+            xkb-bindings-manager-binding-enable
+            xkb-bindings-manager-binding-disable
+            xkb-bindings-manager-on-binding-pressed
+            xkb-bindings-manager-on-binding-released
+            xkb-bindings-manager-on-binding-stop-repeat
+            xkb-bindings-manager-bindings-seat-destroy
+            xkb-bindings-manager-bindings-seat-ensure-next-key-eaten
+            xkb-bindings-manager-bindings-seat-ensure-next-key-eaten-all!
+            xkb-bindings-manager-bindings-seat-cancel-ensure-next-key-eaten
+            xkb-bindings-manager-bindings-seat-cancel-ensure-next-key-eaten-all!
+            xkb-bindings-manager-on-bindings-seat-ate
+            xkb-bindings-manager-bindings-destroy-all!
 ))
 
 ;;; global state
 (define-var *xkb-bindings-manager-bindings* %null-pointer
-			"Proxy for river_xkb_bindings_v1 bound from Wayland registry.")
+            "Proxy for river_xkb_bindings_v1 bound from Wayland registry.")
 (define-var *xkb-bindings-manager-binding-list* '()
-			"List of all created active river_xkb_binding_v1 proxies.")
-;; NOTE: gliver supports only 1 seat at the moment
-;; river itself allows maintain multiple seats
-(define-var *xkb-bindings-manager-bindings-seat* %null-pointer
-			"Proxy for river_xkb_bindings_seat_v1 assigned to the current seat.")
+            "List of all created active river_xkb_binding_v1 proxies.")
+(define-var *xkb-bindings-seat-map* (make-hash-table)
+            "Hash-map of river_xkb_bindings_seat_v1 proxy -> river_seat_v1 proxy.")
+
+(define (xkb-bindings-find-by-seat proxy-seat)
+  "Get the river_xkb_bindings_seat_v1 proxy associated with PROXY-SEAT.
+This is a reverse lookup for *xkb-bindings-seat-map*.
+Parameters: (PROXY-SEAT)
+  - PROXY-SEAT: Pointer to river_seat_v1 proxy.
+Returns: Pointer to river_xkb_bindings_seat_v1 proxy or #f."
+  (and (valid-pointer? proxy-seat)
+       (hash-fold (lambda (bindings-seat seat acc)
+                    (if (equal? seat proxy-seat) bindings-seat acc))
+                  #f
+                  *xkb-bindings-seat-map*)))
 
 ;; NOTE: there is no listener or events for river_xkb_bindings_v1
 (define-var *xkb-bindings-manager-binding-listener* #f
-			"Wayland listener for river_xkb_binding_v1 press/release events.")
+            "Wayland listener for river_xkb_binding_v1 press/release events.")
 (define-var *xkb-bindings-manager-bindings-seat-listener* #f
-			"Wayland listener for river_xkb_bindings_seat_v1 ate and modifier key events.")
+            "Wayland listener for river_xkb_bindings_seat_v1 ate and modifier key events.")
 
 (define (xkb-bindings-manager-on-globals-bind registry protocol-name object-id version)
   "Bind river_xkb_bindings_v1 global interface from REGISTRY.
@@ -80,7 +93,7 @@ Parameters: (REGISTRY PROTOCOL-NAME OBJECT-ID VERSION)
   - OBJECT-ID: Numeric Wayland object ID.
   - VERSION: Maximum interface version supported by compositor."
   (when (string=? protocol-name RIVER_XKB_BINDINGS_V1_NAME)
-	(log-info "Binding ~a..." protocol-name)
+    (log-info "Binding ~a..." protocol-name)
     (set! *xkb-bindings-manager-bindings*
           (gliver-wl-registry-bind registry object-id
                                    *river-xkb-bindings-v1-interface*
@@ -93,15 +106,16 @@ Parameters: None."
   ;; each created binding via river-xkb-binding-v1-destroy
   (xkb-bindings-manager-bindings-destroy-all!)
 
-  ;; destroy xkb bindings seat
-  (when (valid-pointer? *xkb-bindings-manager-bindings-seat*)
-    (xkb-bindings-manager-bindings-seat-destroy *xkb-bindings-manager-bindings-seat*)
-    (set! *xkb-bindings-manager-bindings-seat* %null-pointer))
+  ;; destroy xkb bindings seats
+  (hash-for-each
+   (lambda (seat-bindings seat-proxy)
+     (when (valid-pointer? seat-bindings)
+       (river-xkb-bindings-seat-v1-destroy seat-bindings)))
+   *xkb-bindings-seat-map*)
 
   ;; destroy xkb bindings
   (when (valid-pointer? *xkb-bindings-manager-bindings*)
-    (xkb-bindings-manager-bindings-destroy *xkb-bindings-manager-bindings*)
-    (set! *xkb-bindings-manager-bindings* %null-pointer)))
+    (xkb-bindings-manager-bindings-destroy *xkb-bindings-manager-bindings*)))
 
 (define (xkb-bindings-manager-on-globals-verify)
   "Verify that river_xkb_bindings_v1 was bound successfully, raise an error if not.
@@ -115,21 +129,23 @@ Parameters: None."
 Parameters: None."
   (set! *xkb-bindings-manager-binding-listener*
         (make-river-xkb-binding-v1-listener
-		 xkb-bindings-manager-on-binding-pressed
-		 xkb-bindings-manager-on-binding-released
-		 xkb-bindings-manager-on-binding-stop-repeat))
+         xkb-bindings-manager-on-binding-pressed
+         xkb-bindings-manager-on-binding-released
+         xkb-bindings-manager-on-binding-stop-repeat))
 
   (set! *xkb-bindings-manager-bindings-seat-listener*
         (make-river-xkb-bindings-seat-v1-listener
-		 xkb-bindings-manager-on-bindings-seat-ate)))
+         xkb-bindings-manager-on-bindings-seat-ate)))
 
 ;;; river_xkb_bindings_v1 requests
 (define (xkb-bindings-manager-bindings-destroy proxy)
   "Destroy the global river_xkb_bindings_v1 proxy.
 Parameters: (PROXY)
   - PROXY: Pointer to river_xkb_bindings_v1 proxy."
-  (when (valid-pointer? proxy)
-	(river-xkb-bindings-v1-destroy proxy)))
+  (when (and (valid-pointer? proxy)
+             (equal? *xkb-bindings-manager-bindings* proxy))
+    (river-xkb-bindings-v1-destroy proxy)
+    (set! *xkb-bindings-manager-bindings* %null-pointer)))
 
 (define (xkb-bindings-manager-bindings-create-binding proxy-seat keysym modifiers)
   "Create a new keybinding on PROXY-SEAT.
@@ -137,38 +153,48 @@ Parameters: (PROXY-SEAT KEYSYM MODIFIERS)
   - PROXY-SEAT: Pointer to river_seat_v1 proxy.
   - KEYSYM: Numeric XKB keysym value.
   - MODIFIERS: Numeric XKB modifier bitmask."
-  (when (valid-pointer? *xkb-bindings-manager-bindings*)
-	(when *log-river-calls*
-	  (log-debug "Creating binding with keysym ~a and modifier mask ~a in seat ~a" keysym modifiers proxy-seat))
-	(let ((proxy (river-xkb-bindings-v1-get-xkb-binding *xkb-bindings-manager-bindings*
-														proxy-seat
-														keysym
-														modifiers)))
-	  ;; track the new proxy to the binding list so we can cleanup later
-	  (set! *xkb-bindings-manager-binding-list*
-			(cons proxy *xkb-bindings-manager-binding-list*))
-	  ;; attach the shared event listener for pressed/released events
-	  (wl-proxy-add-listener proxy *xkb-bindings-manager-binding-listener*
-							 %null-pointer)
-	  ;; return the proxy so it can be used by callers
-	  proxy)))
+  (when (and (valid-pointer? *xkb-bindings-manager-bindings*)
+             (valid-pointer? proxy-seat)
+             (integer? keysym) (>= keysym 0)
+             (integer? modifiers) (>= modifiers 0))
+    (when *log-river-calls*
+      (log-debug "Creating binding with keysym ~a and modifier mask ~a in seat ~a" keysym modifiers proxy-seat))
+    (let ((proxy (river-xkb-bindings-v1-get-xkb-binding *xkb-bindings-manager-bindings*
+                                                        proxy-seat
+                                                        keysym
+                                                        modifiers)))
+      (when (valid-pointer? proxy)
+        ;; track the new proxy to the binding list so we can cleanup later
+        (set! *xkb-bindings-manager-binding-list*
+              (cons proxy *xkb-bindings-manager-binding-list*))
+        ;; attach the shared event listener for pressed/released events
+        (when *xkb-bindings-manager-binding-listener*
+          (wl-proxy-add-listener proxy *xkb-bindings-manager-binding-listener*
+                                 %null-pointer)))
+      ;; return the proxy so it can be used by callers
+      proxy)))
 
 (define (xkb-bindings-manager-bindings-create-seat seat-proxy)
   "Create a river_xkb_bindings_seat_v1 proxy for SEAT-PROXY.
 Parameters: (SEAT-PROXY)
   - SEAT-PROXY: Pointer to river_seat_v1 proxy."
-  ;; create if not available and return the *xkb-bindings-manager-bindings-seat*
-  (unless (valid-pointer? *xkb-bindings-manager-bindings-seat*)
-	(when *log-river-calls*
-	  (log-debug "Creating binding seat for seat ~a" seat-proxy))
-	(set! *xkb-bindings-manager-bindings-seat*
-		  (river-xkb-bindings-v1-get-seat *xkb-bindings-manager-bindings* seat-proxy))
-	;; attach shared event listener for eaten bindings
-	(wl-proxy-add-listener
-	 *xkb-bindings-manager-bindings-seat*
-	 *xkb-bindings-manager-bindings-seat-listener*
-	 %null-pointer))
-  *xkb-bindings-manager-bindings-seat*)
+  (when (and (valid-pointer? *xkb-bindings-manager-bindings*)
+             (valid-pointer? seat-proxy))
+    ;; lookup existing xkb-bindings for the seat first
+    (or (xkb-bindings-find-by-seat seat-proxy)
+        ;; if not found, create new xkb-bindings for the seat
+        (let ((seat-bindings (river-xkb-bindings-v1-get-seat
+                              *xkb-bindings-manager-bindings* seat-proxy)))
+          (when *log-river-calls*
+            (log-debug "Creating binding seat for seat ~a" seat-proxy))
+          (when (valid-pointer? seat-bindings)
+            ;; attach shared event listener for eaten bindings
+            (when *xkb-bindings-manager-bindings-seat-listener*
+              (wl-proxy-add-listener seat-bindings
+                                     *xkb-bindings-manager-bindings-seat-listener*
+                                     %null-pointer))
+            (hash-set! *xkb-bindings-seat-map* seat-bindings seat-proxy))
+          seat-bindings))))
 
 ;;; river_xkb_bindings_v1 events
 ;;; NONE
@@ -178,13 +204,14 @@ Parameters: (SEAT-PROXY)
   "Destroy the river_xkb_binding_v1 proxy object.
 Parameters: (PROXY)
   - PROXY: Pointer to river_xkb_binding_v1 proxy."
-  (when (valid-pointer? proxy)
-	(when *log-river-calls*
-	  (log-debug "Destroying binding ~a" proxy))
-	;; untrack the proxy
-	(set! *xkb-bindings-manager-binding-list*
-		  (delete proxy *xkb-bindings-manager-binding-list*))
-	(river-xkb-binding-v1-destroy proxy)))
+  (when (and (valid-pointer? proxy)
+             (member proxy *xkb-bindings-manager-binding-list*))
+    (when *log-river-calls*
+      (log-debug "Destroying binding ~a" proxy))
+    ;; untrack the proxy
+    (set! *xkb-bindings-manager-binding-list*
+          (delete proxy *xkb-bindings-manager-binding-list*))
+    (river-xkb-binding-v1-destroy proxy)))
 
 (define (xkb-bindings-manager-binding-set-layout-override proxy layout)
   "Specify XKB layout index override for this binding.
@@ -193,20 +220,23 @@ Must be called in a manage sequence.
 Parameters: (PROXY LAYOUT)
   - PROXY: Pointer to river_xkb_binding_v1 proxy.
   - LAYOUT: Numeric layout index (0-indexed)."
-  (when (valid-pointer? proxy)
-	(when *log-river-calls*
-	  (log-debug "Setting layout override of binding ~a to index ~a" proxy layout))
-	(river-xkb-binding-v1-set-layout-override proxy layout)))
+  (when (and (valid-pointer? proxy)
+             (member proxy *xkb-bindings-manager-binding-list*)
+             (integer? layout) (>= layout 0))
+    (when *log-river-calls*
+      (log-debug "Setting layout override of binding ~a to index ~a" proxy layout))
+    (river-xkb-binding-v1-set-layout-override proxy layout)))
 
 (define (xkb-bindings-manager-binding-enable proxy)
   "Enable keybinding, by default keybindings are disabled once created.
 Must be called in a manage sequence.
 Parameters: (PROXY)
   - PROXY: Pointer to river_xkb_binding_v1 proxy."
-  (when (valid-pointer? proxy)
-	(when *log-river-calls*
-	  (log-debug "Enable xkb binding ~a" proxy))
-	(river-xkb-binding-v1-enable proxy)))
+  (when (and (valid-pointer? proxy)
+             (member proxy *xkb-bindings-manager-binding-list*))
+    (when *log-river-calls*
+      (log-debug "Enable xkb binding ~a" proxy))
+    (river-xkb-binding-v1-enable proxy)))
 
 (define (xkb-bindings-manager-binding-disable proxy)
   "Disable keybinding, this can be useful for submap switching.
@@ -215,10 +245,11 @@ temporarily not needed, disable/enable is the more efficient approach.
 Must be called in a manage sequence.
 Parameters: (PROXY)
   - PROXY: Pointer to river_xkb_binding_v1 proxy."
-  (when (valid-pointer? proxy)
-	(when *log-river-calls*
-	  (log-debug "Disable xkb binding ~a" proxy))
-	(river-xkb-binding-v1-disable proxy)))
+  (when (and (valid-pointer? proxy)
+             (member proxy *xkb-bindings-manager-binding-list*))
+    (when *log-river-calls*
+      (log-debug "Disable xkb binding ~a" proxy))
+    (river-xkb-binding-v1-disable proxy)))
 
 ;;; river_xkb_binding_v1 events
 (define (xkb-bindings-manager-on-binding-pressed data proxy-binding)
@@ -227,7 +258,7 @@ Parameters: (DATA PROXY-BINDING)
   - DATA: User context pointer (unused, null in Gliver).
   - PROXY-BINDING: Pointer to river_xkb_binding_v1 proxy."
   (when *log-river-calls*
-	(log-debug "Key pressed on xkb binding ~a" proxy-binding))
+    (log-debug "Key pressed on xkb binding ~a" proxy-binding))
   (gliver-hook-run! %keybinding-pressed-hook proxy-binding))
 
 (define (xkb-bindings-manager-on-binding-released data proxy-binding)
@@ -236,7 +267,7 @@ Parameters: (DATA PROXY-BINDING)
   - DATA: User context pointer (unused, null in Gliver).
   - PROXY-BINDING: Pointer to river_xkb_binding_v1 proxy."
   (when *log-river-calls*
-	(log-debug "Key released on xkb binding ~a" proxy-binding))
+    (log-debug "Key released on xkb binding ~a" proxy-binding))
   (gliver-hook-run! %keybinding-released-hook proxy-binding))
 
 (define (xkb-bindings-manager-on-binding-stop-repeat data proxy-binding)
@@ -245,7 +276,7 @@ Parameters: (DATA PROXY-BINDING)
   - DATA: User context pointer (unused, null in Gliver).
   - PROXY-BINDING: Pointer to river_xkb_binding_v1 proxy."
   (when *log-river-calls*
-	(log-debug "Repeat stopped on xkb binding ~a" proxy-binding))
+    (log-debug "Repeat stopped on xkb binding ~a" proxy-binding))
   (gliver-hook-run! %keybinding-repeat-stopped-hook proxy-binding))
 
 ;;; river_xkb_bindings_seat_v1 requests
@@ -253,10 +284,12 @@ Parameters: (DATA PROXY-BINDING)
   "Destroy the river_xkb_bindings_seat_v1 proxy object.
 Parameters: (PROXY)
   - PROXY: Pointer to river_xkb_bindings_seat_v1 proxy."
-  (when (valid-pointer? proxy)
-	(when *log-river-calls*
-	  (log-debug "Destroy bindings seat ~a" proxy))
-	(river-xkb-bindings-seat-v1-destroy proxy)))
+  (when (and (valid-pointer? proxy)
+             (hash-ref *xkb-bindings-seat-map* proxy))
+    (when *log-river-calls*
+      (log-debug "Destroy bindings seat ~a" proxy))
+    (river-xkb-bindings-seat-v1-destroy proxy)
+    (hash-remove! *xkb-bindings-seat-map* proxy)))
 
 (define (xkb-bindings-manager-bindings-seat-ensure-next-key-eaten proxy)
   "Ensure next non-modifier key press is eaten on seat.
@@ -264,20 +297,40 @@ Cancelled after next key regardless whether a binding is found or not (eaten)
 Must be called in a manage sequence.
 Parameters: (PROXY)
   - PROXY: Pointer to river_xkb_bindings_seat_v1 proxy."
-  (when (valid-pointer? proxy)
-	(when *log-river-calls*
-	  (log-debug "Ensure next key eaten on seat ~a" proxy))
-	(river-xkb-bindings-seat-v1-ensure-next-key-eaten proxy)))
+  (when (and (valid-pointer? proxy)
+             (hash-ref *xkb-bindings-seat-map* proxy))
+    (when *log-river-calls*
+      (log-debug "Ensure next key eaten on seat ~a" proxy))
+    (river-xkb-bindings-seat-v1-ensure-next-key-eaten proxy)))
+
+(define (xkb-bindings-manager-bindings-seat-ensure-next-key-eaten-all!)
+  "Ensure next non-modifier key press is eaten across all active seats.
+Must be called in a manage sequence.
+Parameters: None."
+  (hash-for-each
+   (lambda (seat-bindings seat-proxy)
+     (xkb-bindings-manager-bindings-seat-ensure-next-key-eaten seat-bindings))
+   *xkb-bindings-seat-map*))
 
 (define (xkb-bindings-manager-bindings-seat-cancel-ensure-next-key-eaten proxy)
   "Cancel the ensure next non-modifier key eaten request on seat.
 Must be called in a manage sequence.
 Parameters: (PROXY)
   - PROXY: Pointer to river_xkb_bindings_seat_v1 proxy."
-  (when (valid-pointer? proxy)
-	(when *log-river-calls*
-	  (log-debug "Cancel ensure next key eaten on seat ~a" proxy))
-	(river-xkb-bindings-seat-v1-cancel-ensure-next-key-eaten proxy)))
+  (when (and (valid-pointer? proxy)
+             (hash-ref *xkb-bindings-seat-map* proxy))
+    (when *log-river-calls*
+      (log-debug "Cancel ensure next key eaten on seat ~a" proxy))
+    (river-xkb-bindings-seat-v1-cancel-ensure-next-key-eaten proxy)))
+
+(define (xkb-bindings-manager-bindings-seat-cancel-ensure-next-key-eaten-all!)
+  "Cancel the ensure next non-modifier key eaten request across all active seats.
+Must be called in a manage sequence.
+Parameters: None."
+  (hash-for-each
+   (lambda (seat-bindings seat-proxy)
+     (xkb-bindings-manager-bindings-seat-cancel-ensure-next-key-eaten seat-bindings))
+   *xkb-bindings-seat-map*))
 
 ;;; river_xkb_bindings_seat_v1 events
 (define (xkb-bindings-manager-on-bindings-seat-ate data proxy-seat)
@@ -286,15 +339,15 @@ Parameters: (DATA PROXY-SEAT)
   - DATA: User context pointer (unused, null in Gliver).
   - PROXY-SEAT: Pointer to river_xkb_bindings_seat_v1 proxy."
   (when (valid-pointer? proxy-seat)
-	(when *log-river-calls*
-	  (log-debug "Ate binding on seat ~a" proxy-seat))
-	(gliver-hook-run! %keybinding-eaten-hook proxy-seat)))
+    (when *log-river-calls*
+      (log-debug "Ate binding on seat ~a" proxy-seat))
+    (gliver-hook-run! %keybinding-eaten-hook proxy-seat)))
 
 (define (xkb-bindings-manager-bindings-destroy-all!)
   "Destroy all active river_xkb_binding_v1 proxies.
 Parameters: None."
   (for-each (lambda (proxy)
-			  (xkb-bindings-manager-binding-destroy proxy))
+              (xkb-bindings-manager-binding-destroy proxy))
             *xkb-bindings-manager-binding-list*)
   (set! *xkb-bindings-manager-binding-list* '()))
 

@@ -14,15 +14,23 @@
 ;;;   - river_shell_surface_v1
 
 (define-module (gliver river wm-shell-surface-manager)
+  #:use-module (srfi srfi-1)
   #:use-module (gliver core-base)
+  #:use-module (gliver river wm-node-manager)
   #:use-module (gliver wayland client)
   #:use-module (gliver wayland gen river-window-management-v1)
   #:use-module (system foreign)
+  #:declarative? #f
   #:export (
-			wm-shell-surface-destroy!
-			wm-shell-surface-node-get!
-			wm-shell-surface-sync-next-commit!
+            *wm-shell-surface-nodes*
+            wm-shell-surface-destroy!
+            wm-shell-surface-node-get!
+            wm-shell-surface-sync-next-commit!
 ))
+
+;;; global state
+(define-var *wm-shell-surface-nodes* (make-hash-table)
+            "Hash-map of river_shell_surface_v1 proxy -> river_node_v1 proxy (or #f if pending node creation).")
 
 ;;; shell-surface requests
 (define (wm-shell-surface-destroy! proxy-shell-surface)
@@ -30,20 +38,28 @@
 cleared from client side and the server should also clear everything.
 Parameters: (PROXY-SHELL-SURFACE)
   - PROXY-SHELL-SURFACE: Pointer to river_shell_surface_v1 proxy."
-  (when (valid-pointer? proxy-shell-surface)
+  (when (and (valid-pointer? proxy-shell-surface)
+             (hash-get-handle *wm-shell-surface-nodes* proxy-shell-surface))
     (when *log-river-calls*
-	  (log-debug "Destroying shell-surface proxy: ~a" proxy-shell-surface))
-    (river-shell-surface-v1-destroy proxy-shell-surface)))
+      (log-debug "Destroying shell-surface proxy: ~a" proxy-shell-surface))
+    (river-shell-surface-v1-destroy proxy-shell-surface)
+    (hash-remove! *wm-shell-surface-nodes* proxy-shell-surface)))
 
 (define (wm-shell-surface-node-get! proxy-shell-surface)
   "Get node corresponding to the shell surface (called once per surface).
 Parameters: (PROXY-SHELL-SURFACE)
   - PROXY-SHELL-SURFACE: Pointer to river_shell_surface_v1 proxy.
 Returns: river_node_v1 proxy pointer."
-  (when (valid-pointer? proxy-shell-surface)
-    (when *log-river-calls*
-	  (log-debug "Getting node of shell-surface ~a" proxy-shell-surface))
-    (river-shell-surface-v1-get-node proxy-shell-surface)))
+  (when (and (valid-pointer? proxy-shell-surface)
+             (hash-get-handle *wm-shell-surface-nodes* proxy-shell-surface))
+    (or (hash-ref *wm-shell-surface-nodes* proxy-shell-surface)
+        (let ((node (river-shell-surface-v1-get-node proxy-shell-surface)))
+          (when *log-river-calls*
+            (log-debug "Getting node of shell-surface ~a -> ~a" proxy-shell-surface node))
+          (when (valid-pointer? node)
+            (hash-set! *wm-shell-surface-nodes* proxy-shell-surface node)
+            (set! *wm-nodes* (cons node *wm-nodes*)))
+          node))))
 
 (define (wm-shell-surface-sync-next-commit! proxy-shell-surface)
   "Synchronize application of the next wl_surface commit
@@ -51,7 +67,8 @@ with the next render sequence.
 Must be called in a render sequence.
 Parameters: (PROXY-SHELL-SURFACE)
   - PROXY-SHELL-SURFACE: Pointer to river_shell_surface_v1 proxy."
-  (when (valid-pointer? proxy-shell-surface)
+  (when (and (valid-pointer? proxy-shell-surface)
+             (hash-get-handle *wm-shell-surface-nodes* proxy-shell-surface))
     (when *log-river-calls*
-	  (log-debug "Syncing shell-surface ~a" proxy-shell-surface))
+      (log-debug "Syncing shell-surface ~a" proxy-shell-surface))
     (river-shell-surface-v1-sync-next-commit proxy-shell-surface)))

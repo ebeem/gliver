@@ -25,49 +25,49 @@
   #:use-module (gliver core-base)
   #:declarative? #f
   #:export (
-			*wlr-layer-shell*
-			*wlr-layer-surfaces*
-			*wlr-layer-surface-listener*
-			*wlr-layer-shell-anchor-top*
-			*wlr-layer-shell-anchor-bottom*
-			*wlr-layer-shell-anchor-left*
-			*wlr-layer-shell-anchor-right*
-			*wlr-layer-shell-anchor-all*
-			*wlr-layer-shell-layer-background*
-			*wlr-layer-shell-layer-bottom*
-			*wlr-layer-shell-layer-top*
-			*wlr-layer-shell-layer-overlay*
-			*wlr-layer-shell-interactivity-none*
-			*wlr-layer-shell-interactivity-exclusive*
-			*wlr-layer-shell-interactivity-on-demand*
-			wlr-layer-shell-on-globals-bind
-			wlr-layer-shell-on-globals-unbind
-			wlr-layer-shell-on-globals-verify
-			wlr-layer-shell-on-listeners-attach
-			wlr-layer-shell-destroy
-			wlr-layer-shell-get-layer-surface
-			wlr-layer-surface-destroy
-			wlr-layer-surface-set-size
-			wlr-layer-surface-set-anchor
-			wlr-layer-surface-set-exclusive-zone
-			wlr-layer-surface-set-margin
-			wlr-layer-surface-set-keyboard-interactivity
-			wlr-layer-surface-get-popup
-			wlr-layer-surface-ack-configure
-			wlr-layer-surface-set-layer
-			wlr-layer-surface-set-exclusive-edge
-			wlr-layer-surface-on-configure
-			wlr-layer-surface-on-closed
+            *wlr-layer-shell*
+            *wlr-layer-surfaces*
+            *wlr-layer-surface-listener*
+            *wlr-layer-shell-anchor-top*
+            *wlr-layer-shell-anchor-bottom*
+            *wlr-layer-shell-anchor-left*
+            *wlr-layer-shell-anchor-right*
+            *wlr-layer-shell-anchor-all*
+            *wlr-layer-shell-layer-background*
+            *wlr-layer-shell-layer-bottom*
+            *wlr-layer-shell-layer-top*
+            *wlr-layer-shell-layer-overlay*
+            *wlr-layer-shell-interactivity-none*
+            *wlr-layer-shell-interactivity-exclusive*
+            *wlr-layer-shell-interactivity-on-demand*
+            wlr-layer-shell-on-globals-bind
+            wlr-layer-shell-on-globals-unbind
+            wlr-layer-shell-on-globals-verify
+            wlr-layer-shell-on-listeners-attach
+            wlr-layer-shell-destroy
+            wlr-layer-shell-get-layer-surface
+            wlr-layer-surface-destroy
+            wlr-layer-surface-set-size
+            wlr-layer-surface-set-anchor
+            wlr-layer-surface-set-exclusive-zone
+            wlr-layer-surface-set-margin
+            wlr-layer-surface-set-keyboard-interactivity
+            wlr-layer-surface-get-popup
+            wlr-layer-surface-ack-configure
+            wlr-layer-surface-set-layer
+            wlr-layer-surface-set-exclusive-edge
+            wlr-layer-surface-on-configure
+            wlr-layer-surface-on-closed
 ))
 
 ;;; global state
 (define-var *wlr-layer-shell* %null-pointer
-			"Proxy for zwlr_layer_shell_v1.")
+            "Proxy for zwlr_layer_shell_v1.")
 (define-var *wlr-layer-surfaces* '()
-			"list of zwlr_layer_surface_v1 proxies for tracking.")
+            "list of zwlr_layer_surface_v1 proxies for tracking.")
 
 (define-var *wlr-layer-surface-listener* #f
-			"Shared Wayland listener for zwlr_layer_surface_v1 configure and closed events.")
+            "Shared Wayland listener for zwlr_layer_surface_v1 configure and closed events.")
 
 ;; exposing friendly anchors and layer variables
 (define *wlr-layer-shell-anchor-top* ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP)
@@ -75,9 +75,9 @@
 (define *wlr-layer-shell-anchor-left* ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT)
 (define *wlr-layer-shell-anchor-right* ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT)
 (define *wlr-layer-shell-anchor-all* (+ *wlr-layer-shell-anchor-top*
-										*wlr-layer-shell-anchor-bottom*
-										*wlr-layer-shell-anchor-left*
-										*wlr-layer-shell-anchor-right*))
+                                        *wlr-layer-shell-anchor-bottom*
+                                        *wlr-layer-shell-anchor-left*
+                                        *wlr-layer-shell-anchor-right*))
 
 (define *wlr-layer-shell-layer-background* ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND)
 (define *wlr-layer-shell-layer-bottom* ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM)
@@ -113,7 +113,7 @@ Parameters: None."
             *wlr-layer-surfaces*)
 
   (when (valid-pointer? *wlr-layer-shell*)
-	(wlr-layer-shell-destroy *wlr-layer-shell*)))
+    (wlr-layer-shell-destroy *wlr-layer-shell*)))
 
 (define (wlr-layer-shell-on-globals-verify)
   "Verify the wlr layer shell global was bound.
@@ -136,11 +136,12 @@ Parameters: None."
 cleared from client side and the server should also clear everything.
 Parameters: (PROXY-SHELL)
   - PROXY-SHELL: Pointer to zwlr_layer_shell_v1 proxy."
-  (when (valid-pointer? proxy-shell)
+  (when (and (valid-pointer? proxy-shell)
+             (equal? *wlr-layer-shell* proxy-shell))
     (when *log-river-calls*
-	  (log-debug "Destroying wlr layer shell proxy: ~a" proxy-shell))
+      (log-debug "Destroying wlr layer shell proxy: ~a" proxy-shell))
     (zwlr-layer-shell-v1-destroy proxy-shell)
-	(set! *wlr-layer-shell* %null-pointer)))
+    (set! *wlr-layer-shell* %null-pointer)))
 
 (define (wlr-layer-shell-get-layer-surface proxy-shell proxy-surface proxy-output layer namespace)
   "Create a layer_surface from a surface.
@@ -151,15 +152,20 @@ Parameters: (PROXY-SHELL PROXY-SURFACE PROXY-OUTPUT LAYER NAMESPACE)
   - LAYER: Layer enum (e.g. *wlr-layer-shell-layer-background*).
   - NAMESPACE: String namespace identifying surface purpose.
 Returns: zwlr_layer_surface_v1 proxy pointer."
-  (when (and (valid-pointer? proxy-shell) (valid-pointer? proxy-surface))
+  (when (and (valid-pointer? proxy-shell)
+             (equal? *wlr-layer-shell* proxy-shell)
+             (valid-pointer? proxy-surface)
+             (integer? layer) (<= 0 layer 3)
+             (string? namespace))
     (let* ((out (if (valid-pointer? proxy-output) proxy-output %null-pointer))
-		   (layer-surface (zwlr-layer-shell-v1-get-layer-surface
+           (layer-surface (zwlr-layer-shell-v1-get-layer-surface
                            proxy-shell proxy-surface out layer namespace)))
       (when *log-river-calls*
         (log-debug "Creating layer surface on ~a: surface=~a layer=~a namespace=~a"
                    proxy-shell proxy-surface layer namespace))
       (when (valid-pointer? layer-surface)
-        (wl-proxy-add-listener layer-surface *wlr-layer-surface-listener* %null-pointer)
+        (when *wlr-layer-surface-listener*
+          (wl-proxy-add-listener layer-surface *wlr-layer-surface-listener* %null-pointer))
         (set! *wlr-layer-surfaces* (cons layer-surface *wlr-layer-surfaces*)))
       layer-surface)))
 
@@ -172,11 +178,11 @@ Parameters: (PROXY-LAYER-SURFACE)
   (when (and (valid-pointer? proxy-layer-surface)
              (member proxy-layer-surface *wlr-layer-surfaces*))
     (when *log-river-calls*
-	  (log-debug "Destroying layer surface proxy: ~a" proxy-layer-surface))
+      (log-debug "Destroying layer surface proxy: ~a" proxy-layer-surface))
     (zwlr-layer-surface-v1-destroy proxy-layer-surface)
-	;; untrack the proxy
-	(set! *wlr-layer-surfaces*
-		  (delete proxy-layer-surface *wlr-layer-surfaces*))))
+    ;; untrack the proxy
+    (set! *wlr-layer-surfaces*
+          (delete proxy-layer-surface *wlr-layer-surfaces*))))
 
 (define (wlr-layer-surface-set-size proxy-layer-surface width height)
   "Set size of the layer surface in pixels. Setting 0 for either dimension
@@ -185,10 +191,13 @@ Parameters: (PROXY-LAYER-SURFACE WIDTH HEIGHT)
   - PROXY-LAYER-SURFACE: Pointer to zwlr_layer_surface_v1 proxy.
   - WIDTH: Width in pixels.
   - HEIGHT: Height in pixels."
-  (when (valid-pointer? proxy-layer-surface)
+  (when (and (valid-pointer? proxy-layer-surface)
+             (member proxy-layer-surface *wlr-layer-surfaces*)
+             (integer? width) (>= width 0)
+             (integer? height) (>= height 0))
     (when *log-river-calls*
-	  (log-debug "Setting layer surface ~a size to ~ax~a"
-				 proxy-layer-surface width height))
+      (log-debug "Setting layer surface ~a size to ~ax~a"
+                 proxy-layer-surface width height))
     (zwlr-layer-surface-v1-set-size proxy-layer-surface width height)))
 
 (define (wlr-layer-surface-set-anchor proxy-layer-surface anchor)
@@ -196,10 +205,12 @@ Parameters: (PROXY-LAYER-SURFACE WIDTH HEIGHT)
 Parameters: (PROXY-LAYER-SURFACE ANCHOR)
   - PROXY-LAYER-SURFACE: Pointer to zwlr_layer_surface_v1 proxy.
   - ANCHOR: Flag using enums *wlr-layer-shell-anchor-*."
-  (when (valid-pointer? proxy-layer-surface)
+  (when (and (valid-pointer? proxy-layer-surface)
+             (member proxy-layer-surface *wlr-layer-surfaces*)
+             (integer? anchor) (<= 0 anchor 15))
     (when *log-river-calls*
-	  (log-debug "Setting layer surface ~a anchor to ~a"
-				 proxy-layer-surface anchor))
+      (log-debug "Setting layer surface ~a anchor to ~a"
+                 proxy-layer-surface anchor))
     (zwlr-layer-surface-v1-set-anchor proxy-layer-surface anchor)))
 
 (define (wlr-layer-surface-set-exclusive-zone proxy-layer-surface zone)
@@ -210,10 +221,12 @@ Parameters: (PROXY-LAYER-SURFACE ANCHOR)
 Parameters: (PROXY-LAYER-SURFACE ZONE)
   - PROXY-LAYER-SURFACE: Pointer to zwlr_layer_surface_v1 proxy.
   - ZONE: Exclusive zone in pixels (integer)."
-  (when (valid-pointer? proxy-layer-surface)
+  (when (and (valid-pointer? proxy-layer-surface)
+             (member proxy-layer-surface *wlr-layer-surfaces*)
+             (integer? zone) (>= zone -1))
     (when *log-river-calls*
-	  (log-debug "Setting layer surface ~a exclusive zone to ~a"
-				 proxy-layer-surface zone))
+      (log-debug "Setting layer surface ~a exclusive zone to ~a"
+                 proxy-layer-surface zone))
     (zwlr-layer-surface-v1-set-exclusive-zone proxy-layer-surface zone)))
 
 (define (wlr-layer-surface-set-margin proxy-layer-surface top right bottom left)
@@ -224,10 +237,13 @@ Parameters: (PROXY-LAYER-SURFACE TOP RIGHT BOTTOM LEFT)
   - RIGHT: Right margin in pixels.
   - BOTTOM: Bottom margin in pixels.
   - LEFT: Left margin in pixels."
-  (when (valid-pointer? proxy-layer-surface)
+  (when (and (valid-pointer? proxy-layer-surface)
+             (member proxy-layer-surface *wlr-layer-surfaces*)
+             (integer? top) (integer? right)
+             (integer? bottom) (integer? left))
     (when *log-river-calls*
-	  (log-debug "Setting layer surface ~a margin: top=~a right=~a bottom=~a left=~a"
-				 proxy-layer-surface top right bottom left))
+      (log-debug "Setting layer surface ~a margin: top=~a right=~a bottom=~a left=~a"
+                 proxy-layer-surface top right bottom left))
     (zwlr-layer-surface-v1-set-margin proxy-layer-surface top right bottom left)))
 
 (define (wlr-layer-surface-set-keyboard-interactivity proxy-layer-surface interactivity)
@@ -235,10 +251,12 @@ Parameters: (PROXY-LAYER-SURFACE TOP RIGHT BOTTOM LEFT)
 Parameters: (PROXY-LAYER-SURFACE INTERACTIVITY)
   - PROXY-LAYER-SURFACE: Pointer to zwlr_layer_surface_v1 proxy.
   - INTERACTIVITY: Interactivity mode enum (e.g. *wlr-layer-shell-interactivity-none*)."
-  (when (valid-pointer? proxy-layer-surface)
+  (when (and (valid-pointer? proxy-layer-surface)
+             (member proxy-layer-surface *wlr-layer-surfaces*)
+             (integer? interactivity) (<= 0 interactivity 2))
     (when *log-river-calls*
-	  (log-debug "Setting layer surface ~a keyboard interactivity to ~a"
-				 proxy-layer-surface interactivity))
+      (log-debug "Setting layer surface ~a keyboard interactivity to ~a"
+                 proxy-layer-surface interactivity))
     (zwlr-layer-surface-v1-set-keyboard-interactivity proxy-layer-surface interactivity)))
 
 (define (wlr-layer-surface-get-popup proxy-layer-surface popup)
@@ -246,10 +264,12 @@ Parameters: (PROXY-LAYER-SURFACE INTERACTIVITY)
 Parameters: (PROXY-LAYER-SURFACE POPUP)
   - PROXY-LAYER-SURFACE: Pointer to zwlr_layer_surface_v1 proxy.
   - POPUP: Pointer to xdg_popup proxy."
-  (when (and (valid-pointer? proxy-layer-surface) (valid-pointer? popup))
+  (when (and (valid-pointer? proxy-layer-surface)
+             (member proxy-layer-surface *wlr-layer-surfaces*)
+             (valid-pointer? popup))
     (when *log-river-calls*
-	  (log-debug "Assigning popup ~a to layer surface ~a"
-				 popup proxy-layer-surface))
+      (log-debug "Assigning popup ~a to layer surface ~a"
+                 popup proxy-layer-surface))
     (zwlr-layer-surface-v1-get-popup proxy-layer-surface popup)))
 
 (define (wlr-layer-surface-ack-configure proxy-layer-surface serial)
@@ -258,10 +278,12 @@ Must be called after processing a configure event.
 Parameters: (PROXY-LAYER-SURFACE SERIAL)
   - PROXY-LAYER-SURFACE: Pointer to zwlr_layer_surface_v1 proxy.
   - SERIAL: Serial number from configure event."
-  (when (valid-pointer? proxy-layer-surface)
+  (when (and (valid-pointer? proxy-layer-surface)
+             (member proxy-layer-surface *wlr-layer-surfaces*)
+             (integer? serial) (>= serial 0))
     (when *log-river-calls*
-	  (log-debug "Acking configure on layer surface ~a serial=~a"
-				 proxy-layer-surface serial))
+      (log-debug "Acking configure on layer surface ~a serial=~a"
+                 proxy-layer-surface serial))
     (zwlr-layer-surface-v1-ack-configure proxy-layer-surface serial)))
 
 (define (wlr-layer-surface-set-layer proxy-layer-surface layer)
@@ -269,10 +291,12 @@ Parameters: (PROXY-LAYER-SURFACE SERIAL)
 Parameters: (PROXY-LAYER-SURFACE LAYER)
   - PROXY-LAYER-SURFACE: Pointer to zwlr_layer_surface_v1 proxy.
   - LAYER: Layer enum (e.g. *wlr-layer-shell-layer-background*)."
-  (when (valid-pointer? proxy-layer-surface)
+  (when (and (valid-pointer? proxy-layer-surface)
+             (member proxy-layer-surface *wlr-layer-surfaces*)
+             (integer? layer) (<= 0 layer 3))
     (when *log-river-calls*
-	  (log-debug "Setting layer surface ~a layer to ~a"
-				 proxy-layer-surface layer))
+      (log-debug "Setting layer surface ~a layer to ~a"
+                 proxy-layer-surface layer))
     (zwlr-layer-surface-v1-set-layer proxy-layer-surface layer)))
 
 (define (wlr-layer-surface-set-exclusive-edge proxy-layer-surface edge)
@@ -280,10 +304,12 @@ Parameters: (PROXY-LAYER-SURFACE LAYER)
 Parameters: (PROXY-LAYER-SURFACE EDGE)
   - PROXY-LAYER-SURFACE: Pointer to zwlr_layer_surface_v1 proxy.
   - EDGE: Anchor edge flag (e.g. *wlr-layer-shell-anchor-top*)."
-  (when (valid-pointer? proxy-layer-surface)
+  (when (and (valid-pointer? proxy-layer-surface)
+             (member proxy-layer-surface *wlr-layer-surfaces*)
+             (integer? edge) (<= 0 edge 15))
     (when *log-river-calls*
-	  (log-debug "Setting layer surface ~a exclusive edge to ~a"
-				 proxy-layer-surface edge))
+      (log-debug "Setting layer surface ~a exclusive edge to ~a"
+                 proxy-layer-surface edge))
     (zwlr-layer-surface-v1-set-exclusive-edge proxy-layer-surface edge)))
 
 ;;; zwlr_layer_surface_v1 events
@@ -296,10 +322,10 @@ Parameters: (DATA PROXY-LAYER-SURFACE SERIAL WIDTH HEIGHT)
   - WIDTH: Allocated width of the layer surface in pixels.
   - HEIGHT: Allocated height of the layer surface in pixels."
   (when *log-river-calls*
-	(log-debug "Layer surface ~a configure: serial=~a ~ax~a"
-			   proxy-layer-surface serial width height))
+    (log-debug "Layer surface ~a configure: serial=~a ~ax~a"
+               proxy-layer-surface serial width height))
   (gliver-hook-run! %wlr-layer-surface-configure-hook
-					data proxy-layer-surface serial width height))
+                    data proxy-layer-surface serial width height))
 
 (define (wlr-layer-surface-on-closed data proxy-layer-surface)
   "Invoked when layer surface has been closed by compositor.
@@ -307,7 +333,7 @@ Parameters: (DATA PROXY-LAYER-SURFACE)
   - DATA: User context pointer (unused, null in Gliver).
   - PROXY-LAYER-SURFACE: Pointer to zwlr_layer_surface_v1 proxy."
   (when *log-river-calls*
-	(log-debug "Layer surface closed: ~a" proxy-layer-surface))
+    (log-debug "Layer surface closed: ~a" proxy-layer-surface))
   (wlr-layer-surface-destroy proxy-layer-surface)
   (gliver-hook-run! %wlr-layer-surface-closed-hook data proxy-layer-surface))
 

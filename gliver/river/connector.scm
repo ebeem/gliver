@@ -20,19 +20,20 @@
   #:use-module (gliver wayland gen wayland)
   #:declarative? #f
   #:export (
-			*wl-display*
-			*wl-registry*
-			*wl-compositor*
-			*wl-shm*
-			*river-connected?*
-			river-on-registry-global
-			river-on-registry-global-remove
-			river-connect!
-			river-disconnect!
-			river-event-loop!
-			river-on-globals-bind
-			river-on-globals-unbind
-			river-on-globals-verify
+            *wl-display*
+            *wl-registry*
+            *wl-compositor*
+            *wl-shm*
+            *river-connected?*
+            river-on-registry-global
+            river-on-registry-global-remove
+            river-connect!
+            river-disconnect!
+            log-wayland-error!
+            river-event-loop!
+            river-on-globals-bind
+            river-on-globals-unbind
+            river-on-globals-verify
 ))
 
 ;;; protocol names
@@ -41,15 +42,15 @@
 
 ;;; state
 (define-var *wl-display* %null-pointer
-			"Global Wayland display pointer, used for event loop pulling and flushing requests.")
+            "Global Wayland display pointer, used for event loop pulling and flushing requests.")
 (define-var *wl-registry* %null-pointer
-			"Global Wayland registry pointer, used to discover and bind Wayland protocols.")
+            "Global Wayland registry pointer, used to discover and bind Wayland protocols.")
 (define-var *wl-compositor* %null-pointer
-			"Proxy for wl_compositor, used to create Wayland surfaces and regions.")
+            "Proxy for wl_compositor, used to create Wayland surfaces and regions.")
 (define-var *wl-shm* %null-pointer
-			"Proxy for wl_shm, used to allocate pixel buffers.")
+            "Proxy for wl_shm, used to allocate pixel buffers.")
 (define-var *river-connected?* #f
-			"Flag indicating whether Gliver is currently connected to the Wayland display.")
+            "Flag indicating whether Gliver is currently connected to the Wayland display.")
 
 
 (define (river-on-registry-global data registry object-id protocol-ptr version)
@@ -84,7 +85,7 @@ Parameters: None."
   ;; ensure $DISPLAY is set for Xwayland applications
   ;; only x11 application use this environment variable
   (unless (getenv "DISPLAY")
-	(setenv "DISPLAY" ":0"))
+    (setenv "DISPLAY" ":0"))
 
   (log-info "Connecting to Wayland display...")
 
@@ -92,35 +93,35 @@ Parameters: None."
   ;; is failure in connecting to river and should terminate gliver
   (catch #t
     (lambda ()
-	  ;; connect to wayland display using $WAYLAND_DISPLAY environment variable
-	  ;; the wayland display is used to flush buffers and read/dispatch compositor events
+      ;; connect to wayland display using $WAYLAND_DISPLAY environment variable
+      ;; the wayland display is used to flush buffers and read/dispatch compositor events
       (set! *wl-display* (wl-display-connect))
       (log-info "Connected to Wayland display.")
-	  (gliver-hook-run! *manager-connected-hook*)
+      (gliver-hook-run! *manager-connected-hook*)
 
-	  ;; get the registry of the wayland display
-	  ;; the registry is used to discover what protocols are available
-	  ;; under the wayland session (wayland & river protocols)
+      ;; get the registry of the wayland display
+      ;; the registry is used to discover what protocols are available
+      ;; under the wayland session (wayland & river protocols)
       (set! *wl-registry* (gliver-wl-display-get-registry *wl-display*))
 
-	  ;; create a listener for on-global and on-global-remove wayland protocol
-	  ;; used to advertise for available protocols and when protocols become unavailable
-	  (let ((listener (make-wl-listener
-					   (list (procedure->pointer void river-on-registry-global (list '* '* uint32 '* uint32))
-							 (procedure->pointer void river-on-registry-global-remove (list '* '* uint32))))))
-		(wl-proxy-add-listener *wl-registry* listener %null-pointer))
+      ;; create a listener for on-global and on-global-remove wayland protocol
+      ;; used to advertise for available protocols and when protocols become unavailable
+      (let ((listener (make-wl-listener
+                       (list (procedure->pointer void river-on-registry-global (list '* '* uint32 '* uint32))
+                             (procedure->pointer void river-on-registry-global-remove (list '* '* uint32))))))
+        (wl-proxy-add-listener *wl-registry* listener %null-pointer))
 
-	  ;; first roundtrip: process globals and bind protocols
-	  (wl-display-roundtrip *wl-display*)
+      ;; first roundtrip: process globals and bind protocols
+      (wl-display-roundtrip *wl-display*)
 
-	  ;; verify all important protocols were bound
-	  ;; if a hook throws an error, gliver will crash as they run with strict
-	  ;; optional protocols shouldn't throw errors
-	  (gliver-hook-run-strict! *gliver-globals-verify-hook*)
-	  (log-debug "All critical globals were bound successfully")
+      ;; verify all important protocols were bound
+      ;; if a hook throws an error, gliver will crash as they run with strict
+      ;; optional protocols shouldn't throw errors
+      (gliver-hook-run-strict! *gliver-globals-verify-hook*)
+      (log-debug "All critical globals were bound successfully")
 
-	  ;; verify all important protocol listeners were attached
-	  ;; if a hook throws an error, gliver will crash as they run with strict
+      ;; verify all important protocol listeners were attached
+      ;; if a hook throws an error, gliver will crash as they run with strict
       (gliver-hook-run-strict! *gliver-listeners-attach-hook*)
       (log-info "All critical global listeners were attached successfully")
 
@@ -175,7 +176,7 @@ Parameters: None."
               (set! *river-connected?* #f)))
 
           ;; prepare to read events
-		  (let ((prep (wl-display-prepare-read *wl-display*)))
+          (let ((prep (wl-display-prepare-read *wl-display*)))
             (if (not (zero? prep))
                 ;; events already pending, dispatch them
                 (let ((ret (wl-display-dispatch-pending *wl-display*)))
@@ -199,7 +200,7 @@ Parameters: None."
                       (wl-display-cancel-read *wl-display*)))))
 
           ;; periodic tick hook for event loop
-		  ;; could be useful for statusbar and monitoring performance
+          ;; could be useful for statusbar and monitoring performance
           (when *river-connected?*
             (gliver-hook-run! *manager-tick-hook*)))
 
@@ -247,10 +248,10 @@ Parameters: None."
   "Verify availability of connector globals and raise error if mandatory interfaces are missing.
 Parameters: None."
   (unless (and (valid-pointer? *wl-display*)
-			   (valid-pointer? *wl-registry*)
-			   (valid-pointer? *wl-compositor*))
+               (valid-pointer? *wl-registry*)
+               (valid-pointer? *wl-compositor*))
     (log-error "Wayland display, registry, or compositor wasn't found")
-	(error "Wayland display, registry, or compositor wasn't found")))
+    (error "Wayland display, registry, or compositor wasn't found")))
 
 (gliver-hook-add! *gliver-globals-bind-hook* 'river-on-globals-bind)
 (gliver-hook-add! *gliver-globals-unbind-hook* 'river-on-globals-unbind)

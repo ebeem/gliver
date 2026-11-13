@@ -23,26 +23,26 @@
   #:use-module (gliver core-base)
   #:declarative? #f
   #:export (
-			*viewporter*
-			*viewport-surfaces*
-			*viewporter-error-viewport-exists*
-			viewporter-on-globals-bind
-			viewporter-on-globals-unbind
-			viewporter-on-globals-verify
-			viewporter-destroy
-			viewporter-get-viewport
-			viewport-destroy
-			viewport-set-source
-			viewport-set-destination
-			viewport->surface
-			surface->viewport
-			viewporter-get-for-surface
-			viewporter-destroy-for-surface
+            *viewporter*
+            *viewport-surfaces*
+            *viewporter-error-viewport-exists*
+            viewporter-on-globals-bind
+            viewporter-on-globals-unbind
+            viewporter-on-globals-verify
+            viewporter-destroy
+            viewporter-get-viewport
+            viewport-destroy
+            viewport-set-source
+            viewport-set-destination
+            viewport->surface
+            surface->viewport
+            viewporter-get-for-surface
+            viewporter-destroy-for-surface
 ))
 
 ;;; global state
 (define-var *viewporter* %null-pointer
-			"Proxy for wp_viewporter.")
+            "Proxy for wp_viewporter.")
 
 ;; surface tracking tables
 ;; maps viewport proxy -> surface proxy
@@ -77,14 +77,14 @@ Parameters: None."
   (hash-clear! *viewport-surfaces*)
 
   (when (valid-pointer? *viewporter*)
-	(viewporter-destroy *viewporter*)))
+    (viewporter-destroy *viewporter*)))
 
 (define (viewporter-on-globals-verify)
   "Verify that wp_viewporter global interface is bound.
 Parameters: None."
   (if (valid-pointer? *viewporter*)
-	  (log-info "Verified wp_viewporter interface is bound successfully.")
-	  (log-warn "wp_viewporter interface wasn't bound.")))
+      (log-info "Verified wp_viewporter interface is bound successfully.")
+      (log-warn "wp_viewporter interface wasn't bound.")))
 
 ;;; wp_viewporter requests
 (define (viewporter-destroy proxy-viewporter)
@@ -92,11 +92,11 @@ Parameters: None."
 Parameters: (PROXY-VIEWPORTER)
   - PROXY-VIEWPORTER: Pointer to wp_viewporter proxy."
   (when (and (valid-pointer? proxy-viewporter)
-			 (equal? *viewporter* proxy-viewporter))
+             (equal? *viewporter* proxy-viewporter))
     (when *log-river-calls*
-	  (log-debug "Destroying viewporter proxy: ~a" proxy-viewporter))
-	(wp-viewporter-destroy proxy-viewporter)
-	(set! *viewporter* %null-pointer)))
+      (log-debug "Destroying viewporter proxy: ~a" proxy-viewporter))
+    (wp-viewporter-destroy proxy-viewporter)
+    (set! *viewporter* %null-pointer)))
 
 (define (viewporter-get-viewport proxy-viewporter proxy-surface)
   "Create a viewport object for a surface.
@@ -105,11 +105,11 @@ Parameters: (PROXY-VIEWPORTER PROXY-SURFACE)
   - PROXY-SURFACE: Pointer to wl_surface proxy.
 Returns: wp_viewport proxy pointer."
   (when (and (valid-pointer? proxy-viewporter)
-			 (valid-pointer? proxy-surface)
-			 (equal? *viewporter* proxy-viewporter))
-	;; get the cached one if it exists
+             (valid-pointer? proxy-surface)
+             (equal? *viewporter* proxy-viewporter))
+    ;; get the cached one if it exists
     (or (surface->viewport proxy-surface)
-		;; if not, create a new viewport, cache it, and return it
+        ;; if not, create a new viewport, cache it, and return it
         (let ((vp (wp-viewporter-get-viewport proxy-viewporter proxy-surface)))
           (when *log-river-calls*
             (log-debug "Creating viewport on ~a: surface=~a" proxy-viewporter proxy-surface))
@@ -124,9 +124,9 @@ Parameters: (PROXY-VIEWPORT)
   (when (and (valid-pointer? proxy-viewport)
              (hash-ref *viewport-surfaces* proxy-viewport))
     (when *log-river-calls*
-	  (log-debug "Destroying viewport proxy: ~a" proxy-viewport))
-	(wp-viewport-destroy proxy-viewport)
-	(hash-remove! *viewport-surfaces* proxy-viewport)))
+      (log-debug "Destroying viewport proxy: ~a" proxy-viewport))
+    (wp-viewport-destroy proxy-viewport)
+    (hash-remove! *viewport-surfaces* proxy-viewport)))
 
 (define (viewport-set-source proxy-viewport x y width height)
   "Set the source rectangle for cropping.
@@ -137,13 +137,13 @@ Parameters: (PROXY-VIEWPORT X Y WIDTH HEIGHT):
   - WIDTH: Integer source rectangle width.
   - HEIGHT: Integer source rectangle height."
   (when (and (valid-pointer? proxy-viewport)
-			 (hash-ref *viewport-surfaces* proxy-viewport)
-			 (number? x) (number? y)
-			 (number? width) (number? height)
-			 (or (and (>= x 0)  (>= y 0)  (> width 0)   (> height 0))
-				 ;; can be disabled only if all of x, y,
-				 ;; width, and height are set to -1
-				 (and (= x -1) (= y -1) (= width -1) (= height -1))))
+             (hash-ref *viewport-surfaces* proxy-viewport)
+             (number? x) (number? y)
+             (number? width) (number? height)
+             (or (and (>= x 0)  (>= y 0)  (> width 0)   (> height 0))
+                 ;; can be disabled only if all of x, y,
+                 ;; width, and height are set to -1
+                 (and (= x -1) (= y -1) (= width -1) (= height -1))))
     (wp-viewport-set-source proxy-viewport x y width height)))
 
 (define (viewport-set-destination proxy-viewport width height)
@@ -153,11 +153,11 @@ Parameters: (PROXY-VIEWPORT WIDTH HEIGHT):
   - WIDTH: Integer surface width.
   - HEIGHT: Integer surface height."
   (when (and (valid-pointer? proxy-viewport)
-			 (hash-ref *viewport-surfaces* proxy-viewport)
-			 (number? width) (number? height)
-			 (or (and (> width 0)   (> height 0))
-				 ;; can be disabled only width and height = -1
-				 (and (= width -1) (= height -1))))
+             (hash-ref *viewport-surfaces* proxy-viewport)
+             (number? width) (number? height)
+             (or (and (> width 0)   (> height 0))
+                 ;; can be disabled only width and height = -1
+                 (and (= width -1) (= height -1))))
     (wp-viewport-set-destination proxy-viewport
                                  (inexact->exact (round width))
                                  (inexact->exact (round height)))))
@@ -197,8 +197,8 @@ Returns: wp_viewport proxy pointer or #f."
 Parameters: (SURFACE)
   - SURFACE: Pointer to wl_surface proxy."
   (and-let* ((   (valid-pointer? surface))
-			 (vp (surface->viewport surface))
-			 (   (valid-pointer? vp)))
+             (vp (surface->viewport surface))
+             (   (valid-pointer? vp)))
     (viewport-destroy vp)))
 
 ;; handle river initialization steps
