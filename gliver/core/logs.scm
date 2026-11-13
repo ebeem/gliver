@@ -34,6 +34,7 @@
 			log-info
 			log-warn
 			log-error
+			with-guard
 ))
 
 ;;; logging configuration & parameters
@@ -126,3 +127,15 @@ Parameters: (FILENAME LEVEL FMT ARGS)
 (define-syntax-rule (log-info fmt args ...)  (%log info  fmt args ...))
 (define-syntax-rule (log-warn fmt args ...)  (%log warn  fmt args ...))
 (define-syntax-rule (log-error fmt args ...) (%log error fmt args ...))
+
+(define-syntax with-guard
+  (syntax-rules ()
+    ((_ body ...)
+     (catch #t
+       (lambda () body ...)
+       (lambda (key subr message args rest)
+         (log-error "Ignored error in ~a [~a]: ~?" subr key message args)
+         #f)
+       (lambda (key . args)
+         (log-error "Ignored error [~a]: ~s" key args)
+         #f)))))
