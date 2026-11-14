@@ -80,7 +80,7 @@
 			gleui-toast-kill-all!
 			gleui-toast-open!
 			gleui-toast-cleanup!
-			gleui-toast-on-output-scale-changed
+			gleui-toast-on-surface-scale-changed
 			gleui-toast-install!
 ))
 
@@ -714,12 +714,9 @@
              (w (%tvs-width state))
              (h (%tvs-height state))
              (overrides (%tvs-theme-overrides state))
-             (out-obj (or (%tvs-output state) (output-current)))
-			 ;; scale is an int with rounded up, 2.3 becomes 3
-			 ;; it must be a valid int >= 1
-             (scale (max 1 (and out-obj (output-scale out-obj))))
-             (w-scaled (* w scale))
-             (h-scaled (* h scale)))
+             (scale (surface-scale surface))
+             (w-scaled (inexact->exact (round (* w scale))))
+             (h-scaled (inexact->exact (round (* h scale)))))
         (when (and surface (pointer? surface) (not (null-pointer? surface)) (> w 0) (> h 0))
           (let ((valid-slots (gleui-shm-slots-ensure! (%tvs-shm-slots state) w-scaled h-scaled)))
             (%tvs-shm-slots-set! state valid-slots)
@@ -732,7 +729,7 @@
                 (%tvs-shm-active-idx-set! state next-idx)
                 (let* ((dst-surf (cairo-image-surface-create-for-data bv 'argb32 w-scaled h-scaled stride))
                        (cr (cairo-create dst-surf)))
-                  (when (> scale 1)
+                  (when (and (number? scale) (> scale 0))
 					;; scale cairo surface
                     (cairo-scale cr (exact->inexact scale) (exact->inexact scale)))
                   (gleui-toast-draw-surface! cr w h state overrides)
@@ -824,22 +821,18 @@
 			"List of toast instance names that should eat the next key and disappear.")
 
 (define (%gleui-toast-ensure-key-eaten!)
-  "Request that the compositor eat the next non-modifier key press on the active seat."
-  (and-let* ((seat *xkb-bindings-manager-bindings-seat*)
-             ((valid-pointer? seat)))
-    (with-manage-sequence
-     (xkb-bindings-manager-bindings-seat-ensure-next-key-eaten seat))
-    (unless *in-manage-sequence*
-      (wm-manager-manage-dirty (manager-wl-proxy *manager*)))))
+  "Request that the compositor eat the next non-modifier key press across all active seats."
+  (with-manage-sequence
+   (xkb-bindings-manager-bindings-seat-ensure-next-key-eaten-all!))
+  (unless *in-manage-sequence*
+    (wm-manager-manage-dirty (manager-wl-proxy *manager*))))
 
 (define (%gleui-toast-cancel-ensure-key-eaten!)
-  "Cancel any active ensure-next-key-eaten request on the seat."
-  (and-let* ((seat *xkb-bindings-manager-bindings-seat*)
-             ((valid-pointer? seat)))
-    (with-manage-sequence
-     (xkb-bindings-manager-bindings-seat-cancel-ensure-next-key-eaten seat))
-    (unless *in-manage-sequence*
-      (wm-manager-manage-dirty (manager-wl-proxy *manager*)))))
+  "Cancel any active ensure-next-key-eaten request across all active seats."
+  (with-manage-sequence
+   (xkb-bindings-manager-bindings-seat-cancel-ensure-next-key-eaten-all!))
+  (unless *in-manage-sequence*
+    (wm-manager-manage-dirty (manager-wl-proxy *manager*))))
 
 (define (%gleui-toast-on-key-event . _)
   "Dismiss all toasts waiting to eat the next key press."
@@ -990,15 +983,18 @@ When EAT-NEXT-KEY? is #t, ensures the next key is eaten and automatically dismis
   (gleui-toast-kill-all!)
   (hash-clear! *gleui-toast-instances*))
 
-(define* (gleui-toast-on-output-scale-changed output #:optional factor)
-  "Invoked when OUTPUT scale changes."
+(define* (gleui-toast-on-surface-scale-changed surface scale)
+  "Invoked when SURFACE scale changes via fractional-scale."
+  (log-info "scale changed to ~a" scale)
   (hash-for-each
    (lambda (_key state)
-     (when state
+     (when (and state
+                (%tvs-surface state)
+                (equal? surface (%tvs-surface state)))
        (gleui-toast-render! state)))
    *gleui-toast-instances*))
 
-(gliver-hook-add! *output-scale-changed-hook* 'gleui-toast-on-output-scale-changed)
+(gliver-hook-add! *surface-scale-changed-hook* 'gleui-toast-on-surface-scale-changed)
 (gliver-hook-add! *gliver-globals-unbind-hook* 'gleui-toast-cleanup!)
 
 (define-command (gleui-toast-install!)
