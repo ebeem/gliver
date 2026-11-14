@@ -133,7 +133,7 @@ now done via cairo rendering, which is even better
 these are minimal bindings that lack guile library. In the future, if a proper package is created I will probably switch
 maybe wayland is also another library to consider moving to deps
 
-** TODO fix and investigate fullscreen toggling window order and container border
+** DONE fix and investigate fullscreen toggling window order and container border
 if fullscreen is toggled (exited), border isn't rendered and focusing another window in the same container doesn't bring it on top. Seems like window ordering issue of some sort.
 seems like container-window-indicator also disappears.
 
@@ -151,7 +151,7 @@ this should allow syncing workspace switching, like span workspaces across monit
 ** TODO fix window-rules module
 was developed long time ago and I don't think it's working anymore
 
-** TODO investigate break on tty switching
+** DONE investigate break on tty switching
 go to tty and back to gliver you will notice that layout isn't correct
 
 ** TODO add variable to allow navigating containers to navigate window in container
@@ -161,7 +161,7 @@ This variable should also reflect on moving window to right/left container, or m
 ** TODO weather module keeps loading for long time
 investigate, if service is slow maybe display last value until it's updated?
 
-** TODO document hooks
+** DONE document hooks
 currently it's not clear what the parameters are, should probably be documented in ~hooks.scm~
 
 ** DONE add metadata to outputs, workspaces, containers, and windows
@@ -188,5 +188,5 @@ I am not sure if this is with gliver or river, but it seems to me that there are
 ** DONE switching workspace focuses container but doesn't focus active window
 focused window remain the previous one, maybe a missing dirty manage sequence?
 
-** TODO create a list where all destroyable references are stored
+** DONE create a list where all destroyable references are stored
 to keep track of what references still exist and ensure that they are all cleared up
