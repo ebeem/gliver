@@ -25,3 +25,5 @@
 	scaling information.
 	* core/config: Use different suffix for state (repl & logs) if the
 	use Wayland display is different than wayland-1 (avoid conflicts).
+	* core/helpers: Improve define-var macro to introduce key
+	#:inherit which allows variable inheritance.

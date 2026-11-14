@@ -59,15 +59,15 @@
 			"Outer gap size around containers in pixels.")
 
 ;; container border settings, managed by layouts and border drawing modules
-(define-var *container-border-width* *theme-border-width*
+(define-var *container-border-width* #:inherit *theme-border-width*
             "Default container border width in pixels.")
-(define-var *container-border-color-focused* *theme-border-color*
+(define-var *container-border-color-focused* #:inherit *theme-border-color*
             "Border color for focused containers.")
-(define-var *container-border-color-unfocused* *theme-mantle*
+(define-var *container-border-color-unfocused* #:inherit *theme-mantle*
             "Border color for unfocused containers.")
-(define-var *container-border-color-urgent* *theme-urgent-color*
+(define-var *container-border-color-urgent* #:inherit *theme-urgent-color*
             "Border color for urgent containers.")
-(define-var *container-border-radius* *theme-border-radius*
+(define-var *container-border-radius* #:inherit *theme-border-radius*
             "Default container corner radius in pixels.")
 (define-var *container-border-edges* 15
             "Bitfield of edges on which container borders are drawn.")

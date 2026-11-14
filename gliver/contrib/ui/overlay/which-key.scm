@@ -62,13 +62,13 @@
 			"Number of characters of each column")
 (define-var *which-key-delay* 200
 			"Delay in ms before showing which-key if no input is provided.")
-(define-var *which-key-keybinding-color* *theme-mauve*
+(define-var *which-key-keybinding-color* #:inherit *theme-mauve*
 			"The color of the keybinding in which key")
-(define-var *which-key-separator-color* *theme-overlay1*
+(define-var *which-key-separator-color* #:inherit *theme-overlay1*
 			"The color of the separator in which key")
-(define-var *which-key-command-color* *theme-text*
+(define-var *which-key-command-color* #:inherit *theme-text*
 			"The color of the command in which key")
-(define-var *which-key-keymap-color* *theme-yellow*
+(define-var *which-key-keymap-color* #:inherit *theme-yellow*
 			"The color of the keymap in which key")
 (define-var *which-key-keymap-prefix* "+"
 			"The prefix symbol of the keymap in which key")
@@ -79,27 +79,27 @@
 (define-var *which-key-identifier-name* "which-key-identifier-name"
             "Identifier name passed to toast and used to detect it later in order to kill it for instance.")
 
-(define-var *which-key-font* *gleui-toast-font*
+(define-var *which-key-font* #:inherit *gleui-toast-font*
 			"Font family used for which-key toast.")
-(define-var *which-key-font-size* *gleui-toast-font-size*
+(define-var *which-key-font-size* #:inherit *gleui-toast-font-size*
 			"Font size used for which-key toast.")
-(define-var *which-key-bg-color* *gleui-toast-bg-color*
+(define-var *which-key-bg-color* #:inherit *gleui-toast-bg-color*
 			"Background color for which-key toast.")
-(define-var *which-key-fg-color* *gleui-toast-fg-color*
+(define-var *which-key-fg-color* #:inherit *gleui-toast-fg-color*
 			"Text color for which-key toast.")
-(define-var *which-key-border-color* *gleui-toast-border-color*
+(define-var *which-key-border-color* #:inherit *gleui-toast-border-color*
 			"Border color for which-key toast.")
-(define-var *which-key-border-width* *gleui-toast-border-width*
+(define-var *which-key-border-width* #:inherit *gleui-toast-border-width*
 			"Border width in pixels for which-key toast.")
-(define-var *which-key-border-radius* *gleui-toast-border-radius*
+(define-var *which-key-border-radius* #:inherit *gleui-toast-border-radius*
 			"Corner border radius in pixels for which-key toast.")
 (define-var *which-key-location* 8
 			"Gliver position (1-9) for which-key toast.")
-(define-var *which-key-margin* *gleui-toast-margin*
+(define-var *which-key-margin* #:inherit *gleui-toast-margin*
 			"Margin in pixels from the screen edge for which-key toast.")
-(define-var *which-key-padding-x* *gleui-toast-padding-x*
+(define-var *which-key-padding-x* #:inherit *gleui-toast-padding-x*
 			"Padding horizontal content in pixels for which-key toast.")
-(define-var *which-key-padding-y* *gleui-toast-padding-y*
+(define-var *which-key-padding-y* #:inherit *gleui-toast-padding-y*
 			"Padding vertical content in pixels for which-key toast.")
 
 (define (%which-key-theme-overrides)

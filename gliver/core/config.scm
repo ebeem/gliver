@@ -249,27 +249,27 @@
             "Default window corner radius in pixels.")
 
 ;; general colors
-(define-var *theme-bg-main* *theme-base*
+(define-var *theme-bg-main* #:inherit *theme-base*
             "Main background color used for windows and primary surfaces.")
-(define-var *theme-bg-dim* *theme-crust*
+(define-var *theme-bg-dim* #:inherit *theme-crust*
             "Dimmed background color for sunken or secondary areas.")
-(define-var *theme-fg-main* *theme-text*
+(define-var *theme-fg-main* #:inherit *theme-text*
             "Main foreground color for primary text.")
-(define-var *theme-fg-dim* *theme-subtext0*
+(define-var *theme-fg-dim* #:inherit *theme-subtext0*
             "Dimmed foreground color for subtle or secondary text.")
-(define-var *theme-fg-alt* *theme-mauve*
+(define-var *theme-fg-alt* #:inherit *theme-mauve*
             "Alternative foreground color for highlighted text.")
-(define-var *theme-bg-active* *theme-surface1*
+(define-var *theme-bg-active* #:inherit *theme-surface1*
             "Background color for active or focused elements.")
-(define-var *theme-bg-inactive* *theme-surface0*
+(define-var *theme-bg-inactive* #:inherit *theme-surface0*
             "Background color for unfocused or inactive elements.")
-(define-var *theme-border-color* *theme-fg-alt*
+(define-var *theme-border-color* #:inherit *theme-fg-alt*
             "Default color used for window borders.")
-(define-var *theme-urgent-color* *theme-red*
+(define-var *theme-urgent-color* #:inherit *theme-red*
             "Accent color used to indicate urgent or error states.")
 
 ;; container and window borders
-(define-var *window-border-width* *theme-border-width*
+(define-var *window-border-width* #:inherit *theme-border-width*
             "Default window border width in pixels.")
 (define-var *window-border-color-focused* "#00000000"
             "Border color for focused windows.")
@@ -279,37 +279,37 @@
             "Border color for urgent windows.")
 
 ;;; palette/launcher options
-(define-var *palette-font* *theme-font*
+(define-var *palette-font* #:inherit *theme-font*
             "Font family string used inside the launcher palette.")
-(define-var *palette-font-size* *theme-font-size*
+(define-var *palette-font-size* #:inherit *theme-font-size*
             "Font size in points for the launcher palette.")
-(define-var *palette-icon-color* *theme-blue*
+(define-var *palette-icon-color* #:inherit *theme-blue*
             "Color used for rendering candidate icons in the palette.")
-(define-var *palette-name-color* *theme-text*
+(define-var *palette-name-color* #:inherit *theme-text*
             "Color used for displaying candidate names in the palette.")
-(define-var *palette-value-color* *theme-fg-alt*
+(define-var *palette-value-color* #:inherit *theme-fg-alt*
             "Color used for displaying item values in the palette.")
-(define-var *palette-help-color* *theme-peach*
+(define-var *palette-help-color* #:inherit *theme-peach*
             "Color used for help text and keybinding hints.")
-(define-var *palette-doc-color* *theme-green*
+(define-var *palette-doc-color* #:inherit *theme-green*
             "Color used for rendering variable documentation text.")
 (define-var *palette-prompt* "> "
             "Prompt string displayed before the input field in the palette.")
-(define-var *palette-prompt-color* *theme-fg-alt*
+(define-var *palette-prompt-color* #:inherit *theme-fg-alt*
             "Color used for rendering prompt text.")
-(define-var *palette-input-bg-color* *theme-surface0*
+(define-var *palette-input-bg-color* #:inherit *theme-surface0*
             "Color used for prompt text background.")
-(define-var *palette-input-border-color* *theme-border-color*
+(define-var *palette-input-border-color* #:inherit *theme-border-color*
             "Color used for prompt text border.")
 (define-var *palette-cursor-width* 2.0
             "Width of palette cursor.")
-(define-var *palette-cursor-color* *theme-text*
+(define-var *palette-cursor-color* #:inherit *theme-text*
             "Color used for palette cursor.")
-(define-var *palette-candidates-count-color* *theme-overlay2*
+(define-var *palette-candidates-count-color* #:inherit *theme-overlay2*
             "Color used for palette candidates counter.")
-(define-var *palette-no-candidates-count-color* *theme-red*
+(define-var *palette-no-candidates-count-color* #:inherit *theme-red*
             "Color used for palette candidates counter when empty.")
-(define-var *palette-no-candidates-text-color* *theme-overlay2*
+(define-var *palette-no-candidates-text-color* #:inherit *theme-overlay2*
             "Color used for palette candidates text when empty.")
 (define-var *palette-case-sensitive?* #f
             "Whether string filtering in the palette is case sensitive.")
@@ -329,27 +329,27 @@
             "Name of the specific monitor/output to show the palette on, or #f for active.")
 (define-var *palette-icon-theme* #f
             "Icon theme name used for palette candidates, or #f for system default.")
-(define-var *palette-bg-color* *theme-bg-main*
+(define-var *palette-bg-color* #:inherit *theme-bg-main*
             "Background color of the palette window.")
-(define-var *palette-fg-color* *theme-fg-main*
+(define-var *palette-fg-color* #:inherit *theme-fg-main*
             "Foreground text color of the palette window.")
-(define-var *palette-selected-fg-color* *theme-fg-alt*
+(define-var *palette-selected-fg-color* #:inherit *theme-fg-alt*
             "Highlight color used for the currently selected candidate entry.")
-(define-var *palette-selected-bg-color* *theme-surface1*
+(define-var *palette-selected-bg-color* #:inherit *theme-surface1*
             "Color used for background of the currently selected candidate entry.")
 (define-var *palette-selected-radius* 0
             "Radius used for background of the currently selected candidate entry.")
 (define-var *palette-anchor-margin* 80
             "Margin used in palette form anchor direction defined in *palette-location*.")
-(define-var *palette-urgent-color* *theme-urgent-color*
+(define-var *palette-urgent-color* #:inherit *theme-urgent-color*
             "Color used for urgent or high-priority candidate rows.")
-(define-var *palette-border-color* *theme-border-color*
+(define-var *palette-border-color* #:inherit *theme-border-color*
             "Border color around the palette window.")
-(define-var *palette-border-width* *theme-border-width*
+(define-var *palette-border-width* #:inherit *theme-border-width*
             "Border width of the palette window in pixels.")
-(define-var *palette-border-radius* *theme-border-radius*
+(define-var *palette-border-radius* #:inherit *theme-border-radius*
             "Corner border radius of the palette window in pixels.")
-(define-var *palette-match-color* *theme-red*
+(define-var *palette-match-color* #:inherit *theme-red*
             "Color used to highlight query keywords in search results (defaults to red).")
 (define-var *palette-repeat-rate* 25
             "Key repeat rate in characters per second.")
@@ -441,11 +441,11 @@ following the same order in a keyboard numpad
             "Vertical inner padding of the statusbar.")
 (define-var *statusbar-spacing* 6
             "Spacing in pixels between module capsules.")
-(define-var *statusbar-bg-color* *theme-bg-main*
+(define-var *statusbar-bg-color* #:inherit *theme-bg-main*
             "Background color of the statusbar (hex string, supports RGBA).")
-(define-var *statusbar-fg-color* *theme-fg-main*
+(define-var *statusbar-fg-color* #:inherit *theme-fg-main*
             "Default foreground text color of the statusbar.")
-(define-var *statusbar-border-color* *theme-fg-alt*
+(define-var *statusbar-border-color* #:inherit *theme-fg-alt*
             "Border color of the statusbar.")
 (define-var *statusbar-border-width* 0
             "Border width of the statusbar in pixels (0 for no border).")
@@ -457,7 +457,7 @@ following the same order in a keyboard numpad
             "Default horizontal padding inside module capsules.")
 (define-var *statusbar-pill-padding-y* 3
             "Default vertical padding inside module capsules.")
-(define-var *statusbar-font* *theme-font*
+(define-var *statusbar-font* #:inherit *theme-font*
             "Font family string used inside the statusbar.")
 (define-var *statusbar-font-size* 12
             "Font size in points for statusbar text.")
