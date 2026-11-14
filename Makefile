@@ -237,10 +237,17 @@ clean:
 	rm -rf "$${XDG_CACHE_HOME:-$$HOME/.cache}/guile/ccache/"*"$(CURDIR)"
 
 run:
-	cd $$HOME && $(CURDIR)/bin/gliver
+	cd $$HOME && \
+	GLIVER_SOURCE_DIR="$(CURDIR)" \
+	GLIVER_COMPILED_DIR="$(CURDIR)/build" \
+	$(CURDIR)/bin/gliver
 
 debug:
-	cd $$HOME && GUILE_AUTO_COMPILE=0 $(CURDIR)/bin/gliver
+	cd $$HOME && \
+	GLIVER_SOURCE_DIR="$(CURDIR)" \
+	GLIVER_COMPILED_DIR="$(CURDIR)/build" \
+	GUILE_AUTO_COMPILE=0 \
+	$(CURDIR)/bin/gliver
 
 repl:
 	./bin/gliver-repl
