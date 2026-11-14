@@ -27,6 +27,7 @@
 			wallpaper-output-state-listener
 			wallpaper-output-state-configured?
 			wallpaper-output-state-rendered-height
+			wallpaper-output-state-rendered-scale
 			wallpaper-output-state-rendered-width
 			wallpaper-output-state-rendered-wallpaper
 			wallpaper-output-state-buffer
@@ -47,6 +48,7 @@
 			wallpaper-on-workspace-switch
 			wallpaper-update-output!
 			wallpaper-on-output-dimensions
+			wallpaper-on-surface-scale-changed
 			wallpaper-cleanup-all!
 			wallpaper-cleanup-output!
 			wallpaper-update-all!
@@ -73,7 +75,7 @@
 (define-record-type <wallpaper-output-state>
   (%make-wallpaper-output-state output surface layer-surface buffer
 								rendered-wallpaper rendered-width rendered-height
-								configured?)
+								configured? rendered-scale)
   wallpaper-output-state?
   (output              wallpaper-output-state-output)
   (surface             wallpaper-output-state-surface             %wallpaper-output-state-surface-set!)
@@ -82,7 +84,8 @@
   (rendered-wallpaper  wallpaper-output-state-rendered-wallpaper  %wallpaper-output-state-rendered-wallpaper-set!)
   (rendered-width      wallpaper-output-state-rendered-width      %wallpaper-output-state-rendered-width-set!)
   (rendered-height     wallpaper-output-state-rendered-height     %wallpaper-output-state-rendered-height-set!)
-  (configured?         wallpaper-output-state-configured?         %wallpaper-output-state-configured?-set!))
+  (configured?         wallpaper-output-state-configured?         %wallpaper-output-state-configured?-set!)
+  (rendered-scale      wallpaper-output-state-rendered-scale      %wallpaper-output-state-rendered-scale-set!))
 
 ;; hash table: output-id -> <wallpaper-output-state>
 (define-var *wallpaper-output-table* (make-hash-table)
@@ -123,6 +126,9 @@ Parameters: (DATA PROXY-LAYER-SURFACE SERIAL WIDTH HEIGHT)
   (and-let* ((state (%wallpaper-find-state-by-layer-surface proxy)))
     (wlr-layer-surface-ack-configure proxy serial)
     (let* ((output (wallpaper-output-state-output state))
+           (surface (wallpaper-output-state-surface state))
+           (scale (surface-scale surface))  ;; returns 1.0 on failure
+           (prev-scale (wallpaper-output-state-rendered-scale state))
            (prev-w (wallpaper-output-state-rendered-width state))
            (prev-h (wallpaper-output-state-rendered-height state))
            (prev-wp (wallpaper-output-state-rendered-wallpaper state))
@@ -134,6 +140,7 @@ Parameters: (DATA PROXY-LAYER-SURFACE SERIAL WIDTH HEIGHT)
       (if (and has-buf?
                (= prev-w width)
                (= prev-h height)
+               (< (abs (- prev-scale scale)) 1e-5)
                (equal? prev-wp eff-wp))
           (log-debug "wallpaper: configure unchanged for ~a (~ax~a), skipping re-render"
                      (output-name output) width height)
@@ -209,30 +216,36 @@ Returns: Wayland buffer foreign pointer on success, %null-pointer on failure."
                               (log-error "wallpaper: error creating wl_buffer: ~a ~a" k args)
                               %null-pointer)))))))))))
 
-(define (wallpaper-buffer-render wp width height)
+(define* (wallpaper-buffer-render wp width height #:optional (scale 1.0) (surface #f))
   "Create and return a wl_buffer containing the rendered wallpaper WP for size WIDTHxHEIGHT using Cairo.
-Parameters: (WP WIDTH HEIGHT)
+Parameters: (WP WIDTH HEIGHT [SCALE] [SURFACE])
   - WP: Wallpaper specification (file path string or hex color string).
   - WIDTH: Target width in pixels.
   - HEIGHT: Target height in pixels.
+  - SCALE: Scaling factor.
+  - SURFACE: Associated wl_surface pointer (optional, unused).
 Returns: Wayland buffer foreign pointer on success, %null-pointer on failure."
-  ;; create the shared memory wl_buffer by providing width, height, and painting callback
-  (wallpaper-shm-buffer-create
-   width height
-   (lambda (ptr bv stride size width height)
-     (let* ((dst-surface (cairo-image-surface-create-for-data bv 'argb32 width height stride))
-            (cr (cairo-create dst-surface))
-            (paint-bg! (lambda ()
-                         (apply (lambda (r g b a) (cairo-set-source-rgba cr r g b a))
-                                (parse-hex-color-rgba *theme-bg-main*))
-                         (cairo-paint cr)))
-            (paint-pattern! (lambda (src-surface extend-mode)
-                              (let ((pat (cairo-pattern-create-for-surface src-surface)))
-                                (when extend-mode (cairo-pattern-set-extend pat extend-mode))
-                                (cairo-pattern-set-filter pat 'best)
-                                (cairo-set-source cr pat)
-                                (cairo-paint cr))))
-            (rendered? #f))
+  (let* ((s (if (and (number? scale) (> scale 0))
+				scale 1.0))
+         (w-scaled (inexact->exact (round (* width s))))
+         (h-scaled (inexact->exact (round (* height s)))))
+    ;; create the shared memory wl_buffer by providing width, height, and painting callback
+    (wallpaper-shm-buffer-create
+     w-scaled h-scaled
+     (lambda (ptr bv stride size buf-w buf-h)
+       (let* ((dst-surface (cairo-image-surface-create-for-data bv 'argb32 buf-w buf-h stride))
+              (cr (cairo-create dst-surface))
+              (paint-bg! (lambda ()
+                           (apply (lambda (r g b a) (cairo-set-source-rgba cr r g b a))
+                                  (parse-hex-color-rgba *theme-bg-main*))
+                           (cairo-paint cr)))
+              (paint-pattern! (lambda (src-surface extend-mode)
+                                (let ((pat (cairo-pattern-create-for-surface src-surface)))
+                                  (when extend-mode (cairo-pattern-set-extend pat extend-mode))
+                                  (cairo-pattern-set-filter pat 'best)
+                                  (cairo-set-source cr pat)
+                                  (cairo-paint cr))))
+              (rendered? #f))
 
        ;; wallpaper is hex color string RGB or RGBA format (e.g. "#ffffff")
        (when (and (string? wp) (hex-color? wp))
@@ -262,8 +275,8 @@ Returns: Wayland buffer foreign pointer on success, %null-pointer on failure."
                (when src-surface
                  (let* ((src-width (exact->inexact (cairo-image-surface-get-width src-surface)))
                         (src-height (exact->inexact (cairo-image-surface-get-height src-surface)))
-                        (dst-width (exact->inexact width))
-                        (dst-height (exact->inexact height))
+                        (dst-width (exact->inexact buf-w))
+                        (dst-height (exact->inexact buf-h))
                         (mode (or *wallpaper-mode* 'fill)))
                    (cond
                     ((eq? mode 'stretch)
@@ -285,12 +298,14 @@ Returns: Wayland buffer foreign pointer on success, %null-pointer on failure."
                     ;; 'fit or 'fill (default)
                     (else
                      (when (eq? mode 'fit) (paint-bg!))
-                     (let* ((scale ((if (eq? mode 'fit) min max) (/ dst-width src-width) (/ dst-height src-height)))
-                            (off-x (/ (- dst-width (* src-width scale)) 2.0))
-                            (off-y (/ (- dst-height (* src-height scale)) 2.0)))
+                     (let* ((img-scale ((if (eq? mode 'fit) min max)
+										(/ dst-width src-width)
+										(/ dst-height src-height)))
+                            (off-x (/ (- dst-width (* src-width img-scale)) 2.0))
+                            (off-y (/ (- dst-height (* src-height img-scale)) 2.0)))
                        (cairo-save cr)
                        (cairo-translate cr off-x off-y)
-                       (cairo-scale cr scale scale)
+                       (cairo-scale cr img-scale img-scale)
                        (paint-pattern! src-surface #f)
                        (cairo-restore cr))))
                    (cairo-surface-destroy src-surface)
@@ -302,7 +317,7 @@ Returns: Wayland buffer foreign pointer on success, %null-pointer on failure."
 
        (cairo-surface-flush dst-surface)
        (cairo-destroy cr)
-       (cairo-surface-destroy dst-surface)))))
+       (cairo-surface-destroy dst-surface))))))
 
 (define (wallpaper-render-and-commit! output state)
   "Render the effective wallpaper for OUTPUT and commit the surface.
@@ -312,18 +327,22 @@ Parameters: (OUTPUT STATE)
   (let* ((wp (output-effective-wallpaper output))
          (width (wallpaper-output-state-rendered-width state))
          (height (wallpaper-output-state-rendered-height state))
-         (surface (wallpaper-output-state-surface state)))
+         (surface (wallpaper-output-state-surface state))
+         (scale (surface-scale surface)))
     (when (and (> width 0) (> height 0) (valid-pointer? surface))
-      (log-info "wallpaper: rendering wallpaper ~s for output ~a (~ax~a)"
-                 wp (output-name output) width height)
-      (let ((new-buffer (wallpaper-buffer-render wp width height))
+      (log-info "wallpaper: rendering wallpaper ~s for output ~a (~ax~a scale ~a)"
+                 wp (output-name output) width height scale)
+      (let ((new-buffer (wallpaper-buffer-render wp width height scale surface))
             (old-buffer (wallpaper-output-state-buffer state)))
         (when (valid-pointer? new-buffer)
           ;; cache new wallpaper buffer and rendered wallpaper spec
           (%wallpaper-output-state-buffer-set! state new-buffer)
           (%wallpaper-output-state-rendered-wallpaper-set! state wp)
+          (%wallpaper-output-state-rendered-scale-set! state scale)
 
-          ;; Wayland surface commit cycle: attach, damage, and commit
+          ;; Wayland surface commit cycle: set viewport / buffer scale, attach, damage, and commit
+          (surface-viewport-destination-set! surface width height)
+          (wl-surface-set-buffer-scale surface 1)
           (wl-surface-attach surface new-buffer 0 0)
           (wl-surface-damage surface 0 0 width height)
           (wl-surface-commit surface)
@@ -353,25 +372,20 @@ Parameters: (OUTPUT)
             (let ((surface (wl-compositor-create-surface *wl-compositor*)))
               (if (not (valid-pointer? surface))
                   (log-error "wallpaper: failed to create surface for output ~a" (output-name output))
-                  (let ((layer-surf
-                         (catch #t
-                           (lambda ()
-                             (wlr-layer-shell-get-layer-surface
-                              *wlr-layer-shell*
-                              surface
-                              wl-out
-                              *wlr-layer-shell-layer-background*
-                              "gliver-wallpaper"))
-                           (lambda (k . args)
-                             (log-error "wallpaper: failed to create layer surface: ~a ~a" k args)
-                             #f))))
+                  (let ((scale-surf (surface-scale-create surface output))
+						(layer-surf (wlr-layer-shell-get-layer-surface
+									 *wlr-layer-shell* surface wl-out
+									 *wlr-layer-shell-layer-background* "gliver-wallpaper")))
                     (if (not (valid-pointer? layer-surf))
-                        (wl-surface-destroy surface)
+                        (begin
+                          (surface-scale-destroy surface)
+                          (wl-surface-destroy surface))
                         (let* ((init-width (output-width output))
                                (init-height (output-height output))
+                               (init-scale (surface-scale surface 1.0))
                                (state (%make-wallpaper-output-state
                                        output surface layer-surf %null-pointer
-                                       #f init-width init-height #f)))
+                                       #f init-width init-height #f init-scale)))
 
                           ;; configure layer surface geometry and behavior
                           (wlr-layer-surface-set-size layer-surf init-width init-height)
@@ -439,6 +453,18 @@ Parameters: (OUTPUT)
               (wallpaper-render-and-commit! output state)))
           (wallpaper-init-output! output)))))
 
+(define* (wallpaper-on-surface-scale-changed surface scale)
+  "Invoked when scaling factor changes for SURFACE."
+  (when *wallpaper-manager-enabled*
+    (for-each
+     (lambda (state)
+       (when (and state
+                  (wallpaper-output-state-configured? state)
+                  (equal? surface (wallpaper-output-state-surface state)))
+         (and-let* ((output (wallpaper-output-state-output state)))
+           (wallpaper-render-and-commit! output state))))
+     (hash-table-values *wallpaper-output-table*))))
+
 (define (wallpaper-on-output-dimensions output prev-width prev-height)
   "Handle dimensions change event for OUTPUT from PREV-WIDTHxPREV-HEIGHT.
 Parameters: (OUTPUT PREV-WIDTH PREV-HEIGHT)
@@ -482,6 +508,7 @@ Parameters: (OUTPUT)
           (when (valid-pointer? layer-surf)
             (wlr-layer-surface-destroy layer-surf))
           (when (valid-pointer? surface)
+            (surface-scale-destroy surface)
             (wl-surface-destroy surface))
           (when (valid-pointer? buffer)
             (wl-buffer-destroy buffer)))))))
@@ -550,6 +577,7 @@ Parameters: None."
 (gliver-hook-add! *workspace-switch-hook* 'wallpaper-on-workspace-switch)
 (gliver-hook-add! *output-object-id-changed-hook* 'wallpaper-on-output-created)
 (gliver-hook-add! *output-dimensions-changed-hook* 'wallpaper-on-output-dimensions)
+(gliver-hook-add! *surface-scale-changed-hook* 'wallpaper-on-surface-scale-changed)
 (gliver-hook-add! *gliver-globals-unbind-hook* 'wallpaper-cleanup-all!)
 (gliver-hook-add! *output-removed-hook* 'wallpaper-cleanup-output!)
 (gliver-hook-add! %wlr-layer-surface-configure-hook 'wallpaper-on-layer-surface-configure)
