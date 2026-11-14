@@ -17,29 +17,57 @@
   #:use-module (gliver river viewporter-manager)
   #:declarative? #f
   #:export (
-            *surface->scale*
+            *surface-scale-last*
+            *surface-outputs*
+            *surface-scale-output-map*
+            *surface-scale-map*
+            *surface-default-scale*
+            surface-scale-predict
             surface-scale
             surface-viewporter
+            surface-viewport-destination-set!
             surface-scale-set!
             surface-scale-create
             surface-scale-destroy
             surface-scale-on-preferred-scale
 ))
 
-(define-var *surface->scale* (make-hash-table)
+(define-var *surface-scale-last* #f
+			"Last known surface fractional scale factor (e.g. 1.25).")
+(define-var *surface-outputs* (make-hash-table)
+			"Hash-map tracking wl_surface proxy -> <output> record.")
+(define-var *surface-default-scale* 1.0
+			"Default fallback scale if no preferred scale has ever been observed.")
+(define-var *surface-scale-output-map* (make-hash-table)
+			"Hash-map caching fractional scale factor per output.
+<output> record -> scale number (e.g. 1.25).")
+(define-var *surface-scale-map* (make-hash-table)
 			"Hash-map used to track surface scales.
 surface proxy -> scale number (e.g. 1.25).")
 
-(define* (surface-scale surface #:optional (default-scale 1.0))
-  "Return current scale factor for SURFACE as a number (e.g. 1.0, 1.25, 2.0).
+(define* (surface-scale-predict #:optional (output #f))
+  "Predict the fractional scale factor for OUTPUT,
+using cached per-output scale or last known surface scale.
+Parameters: ([OUTPUT])
+  - OUTPUT: <output> record (optional).
+Returns: Scale number (float)."
+  (let* ((cached-out-scale (and (output? output)
+                                (hashq-ref *surface-scale-output-map* output))))
+    (or cached-out-scale
+        *surface-scale-last*
+        *surface-default-scale*)))
+
+(define* (surface-scale surface #:optional (default-scale #f))
+  "Return current scale factor for SURFACE as a number (e.g. 1.25).
 Parameters: (SURFACE [DEFAULT-SCALE])
   - SURFACE: Pointer to wl_surface proxy.
   - DEFAULT-SCALE: Fallback scale if not tracked or no preferred scale received.
 Returns: Scale number (float)."
-  (if (and (valid-pointer? surface)
-		   (hash-ref *surface->scale* surface))
-      (hash-ref *surface->scale* surface)
-      default-scale))
+  (or (and (valid-pointer? surface)
+           (hash-ref *surface-scale-map* surface))
+      default-scale
+      (surface-scale-predict (and (valid-pointer? surface)
+                                  (hash-ref *surface-outputs* surface)))))
 
 (define* (surface-viewporter proxy-surface)
   "Get the wp_viewport proxy associated with SURFACE.
@@ -48,31 +76,56 @@ Parameters: (PROXY-SURFACE)
 Returns: Pointer to wp_viewport or #f."
   (surface->viewport proxy-surface))
 
+(define (surface-viewport-destination-set! surface width height)
+  "Set viewport destination rectangle for SURFACE to logical WIDTHxHEIGHT.
+Parameters: (SURFACE WIDTH HEIGHT)
+  - SURFACE: Pointer to wl_surface proxy.
+  - WIDTH: Destination width.
+  - HEIGHT: Destination height."
+  (and-let* ((vp (surface-viewporter surface))
+             ((valid-pointer? vp)))
+    (viewport-set-destination vp width height)))
+
 (define (surface-scale-set! surface scale)
-  "Set stored scale factor for SURFACE.
+  "Set stored scale factor for SURFACE and update cache.
 Parameters: (SURFACE SCALE)
   - SURFACE: Pointer to wl_surface proxy.
   - SCALE: Scale factor (number)."
   (when (and (valid-pointer? surface)
 			 (number? scale)
 			 (> scale 0))
-    (hash-set! *surface->scale* surface scale)))
+    (set! *surface-scale-last* scale)
+    (and-let* ((out (hash-ref *surface-outputs* surface))
+			   ((output? out)))
+      (hashq-set! *surface-scale-output-map* out scale)))
+  (hash-set! *surface-scale-map* surface scale))
 
-(define (surface-scale-create surface)
+(define* (surface-scale-create surface #:optional (output #f))
   "Create or retrieve the wp_fractional_scale_v1 object for SURFACE.
 Also initializes wp_viewport for SURFACE.
-Parameters: (SURFACE)
+Parameters: (SURFACE [OUTPUT])
   - SURFACE: Pointer to wl_surface proxy.
+  - OUTPUT: Associated <output> record (optional).
 Returns: wp_fractional_scale_v1 proxy pointer or #f."
-  (when (and (valid-pointer? surface)
-			 (valid-pointer? *viewporter*)
-			 (valid-pointer? *fractional-scale-manager*))
-	;; this will create the viewporter and store it in river module
-	;; if it doesn't exist, surface-viewport will return it
-    (viewporter-get-for-surface surface)
-	;; this will also return cached if available
-	(fractional-scale-manager-get-fractional-scale *fractional-scale-manager*
-												   surface)))
+  (when (valid-pointer? surface)
+    (when (and output (output? output))
+      (hash-set! *surface-outputs* surface output))
+    (unless (hash-ref *surface-scale-map* surface)
+      (let ((predicted-scale (surface-scale-predict output)))
+		;; the reason why this prediction is used is that preferred scale
+		;; events take time until it's received for new surfaces, this makes
+		;; initial default scaling (1.0 by default) shows up for 100ms until
+		;; the new preferred scale is received why is not a good experience
+		;; I am not sure how this is handled in other GUI components
+		;; as in gliver's case this is only impacting gleui
+        (hash-set! *surface-scale-map* surface predicted-scale)))
+
+	;; get viewporter and fractional scale for surface
+    (when (valid-pointer? *viewporter*)
+      (viewporter-get-for-surface surface))
+    (when (valid-pointer? *fractional-scale-manager*)
+      (fractional-scale-manager-get-fractional-scale *fractional-scale-manager*
+                                                     surface))))
 
 (define (surface-scale-destroy surface)
   "Destroy the wp_fractional_scale_v1 object associated with SURFACE.
@@ -84,7 +137,8 @@ Parameters: (SURFACE)
     (and-let* ((proxy-scale (fractional-scale-find-by-surface surface))
                ((valid-pointer? proxy-scale)))
       (fractional-scale-destroy proxy-scale))
-    (hash-remove! *surface->scale* surface)))
+    (hash-remove! *surface-scale-map* surface)
+    (hash-remove! *surface-outputs* surface)))
 
 (define (surface-scale-on-preferred-scale data proxy-scale scale)
   "Invoked when PREFERRED-SCALE for PROXY-SCALE is changed.
@@ -95,7 +149,12 @@ Parameters: (DATA PROXY-SCALE SCALE)
   (and-let* ((scale-val (fractional-scale->number scale)) ; converted to float
              (surface (hash-ref *fractional-scale-surfaces* proxy-scale))
              ((valid-pointer? surface)))
-    (surface-scale-set! surface scale-val)
-    (gliver-hook-run! *surface-scale-changed-hook* surface scale-val)))
+    (let ((prev-scale (hash-ref *surface-scale-map* surface)))
+      (surface-scale-set! surface scale-val)
+      ;; Only fire hook if scale actually changed!
+      (unless (and (number? prev-scale)
+				   ;; avoid unneeded re-rendering
+				   (< (abs (- prev-scale scale-val)) 1e-5))
+        (gliver-hook-run! *surface-scale-changed-hook* surface scale-val)))))
 (gliver-hook-add! %fractional-scale-preferred-scale-hook 'surface-scale-on-preferred-scale)
 
