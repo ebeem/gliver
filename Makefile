@@ -16,6 +16,12 @@ GUILE      ?= guile
 GUILD      ?= guild
 PKG_CONFIG ?= pkg-config
 
+# allow user to specify a target build architecture
+# and supply extra arguments to guild invocations
+TARGET ?=
+GUILD_EXTRA_ARGS ?= # default -W and -O arguments
+GUILD_ARGS = $(if $(TARGET),--target=$(TARGET)) $(GUILD_EXTRA_ARGS)
+
 # export local paths so all make commands and spawned scripts resolve local modules first
 export GUILE_LOAD_PATH := $(CURDIR):$(GUILE_LOAD_PATH)
 export GUILE_LOAD_COMPILED_PATH := $(CURDIR)/build:$(GUILE_LOAD_COMPILED_PATH)
@@ -140,7 +146,7 @@ all: compile
 build/%.go: %.scm
 	@echo "Compiling $<..."
 	@mkdir -p $(dir $@)
-	@guild compile -L . -o $@ $<
+	@guild compile -L . $(GUILD_ARGS) -o $@ $<
 
 # prepare gliver/config.scm
 # to support prefixed installations.
