@@ -671,7 +671,7 @@ Parameters: (WINDOW X Y WIDTH HEIGHT)
   - HEIGHT: Integer clip box height in pixels (disabled if 0)."
   (and-let* (((window? window))
 			 (proxy-window (window-wl-proxy window)))
-    (with-manage-sequence
+    (with-render-sequence
 	 (wm-window-clip-box-set proxy-window x y width height))))
 
 (define (window-content-clip-box-set! window x y width height)
@@ -685,7 +685,7 @@ Parameters: (WINDOW X Y WIDTH HEIGHT)
   - HEIGHT: Integer content clip box height in pixels (disabled if 0)."
   (and-let* (((window? window))
 			 (proxy-window (window-wl-proxy window)))
-    (with-manage-sequence
+    (with-render-sequence
 	 (wm-window-content-clip-box-set proxy-window x y width height))))
 
 (define (window-dimension-bounds-set! window max-width max-height)
