@@ -89,9 +89,9 @@ Returns: Pointer to river_xkb_bindings_seat_v1 proxy or #f."
   "Bind river_xkb_bindings_v1 global interface from REGISTRY.
 Parameters: (REGISTRY PROTOCOL-NAME OBJECT-ID VERSION)
   - REGISTRY: Pointer to wl_registry proxy.
-  - PROTOCOL-NAME: Interface name string.
-  - OBJECT-ID: Numeric Wayland object ID.
-  - VERSION: Maximum interface version supported by compositor."
+  - PROTOCOL-NAME: String interface name.
+  - OBJECT-ID: Integer Wayland object ID.
+  - VERSION: Integer maximum interface version supported by compositor."
   (when (string=? protocol-name RIVER_XKB_BINDINGS_V1_NAME)
     (log-info "Binding ~a..." protocol-name)
     (set! *xkb-bindings-manager-bindings*
@@ -151,8 +151,9 @@ Parameters: (PROXY)
   "Create a new keybinding on PROXY-SEAT.
 Parameters: (PROXY-SEAT KEYSYM MODIFIERS)
   - PROXY-SEAT: Pointer to river_seat_v1 proxy.
-  - KEYSYM: Numeric XKB keysym value.
-  - MODIFIERS: Numeric XKB modifier bitmask."
+  - KEYSYM: Integer XKB keysym value.
+  - MODIFIERS: Integer XKB modifier bitmask.
+Returns pointer to river_xkb_binding_v1 proxy or #f."
   (when (and (valid-pointer? *xkb-bindings-manager-bindings*)
              (valid-pointer? proxy-seat)
              (integer? keysym) (>= keysym 0)
@@ -177,7 +178,8 @@ Parameters: (PROXY-SEAT KEYSYM MODIFIERS)
 (define (xkb-bindings-manager-bindings-create-seat seat-proxy)
   "Create a river_xkb_bindings_seat_v1 proxy for SEAT-PROXY.
 Parameters: (SEAT-PROXY)
-  - SEAT-PROXY: Pointer to river_seat_v1 proxy."
+  - SEAT-PROXY: Pointer to river_seat_v1 proxy.
+Returns pointer to river_xkb_bindings_seat_v1 proxy or #f."
   (when (and (valid-pointer? *xkb-bindings-manager-bindings*)
              (valid-pointer? seat-proxy))
     ;; lookup existing xkb-bindings for the seat first
@@ -219,7 +221,7 @@ Useful to execute keybindings even if layout/language is changed.
 Must be called in a manage sequence.
 Parameters: (PROXY LAYOUT)
   - PROXY: Pointer to river_xkb_binding_v1 proxy.
-  - LAYOUT: Numeric layout index (0-indexed)."
+  - LAYOUT: Integer 0-based layout index."
   (when (and (valid-pointer? proxy)
              (member proxy *xkb-bindings-manager-binding-list*)
              (integer? layout) (>= layout 0))
@@ -255,7 +257,7 @@ Parameters: (PROXY)
 (define (xkb-bindings-manager-on-binding-pressed data proxy-binding)
   "Invoked when key binding is pressed.
 Parameters: (DATA PROXY-BINDING)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-BINDING: Pointer to river_xkb_binding_v1 proxy."
   (when *log-river-calls*
     (log-debug "Key pressed on xkb binding ~a" proxy-binding))
@@ -264,7 +266,7 @@ Parameters: (DATA PROXY-BINDING)
 (define (xkb-bindings-manager-on-binding-released data proxy-binding)
   "Invoked when key binding is released.
 Parameters: (DATA PROXY-BINDING)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-BINDING: Pointer to river_xkb_binding_v1 proxy."
   (when *log-river-calls*
     (log-debug "Key released on xkb binding ~a" proxy-binding))
@@ -273,7 +275,7 @@ Parameters: (DATA PROXY-BINDING)
 (define (xkb-bindings-manager-on-binding-stop-repeat data proxy-binding)
   "Invoked when key binding repeat is stopped.
 Parameters: (DATA PROXY-BINDING)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-BINDING: Pointer to river_xkb_binding_v1 proxy."
   (when *log-river-calls*
     (log-debug "Repeat stopped on xkb binding ~a" proxy-binding))
@@ -336,7 +338,7 @@ Parameters: None."
 (define (xkb-bindings-manager-on-bindings-seat-ate data proxy-seat)
   "Invoked when a binding is eaten on seat.
 Parameters: (DATA PROXY-SEAT)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-SEAT: Pointer to river_xkb_bindings_seat_v1 proxy."
   (when (valid-pointer? proxy-seat)
     (when *log-river-calls*

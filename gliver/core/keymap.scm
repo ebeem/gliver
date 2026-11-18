@@ -46,7 +46,7 @@ Returns registered <keymap> record."
 (define (keymap-find name)
   "Find a registered <keymap> by symbol or string NAME, or return #f.
 Parameters: (NAME)
-  - NAME: Keymap name symbol or string.
+  - NAME: <keymap> record, symbol, or string keymap name.
 Returns matching <keymap> record or #f."
   (cond
    ((keymap? name) name)
@@ -64,7 +64,7 @@ Returns matching <keymap> record or #f."
 (define (keymap-mode keymap)
   "Return the active mode symbol for KEYMAP.
 Parameters: (KEYMAP)
-  - KEYMAP: Target <keymap> record or mode symbol.
+  - KEYMAP: <keymap> record, symbol, or value representing the keymap mode.
 Returns symbol."
   (cond
    ((keymap? keymap) (keymap-name keymap))
@@ -74,7 +74,7 @@ Returns symbol."
 (define (keymap-passthrough-mode? mode-name)
   "Return #t if MODE-NAME corresponds to a passthrough keymap.
 Parameters: (MODE-NAME)
-  - MODE-NAME: Keymap record or mode name symbol.
+  - MODE-NAME: <keymap> record, symbol, or string mode name.
 Returns #t if mode is passthrough, #f otherwise."
   (and-let* ((keymap (if (keymap? mode-name)
                          mode-name
@@ -84,7 +84,7 @@ Returns #t if mode is passthrough, #f otherwise."
 (define* (define-keymap name #:key (passthrough? #f))
   "Create, register, and return a new <keymap> named NAME.
 Parameters: (NAME [#:passthrough? PASSTHROUGH?])
-  - NAME: Keymap name symbol or string.
+  - NAME: Symbol or string keymap name.
   - PASSTHROUGH?: Boolean flag; when #t, unbound keys pass through to focused window (default #f).
 Returns newly created and registered <keymap> record."
   (let ((keymap (make-keymap name #:passthrough? passthrough?)))
@@ -94,14 +94,14 @@ Returns newly created and registered <keymap> record."
 (define (keymap->alist keymap)
   "Return an alist of (key-string . binding) for all bindings in KEYMAP.
 Parameters: (KEYMAP)
-  - KEYMAP: Target <keymap> record.
+  - KEYMAP: <keymap> record to convert.
 Returns alist of (key-string . <keybinding>) pairs."
   (hash-table->alist (keymap-bindings keymap)))
 
 (define (keymap-clear! keymap)
   "Remove all bindings from KEYMAP.
 Parameters: (KEYMAP)
-  - KEYMAP: Target <keymap> record."
+  - KEYMAP: <keymap> record to clear."
   (hash-table-walk (keymap-bindings keymap)
                    (lambda (key value)
                      (hash-table-delete! (keymap-bindings keymap) key))))

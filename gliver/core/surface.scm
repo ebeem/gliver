@@ -49,8 +49,8 @@ surface proxy -> scale number (e.g. 1.25).")
   "Predict the fractional scale factor for OUTPUT,
 using cached per-output scale or last known surface scale.
 Parameters: ([OUTPUT])
-  - OUTPUT: <output> record (optional).
-Returns: Scale number (float)."
+  - OUTPUT: <output> record or #f (optional).
+Returns float scale factor."
   (let* ((cached-out-scale (and (output? output)
                                 (hashq-ref *surface-scale-output-map* output))))
     (or cached-out-scale
@@ -58,11 +58,11 @@ Returns: Scale number (float)."
         *surface-default-scale*)))
 
 (define* (surface-scale surface #:optional (default-scale #f))
-  "Return current scale factor for SURFACE as a number (e.g. 1.25).
+  "Return current scale factor for SURFACE as a float (e.g. 1.25).
 Parameters: (SURFACE [DEFAULT-SCALE])
-  - SURFACE: Pointer to wl_surface proxy.
-  - DEFAULT-SCALE: Fallback scale if not tracked or no preferred scale received.
-Returns: Scale number (float)."
+  - SURFACE: Pointer to Wayland wl_surface.
+  - DEFAULT-SCALE: Float or #f; fallback scale if not tracked or no preferred scale received.
+Returns float scale factor."
   (or (and (valid-pointer? surface)
            (hash-ref *surface-scale-map* surface))
       default-scale
@@ -72,16 +72,16 @@ Returns: Scale number (float)."
 (define* (surface-viewporter proxy-surface)
   "Get the wp_viewport proxy associated with SURFACE.
 Parameters: (PROXY-SURFACE)
-  - PROXY-SURFACE: Pointer to wl_surface proxy.
+  - PROXY-SURFACE: Pointer to Wayland wl_surface.
 Returns: Pointer to wp_viewport or #f."
   (surface->viewport proxy-surface))
 
 (define (surface-viewport-destination-set! surface width height)
   "Set viewport destination rectangle for SURFACE to logical WIDTHxHEIGHT.
 Parameters: (SURFACE WIDTH HEIGHT)
-  - SURFACE: Pointer to wl_surface proxy.
-  - WIDTH: Destination width.
-  - HEIGHT: Destination height."
+  - SURFACE: Pointer to Wayland wl_surface.
+  - WIDTH: Integer destination width in logical pixels.
+  - HEIGHT: Integer destination height in logical pixels."
   (and-let* ((vp (surface-viewporter surface))
              ((valid-pointer? vp)))
     (viewport-set-destination vp width height)))
@@ -89,8 +89,8 @@ Parameters: (SURFACE WIDTH HEIGHT)
 (define (surface-scale-set! surface scale)
   "Set stored scale factor for SURFACE and update cache.
 Parameters: (SURFACE SCALE)
-  - SURFACE: Pointer to wl_surface proxy.
-  - SCALE: Scale factor (number)."
+  - SURFACE: Pointer to Wayland wl_surface.
+  - SCALE: Float scale factor."
   (when (and (valid-pointer? surface)
 			 (number? scale)
 			 (> scale 0))
@@ -104,11 +104,11 @@ Parameters: (SURFACE SCALE)
   "Create or retrieve the wp_fractional_scale_v1 object for SURFACE.
 Also initializes wp_viewport for SURFACE.
 Parameters: (SURFACE [OUTPUT])
-  - SURFACE: Pointer to wl_surface proxy.
-  - OUTPUT: Associated <output> record (optional).
+  - SURFACE: Pointer to Wayland wl_surface.
+  - OUTPUT: <output> record or #f (optional).
 Returns: wp_fractional_scale_v1 proxy pointer or #f."
   (when (valid-pointer? surface)
-    (when (and output (output? output))
+    (when (output? output)
       (hash-set! *surface-outputs* surface output))
     (unless (hash-ref *surface-scale-map* surface)
       (let ((predicted-scale (surface-scale-predict output)))
@@ -131,7 +131,7 @@ Returns: wp_fractional_scale_v1 proxy pointer or #f."
   "Destroy the wp_fractional_scale_v1 object associated with SURFACE.
 Also destroys any associated wp_viewport object.
 Parameters: (SURFACE)
-  - SURFACE: Pointer to wl_surface proxy."
+  - SURFACE: Pointer to Wayland wl_surface."
   (when (valid-pointer? surface)
     (viewporter-destroy-for-surface surface)
     (and-let* ((proxy-scale (fractional-scale-find-by-surface surface))
@@ -143,9 +143,9 @@ Parameters: (SURFACE)
 (define (surface-scale-on-preferred-scale data proxy-scale scale)
   "Invoked when PREFERRED-SCALE for PROXY-SCALE is changed.
 Parameters: (DATA PROXY-SCALE SCALE)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-SCALE: Pointer to wp_fractional_scale_v1 proxy.
-  - SCALE: Preferred scale with denominator 120 (uint32)."
+  - SCALE: Integer preferred scale numerator with denominator 120 (uint32)."
   (and-let* ((scale-val (fractional-scale->number scale)) ; converted to float
              (surface (hash-ref *fractional-scale-surfaces* proxy-scale))
              ((valid-pointer? surface)))

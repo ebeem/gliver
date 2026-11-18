@@ -4,6 +4,7 @@
 ;;; SPDX-License-Identifier: GPL-3.0-or-later
 
 (define-module (gliver river)
+  #:use-module (gliver core helpers)
   #:use-module (gliver river connector)
   #:use-module (gliver river xkb-bindings-manager)
   #:use-module (gliver river xkb-config-manager)
@@ -20,14 +21,6 @@
   #:use-module (gliver river fractional-scale-manager)
   #:use-module (gliver river viewporter-manager)
   #:declarative? #f)
-
-(define-syntax re-export-modules
-  (syntax-rules ()
-    ((_ (mod ...) ...)
-     (begin
-       (module-use! (module-public-interface (current-module))
-                    (resolve-interface '(mod ...)))
-       ...))))
 
 (re-export-modules (gliver river connector)
                    (gliver river xkb-bindings-manager)

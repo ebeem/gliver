@@ -77,9 +77,9 @@ Matches PROTOCOL-NAME against `RIVER_INPUT_MANAGER_V1_NAME` and binds OBJECT-ID
 with VERSION.
 Parameters: (REGISTRY PROTOCOL-NAME OBJECT-ID VERSION)
   - REGISTRY: Pointer to wl_registry proxy.
-  - PROTOCOL-NAME: Interface name string.
-  - OBJECT-ID: Numeric Wayland object ID.
-  - VERSION: Maximum interface version supported by compositor."
+  - PROTOCOL-NAME: String interface name.
+  - OBJECT-ID: Integer Wayland object ID.
+  - VERSION: Integer maximum interface version supported by compositor."
   (when (string=? protocol-name RIVER_INPUT_MANAGER_V1_NAME)
     (log-info "Binding ~a..." protocol-name)
     (set! *input-manager*
@@ -182,7 +182,7 @@ Parameters: (PROXY-MANAGER NAME)
   "Invoked when river compositor indicates that it will send no further events
 on river_input_manager_v1. The client should destroy the object.
 Parameters: (DATA PROXY-MANAGER)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-MANAGER: Pointer to river_input_manager_v1 proxy."
   (when *log-river-calls*
     (log-debug "Input manager finished: ~a" proxy-manager))
@@ -192,7 +192,7 @@ Parameters: (DATA PROXY-MANAGER)
 (define (input-manager-on-input-device data proxy-manager proxy-device)
   "Invoked when a new input device is advertised by compositor.
 Parameters: (DATA PROXY-MANAGER PROXY-DEVICE)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-MANAGER: Pointer to river_input_manager_v1 proxy.
   - PROXY-DEVICE: Pointer to river_input_device_v1 proxy."
   (when *log-river-calls*
@@ -241,8 +241,8 @@ Has no effect if the device is not a keyboard. Negative values for either
 rate or delay are illegal. A rate of zero will disable any repeating.
 Parameters: (PROXY-DEVICE RATE DELAY)
   - PROXY-DEVICE: Pointer to river_input_device_v1 proxy.
-  - RATE: Rate in key repeats per second.
-  - DELAY: Delay in milliseconds."
+  - RATE: Integer rate in key repeats per second.
+  - DELAY: Integer delay in milliseconds."
   (when (and (valid-pointer? proxy-device)
              (member proxy-device *input-devices*)
              (integer? rate) (>= rate 0)
@@ -258,7 +258,7 @@ Has no effect if the device is not a pointer. Setting a scroll factor
 less than 0 is a protocol error.
 Parameters: (PROXY-DEVICE FACTOR)
   - PROXY-DEVICE: Pointer to river_input_device_v1 proxy.
-  - FACTOR: Scroll factor multiplier (fixed point number or inexact float)."
+  - FACTOR: Float scroll factor multiplier."
   (when (and (valid-pointer? proxy-device)
              (member proxy-device *input-devices*)
              (number? factor) (>= factor 0))
@@ -295,10 +295,10 @@ Width and height must be greater than or equal to 0. Passing 0 for width
 or height clears an existing mapping.
 Parameters: (PROXY-DEVICE X Y WIDTH HEIGHT)
   - PROXY-DEVICE: Pointer to river_input_device_v1 proxy.
-  - X: Horizontal coordinate in compositor space.
-  - Y: Vertical coordinate in compositor space.
-  - WIDTH: Rectangle width (>= 0).
-  - HEIGHT: Rectangle height (>= 0)."
+  - X: Integer horizontal coordinate in compositor space.
+  - Y: Integer vertical coordinate in compositor space.
+  - WIDTH: Integer rectangle width (>= 0).
+  - HEIGHT: Integer rectangle height (>= 0)."
   (when (and (valid-pointer? proxy-device)
              (member proxy-device *input-devices*)
              (integer? x) (integer? y)
@@ -313,7 +313,7 @@ Parameters: (PROXY-DEVICE X Y WIDTH HEIGHT)
 (define (input-device-on-removed data proxy-device)
   "Invoked when an input device is removed from compositor.
 Parameters: (DATA PROXY-DEVICE)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-DEVICE: Pointer to river_input_device_v1 proxy."
   (when *log-river-calls*
     (log-debug "Input device removed: ~a" proxy-device))
@@ -324,9 +324,9 @@ Parameters: (DATA PROXY-DEVICE)
   "Invoked when the type of the input device is received.
 Sent only once when the river_input_device_v1 object is created.
 Parameters: (DATA PROXY-DEVICE TYPE)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-DEVICE: Pointer to river_input_device_v1 proxy.
-  - TYPE: Numeric enum (keyboard=0, pointer=1, touch=2, tablet=3)."
+  - TYPE: Integer enum (keyboard=0, pointer=1, touch=2, tablet=3)."
   (when *log-river-calls*
     (log-debug "Input device ~a type: ~a" proxy-device type))
   (gliver-hook-run! %input-device-type-hook data proxy-device type))
@@ -335,7 +335,7 @@ Parameters: (DATA PROXY-DEVICE TYPE)
   "Invoked when the name of the input device is received.
 Sent only once when the river_input_device_v1 object is created.
 Parameters: (DATA PROXY-DEVICE NAME-PTR)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-DEVICE: Pointer to river_input_device_v1 proxy.
   - NAME-PTR: Pointer to device name string."
   (let ((name (if (valid-pointer? name-ptr)

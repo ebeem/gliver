@@ -79,7 +79,7 @@ Parameters: None."
   "Invoked when a seat is advertised.
 Attach the river_seat_v1 listener.
 Parameters: (DATA MANAGER SEAT-PROXY)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - MANAGER: Pointer to river_window_manager_v1 proxy.
   - SEAT-PROXY: Pointer to river_seat_v1 proxy."
   (when (valid-pointer? seat-proxy)
@@ -168,8 +168,9 @@ Parameters: (PROXY-SEAT)
   "Create a pointer binding on PROXY-SEAT.
 Parameters: (PROXY-SEAT BUTTON MODIFIERS)
   - PROXY-SEAT: Pointer to river_seat_v1 proxy.
-  - BUTTON: Input event button code (e.g. BTN_LEFT from input-event-codes.h).
-  - MODIFIERS: Modifier bitmask flags (same as keyboard modifiers)."
+  - BUTTON: Integer input event button code (e.g. BTN_LEFT from input-event-codes.h).
+  - MODIFIERS: Integer modifier bitmask flags (same as keyboard modifiers).
+Returns pointer to river_pointer_binding_v1 proxy or #f."
   (when (and (valid-pointer? proxy-seat)
              (member proxy-seat *wm-seats*)
              (integer? button)
@@ -197,8 +198,8 @@ Parameters: (PROXY-SEAT NAME SIZE)
 Must be called in a manage sequence.
 Parameters: (PROXY-SEAT X Y)
   - PROXY-SEAT: Pointer to river_seat_v1 proxy.
-  - X: Horizontal logical coordinate.
-  - Y: Vertical logical coordinate."
+  - X: Integer horizontal logical coordinate.
+  - Y: Integer vertical logical coordinate."
   (when (and (valid-pointer? proxy-seat)
              (member proxy-seat *wm-seats*)
              (integer? x) (integer? y))
@@ -210,7 +211,7 @@ Parameters: (PROXY-SEAT X Y)
 (define (wm-seat-on-seat-removed data proxy-seat)
   "Invoked when a seat is removed from compositor.
 Parameters: (DATA PROXY-SEAT)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-SEAT: Pointer to river_seat_v1 proxy."
   (when *log-river-calls*
     (log-debug "Seat removed: ~a" proxy-seat))
@@ -220,9 +221,9 @@ Parameters: (DATA PROXY-SEAT)
 (define (wm-seat-on-seat-wl-seat data proxy-seat object-id)
   "Invoked when a wl_seat is advertised river_seat_v1.
 Parameters: (DATA PROXY-SEAT OBJECT-ID)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-SEAT: Pointer to river_seat_v1 proxy.
-  - OBJECT-ID: Numeric Wayland object ID of the wl_seat global."
+  - OBJECT-ID: Integer Wayland object ID of the wl_seat global."
   (when *log-river-calls*
     (log-debug "Seat wl_seat global object-id: ~a = ~a" proxy-seat object-id))
   (gliver-hook-run! %seat-object-id-changed-hook data proxy-seat object-id))
@@ -230,7 +231,7 @@ Parameters: (DATA PROXY-SEAT OBJECT-ID)
 (define (wm-seat-on-seat-pointer-enter data proxy-seat proxy-window)
   "Invoked when a seat pointer enters a window area.
 Parameters: (DATA PROXY-SEAT PROXY-WINDOW)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-SEAT: Pointer to river_seat_v1 proxy.
   - PROXY-WINDOW: Pointer to river_window_v1 proxy."
   (when *log-river-calls*
@@ -240,7 +241,7 @@ Parameters: (DATA PROXY-SEAT PROXY-WINDOW)
 (define (wm-seat-on-seat-pointer-leave data proxy-seat)
   "Invoked when a seat pointer leaves a window area.
 Parameters: (DATA PROXY-SEAT)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-SEAT: Pointer to river_seat_v1 proxy."
   (when *log-river-calls*
     (log-debug "Pointer left window"))
@@ -249,7 +250,7 @@ Parameters: (DATA PROXY-SEAT)
 (define (wm-seat-on-seat-window-interaction data proxy-seat proxy-win)
   "Invoked when a seat interacts (click or input) with a window.
 Parameters: (DATA PROXY-SEAT PROXY-WIN)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-SEAT: Pointer to river_seat_v1 proxy.
   - PROXY-WIN: Pointer to river_window_v1 proxy."
   (when *log-river-calls*
@@ -259,7 +260,7 @@ Parameters: (DATA PROXY-SEAT PROXY-WIN)
 (define (wm-seat-on-seat-shell-interaction data proxy-seat proxy-shell)
   "Invoked when a seat interacts (click or input) with a shell surface.
 Parameters: (DATA PROXY-SEAT PROXY-SHELL)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-SEAT: Pointer to river_seat_v1 proxy.
   - PROXY-SHELL: Pointer to river_shell_surface_v1 proxy."
   (when *log-river-calls*
@@ -269,10 +270,10 @@ Parameters: (DATA PROXY-SEAT PROXY-SHELL)
 (define (wm-seat-on-seat-op-delta data proxy-seat dx dy)
   "Invoked when a pointer/touch position delta changes during an interactive operation.
 Parameters: (DATA PROXY-SEAT DX DY)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-SEAT: Pointer to river_seat_v1 proxy.
-  - DX: Horizontal delta since operation start.
-  - DY: Vertical delta since operation start."
+  - DX: Integer horizontal delta since operation start.
+  - DY: Integer vertical delta since operation start."
   (when *log-river-calls*
     (log-debug "Op delta: ~a,~a" dx dy))
   (gliver-hook-run! %seat-op-delta-changed-hook data proxy-seat dx dy))
@@ -280,7 +281,7 @@ Parameters: (DATA PROXY-SEAT DX DY)
 (define (wm-seat-on-seat-op-release data proxy-seat)
   "Invoked when a seat interaction is released (pointer/touch release).
 Parameters: (DATA PROXY-SEAT)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-SEAT: Pointer to river_seat_v1 proxy."
   (when *log-river-calls*
     (log-debug "Op release"))
@@ -289,10 +290,10 @@ Parameters: (DATA PROXY-SEAT)
 (define (wm-seat-on-seat-pointer-position data proxy-seat x y)
   "Invoked when pointer position updates in compositor logical coordinates.
 Parameters: (DATA PROXY-SEAT X Y)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-SEAT: Pointer to river_seat_v1 proxy.
-  - X: Logical horizontal pointer position.
-  - Y: Logical vertical pointer position."
+  - X: Integer logical horizontal pointer position.
+  - Y: Integer logical vertical pointer position."
   (when *log-river-calls*
     (log-debug "Pointer position of ~a changed to: ~a,~a" proxy-seat x y))
   (gliver-hook-run! %seat-pointer-position-changed-hook data proxy-seat x y))

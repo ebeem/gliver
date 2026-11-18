@@ -92,7 +92,7 @@ If WORKSPACE2 is provided and valid, returns it; otherwise resolves based on
 *workspace-remove-to* ('focus or 'index).
 Parameters: (WORKSPACE1 WORKSPACE2)
   - WORKSPACE1: <workspace> record being removed.
-  - WORKSPACE2: Target <workspace> record fallback, or #f.
+  - WORKSPACE2: <workspace> record or #f; target fallback workspace.
 Returns <workspace> record or #f if WORKSPACE1 is the only workspace."
   ;; if workspace2 is different than workspace1 and not #f, return it
   (if (and workspace2 (not (eq? workspace1 workspace2)))
@@ -124,8 +124,8 @@ Returns <workspace> record or #f if WORKSPACE1 is the only workspace."
 (define (workspace-windows-move s-workspace t-workspace)
   "Move all windows from S-WORKSPACE to T-WORKSPACE without changing focus.
 Parameters: (S-WORKSPACE T-WORKSPACE)
-  - S-WORKSPACE: Source <workspace> record.
-  - T-WORKSPACE: Target <workspace> record."
+  - S-WORKSPACE: <workspace> record source.
+  - T-WORKSPACE: <workspace> record target."
   (for-each (lambda (window)
               (window-move-to-workspace! window t-workspace #:focus #f))
             (workspace-windows s-workspace)))
@@ -133,8 +133,8 @@ Parameters: (S-WORKSPACE T-WORKSPACE)
 (define (workspace-containers-move s-workspace t-workspace)
   "Move all containers from S-WORKSPACE to T-WORKSPACE.
 Parameters: (S-WORKSPACE T-WORKSPACE)
-  - S-WORKSPACE: Source <workspace> record.
-  - T-WORKSPACE: Target <workspace> record."
+  - S-WORKSPACE: <workspace> record source.
+  - T-WORKSPACE: <workspace> record target."
   (when (positive? (length (workspace-windows s-workspace)))
     (%workspace-containers-set! t-workspace
 								(append (workspace-containers t-workspace)
@@ -158,7 +158,7 @@ Returns #t if WORKSPACE uses manual layout, #f otherwise."
   "Delete WORKSPACE, moving its windows to T-WORKSPACE.
 Parameters: (WORKSPACE [#:t-workspace #f])
   - WORKSPACE: <workspace> record to remove.
-  - T-WORKSPACE: Optional target fallback <workspace> record."
+  - T-WORKSPACE: <workspace> record or #f; optional target fallback workspace."
   (let ((output (workspace-output workspace))
 		(target (%workspace-remove-target workspace t-workspace)))
 	(when target
@@ -253,7 +253,7 @@ Returns previous <workspace> record, or #f if not found."
 The number of rows is specified by *workspace-grid-rows* which will change the default behavior
 of navigation if its value is greater than 1.
 Parameters: (DIR [WORKSPACE])
-  - DIR: Direction symbol or string ('up, 'down, 'left, 'right).
+  - DIR: Symbol or string direction ('up, 'down, 'left, 'right).
   - WORKSPACE: <workspace> record (defaults to current focused workspace).
 Returns target <workspace> record in DIR, or #f if none."
   (and-let* ((ws         (or workspace (workspace-current)))

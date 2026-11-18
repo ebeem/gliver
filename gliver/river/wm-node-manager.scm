@@ -52,8 +52,8 @@ coordinate space. The x and y coordinates may be positive or negative.
 Must be called in a render sequence.
 Parameters: (PROXY-NODE X Y)
   - PROXY-NODE: Pointer to river_node_v1 proxy.
-  - X: Horizontal offset in compositor coordinates.
-  - Y: Vertical offset in compositor coordinates."
+  - X: Integer horizontal offset in compositor coordinates.
+  - Y: Integer vertical offset in compositor coordinates."
   (when (and (valid-pointer? proxy-node)
              (member proxy-node *wm-nodes*)
              (integer? x) (integer? y))

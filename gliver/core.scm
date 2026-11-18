@@ -23,14 +23,6 @@
   #:use-module (gliver core workspace)
   #:declarative? #f)
 
-(define-syntax re-export-modules
-  (syntax-rules ()
-    ((_ (mod ...) ...)
-     (begin
-       (module-use! (module-public-interface (current-module))
-                    (resolve-interface '(mod ...)))
-       ...))))
-
 (re-export-modules (gliver core config)
                    (gliver core hooks)
                    (gliver core container)

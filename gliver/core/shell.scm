@@ -48,12 +48,12 @@ Must be called in a manage sequence."
 Window manager should respect this area and update output available space accordingly.
 The area maybe occupied by layer shell components like statusbar.
 Parameters: (DATA PROXY-LS-OUTPUT X Y WIDTH HEIGHT)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-LS-OUTPUT: Pointer to river_layer_shell_output_v1 proxy.
-  - X: Remaining usable area top-left corner global x coordinate.
-  - Y: Remaining usable area top-left corner global y coordinate.
-  - WIDTH: Remaining usable area width of the output.
-  - HEIGHT: Remaining usable area height of the output."
+  - X: Integer remaining usable area top-left corner global x coordinate.
+  - Y: Integer remaining usable area top-left corner global y coordinate.
+  - WIDTH: Integer remaining usable area width of the output.
+  - HEIGHT: Integer remaining usable area height of the output."
   (and-let* ((output (output-find-by-ls-proxy ls-output-proxy))
 			 (pv-width (output-usable-width output))
 			 (pv-height (output-usable-height output)))
@@ -66,7 +66,7 @@ Parameters: (DATA PROXY-LS-OUTPUT X Y WIDTH HEIGHT)
 (define (shell-on-seat-focus-change data proxy-ls-seat type)
   "Invoked when seat focus changes between exclusive and non-exclusive areas.
 Parameters: (DATA PROXY-LS-SEAT TYPE)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-LS-SEAT: Pointer to river_layer_shell_seat_v1 proxy.
   - TYPE: Symbol focus type ('exclusive 'non-exclusive 'none)."
   (and-let* ((seat (seat-find-by-ls-proxy proxy-ls-seat))

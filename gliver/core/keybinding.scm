@@ -49,7 +49,7 @@
 (define (%keybinding-find-by-proxy proxy-binding)
   "Look up the <keybinding> record associated with PROXY-BINDING.
 Parameters: (PROXY-BINDING)
-  - PROXY-BINDING: river_xkb_binding_v1 proxy pointer.
+  - PROXY-BINDING: Pointer to river_xkb_binding_v1 proxy.
 Returns matching <keybinding> record or #f."
   (let ((addr (pointer-address proxy-binding)))
     (and=> (find (lambda (p) (= (pointer-address (cdr p)) addr))
@@ -63,14 +63,14 @@ Returns matching <keybinding> record or #f."
 (define (keybinding->string binding)
   "Convert a <keybinding> to its display string, e.g., \"C-t\".
 Parameters: (BINDING)
-  - BINDING: Target <keybinding> record.
+  - BINDING: <keybinding> record to format.
 Returns formatted keybinding string representation."
   (key->string (keybinding-key binding)))
 
 (define (keybinding-modifiers-list binding)
   "Return a list of modifier symbols for BINDING.
 Parameters: (BINDING)
-  - BINDING: Target <keybinding> record.
+  - BINDING: <keybinding> record to inspect.
 Returns list of modifier symbols."
   (key-modifiers (keybinding-key binding)))
 
@@ -78,9 +78,9 @@ Returns list of modifier symbols."
 (define* (define-key keymap key action #:key (persist #f))
   "Bind KEY to ACTION in KEYMAP.
 Parameters: (KEYMAP KEY ACTION [#:persist PERSIST])
-  - KEYMAP: Target <keymap> record.
-  - KEY: <key> record or key description string (kbd).
-  - ACTION: Procedure, command symbol/string, command list, or <keymap>.
+  - KEYMAP: <keymap> record to bind in.
+  - KEY: <key> record or string key description (for kbd).
+  - ACTION: Procedure, symbol, string, list, or <keymap> record representing the action.
   - PERSIST: Boolean flag indicating whether keymap stays active (default #f)."
   (let* ((k (%ensure-key key))
          (key-str (key->string k))
@@ -100,15 +100,15 @@ Parameters: (KEYMAP KEY ACTION [#:persist PERSIST])
 (define (undefine-key keymap key)
   "Remove the binding for KEY from KEYMAP.
 Parameters: (KEYMAP KEY)
-  - KEYMAP: Target <keymap> record.
-  - KEY: <key> record or key description string (kbd)."
+  - KEYMAP: <keymap> record to unbind from.
+  - KEY: <key> record or string key description (for kbd)."
   (hash-table-delete! (keymap-bindings keymap) (key->string (%ensure-key key))))
 
 (define (lookup-key keymap key)
   "Look up KEY in KEYMAP. Returns the <keybinding> or #f.
 Parameters: (KEYMAP KEY)
-  - KEYMAP: Target <keymap> record.
-  - KEY: <key> record or key description string (kbd).
+  - KEYMAP: <keymap> record to search.
+  - KEY: <key> record or string key description (for kbd).
 Returns matching <keybinding> record or #f."
   (hash-table-ref/default (keymap-bindings keymap) (key->string (%ensure-key key)) #f))
 
@@ -119,8 +119,8 @@ Returns matching <keybinding> record or #f."
 (define (keybindings-generate keymap mode-sym)
   "Generate active <keybinding> records for a single KEYMAP under MODE-SYM.
 Parameters: (KEYMAP MODE-SYM)
-  - KEYMAP: Source <keymap> record.
-  - MODE-SYM: Mode symbol for generated bindings.
+  - KEYMAP: <keymap> record source.
+  - MODE-SYM: Symbol mode identifier for generated bindings.
 Returns list of <keybinding> records."
   (map (lambda (pair)
          (let* ((binding (cdr pair))
@@ -149,9 +149,9 @@ Returns list of <keybinding> records."
 (define* (keybinding-generate-all top-map root-map #:optional (root-mode-sym '*root-map*))
   "Generate a list of <keybinding> records for all keymaps.
 Parameters: (TOP-MAP ROOT-MAP [ROOT-MODE-SYM])
-  - TOP-MAP: Top-level <keymap> record.
-  - ROOT-MAP: Prefix <keymap> record.
-  - ROOT-MODE-SYM: Symbol identifier for prefix mode (default '*root-map*).
+  - TOP-MAP: <keymap> record for top-level bindings.
+  - ROOT-MAP: <keymap> record for prefix bindings.
+  - ROOT-MODE-SYM: Symbol or <keymap> record for prefix mode (default '*root-map*).
 Returns a list of <keybinding> records for top-map, root-map,
 and all registered keymaps."
   (define (%generate-submap keymap mode)
@@ -169,7 +169,7 @@ and all registered keymaps."
 (define (keybinding-on-pressed proxy-binding)
   "Handle key press event for PROXY-BINDING.
 Parameters: (PROXY-BINDING)
-  - PROXY-BINDING: river_xkb_binding_v1 proxy pointer."
+  - PROXY-BINDING: Pointer to river_xkb_binding_v1 proxy."
   ;; find the mapping <keybinding> of the proxy
   (and-let* ((binding (%keybinding-find-by-proxy proxy-binding)))
     (log-debug "Key pressed: key=~a action=~a mode=~a persist=~a"
@@ -190,7 +190,7 @@ Parameters: (PROXY-BINDING)
 Occurs when an unbound key is pressed after an ensure-next-key-eaten call.
 This will only be called in Gliver if a prefix or keymap mode is active.
 Parameters: (PROXY-SEAT)
-  - PROXY-SEAT: river_xkb_bindings_seat_v1 proxy pointer."
+  - PROXY-SEAT: Pointer to river_xkb_bindings_seat_v1 proxy."
   ;; abort prefix and go back to *top-map* mode
   (with-manage-sequence
    (keybinding-execute-action! 'prefix-abort #f)))
@@ -199,7 +199,7 @@ Parameters: (PROXY-SEAT)
 (define (keybinding-execute-action! action persist)
   "Execute keybinding ACTION within a manage sequence.
 Parameters: (ACTION PERSIST)
-  - ACTION: Procedure, command symbol/string, command list, or <keymap>.
+  - ACTION: Procedure, symbol, string, list, or <keymap> record representing the action.
   - PERSIST: Boolean flag indicating if mode should persist."
   (log-debug "Executing binding action: ~a (persist=~a)" action persist)
   (let ((mode-before *keybinding-current-mode*)
@@ -227,8 +227,8 @@ Parameters: (ACTION PERSIST)
 (define* (keybinding-switch-to-mode! keymap #:key (force #f))
   "Switch to keybinding KEYMAP by enabling and disabling corresponding binding sets.
 Parameters: (KEYMAP [#:force FORCE])
-  - KEYMAP: Symbol ('*top-map*, '*root-map*, keymap name) or <keymap>.
-  - FORCE: When #t, switches even if mode matches *keybinding-current-mode* (default #f)."
+  - KEYMAP: <keymap> record or symbol mode name (e.g. '*top-map*, '*root-map*).
+  - FORCE: Boolean flag; when #t, switches even if mode matches *keybinding-current-mode* (default #f)."
   (let* ((resolved-keymap (keymap-find keymap))
          (target-mode (cond
                        ((keymap? keymap) (keymap-name keymap))

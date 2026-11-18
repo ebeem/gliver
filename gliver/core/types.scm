@@ -148,6 +148,7 @@
 			output-find-by-wl-name
 			output-find-by-name
 			output-find-by-id
+			output-find
 			output-wallpaper-set!
 			output-statusbar-set!
 			output-current
@@ -362,10 +363,10 @@
 (define (command-register! name proc interactive-spec docstring)
   "Register a command with NAME, PROC, INTERACTIVE-SPEC, and DOCSTRING.
 Parameters: (NAME PROC INTERACTIVE-SPEC DOCSTRING)
-  - NAME: Command name symbol or string.
+  - NAME: Symbol or string command name.
   - PROC: Procedure executed when command is invoked.
   - INTERACTIVE-SPEC: List of interactive specification arguments.
-  - DOCSTRING: Documentation string describing the command."
+  - DOCSTRING: String documentation describing the command."
   (hash-table-set! *command-registry* (if (symbol? name) name (string->symbol name))
                    (make-command name proc interactive-spec docstring)))
 
@@ -390,7 +391,7 @@ Parameters: (NAME PROC INTERACTIVE-SPEC DOCSTRING)
 (define (command-find name)
   "Find a command by NAME (symbol or string).
 Parameters: (NAME)
-  - NAME: Command name symbol or string.
+  - NAME: Symbol or string command name.
 Returns <command> record or #f if not found."
   (let ((sym (if (symbol? name) name (string->symbol name))))
     (hash-table-ref/default *command-registry* sym #f)))
@@ -406,7 +407,7 @@ Returns list of command name symbols."
 Dispatches *command-pre-hook* and *command-post-hook* around execution.
 Parameters: (CMD . ARGS)
   - CMD: <command> record to execute.
-  - ARGS: Arguments passed to the command procedure.
+  - ARGS: List of arguments passed to the command procedure.
 Returns procedure result or #f on failure."
   (when (command? cmd)
     (gliver-hook-run! *command-pre-hook* (command-name cmd) args)
@@ -422,7 +423,7 @@ Returns procedure result or #f on failure."
 (define (%command-run-by-string command . extra-args)
   "Run commands in a space-separated command format e.g. \"workspace-switch 2\".
 Parameters: (COMMAND)
-  - COMMAND: Command in a space-separated string format.
+  - COMMAND: String command in a space-separated format.
 Returns procedure result or #f if command is unknown or fails."
   (and-let* (((string? command))
              (parts    (string-tokenize command))
@@ -435,8 +436,8 @@ Returns procedure result or #f if command is unknown or fails."
   "Look up and run command NAME with ARGS.
 Supports space-separated command strings (e.g. \"workspace-switch 2\").
 Parameters: (NAME . ARGS)
-  - NAME: Command name symbol or string.
-  - ARGS: Arguments passed to the command procedure.
+  - NAME: Symbol or string command name.
+  - ARGS: List of arguments passed to the command procedure.
 Returns procedure result or #f if command is unknown or fails."
   (let ((cmd (command-find name))
 		(tokens? (and (string? name)
@@ -636,11 +637,11 @@ Returns newly created <output> record."
 (define (output-usable-area-set! output x y width height)
   "Set the usable area coordinates (X, Y) and dimensions (WIDTH, HEIGHT) for OUTPUT.
 Parameters: (OUTPUT X Y WIDTH HEIGHT)
-  - OUTPUT: Target <output> record.
-  - X: Horizontal offset in pixels.
-  - Y: Vertical offset in pixels.
-  - WIDTH: Usable width in pixels.
-  - HEIGHT: Usable height in pixels."
+  - OUTPUT: <output> record to update.
+  - X: Integer horizontal offset in pixels.
+  - Y: Integer vertical offset in pixels.
+  - WIDTH: Integer usable width in pixels.
+  - HEIGHT: Integer usable height in pixels."
   (log-info "Updating usable output area ~a to ~ax~a+(~a+~a)" output width height x y)
   (%output-usable-x-set! output x)
   (%output-usable-y-set! output y)
@@ -650,7 +651,7 @@ Parameters: (OUTPUT X Y WIDTH HEIGHT)
 (define (output-usable-area output)
   "Return (values x y width height) of the usable area for OUTPUT.
 Parameters: (OUTPUT)
-  - OUTPUT: Target <output> record.
+  - OUTPUT: <output> record to query.
 Returns 4 values: (values x y width height)."
   (values (output-usable-x output)
           (output-usable-y output)
@@ -660,7 +661,7 @@ Returns 4 values: (values x y width height)."
 (define (output-find-by-proxy proxy)
   "Look up the <output> record by PROXY address.
 Parameters: (PROXY)
-  - PROXY: river_output proxy pointer.
+  - PROXY: Pointer to river_output_v1 proxy.
 Returns matching <output> record or #f."
   (and-let* (((valid-pointer? proxy)))
     (find (lambda (output)
@@ -671,7 +672,7 @@ Returns matching <output> record or #f."
 (define (output-find-by-ls-proxy ls-proxy)
   "Look up the <output> record by LS-PROXY address.
 Parameters: (LS-PROXY)
-  - LS-PROXY: river_layer_shell_output proxy pointer.
+  - LS-PROXY: Pointer to river_layer_shell_output_v1 proxy.
 Returns matching <output> record or #f."
   (and-let* (((valid-pointer? ls-proxy)))
     (find (lambda (output)
@@ -691,7 +692,7 @@ Returns matching <output> record or #f."
 (define (output-find-by-wl-output-proxy proxy)
   "Look up the <output> record by wl_output PROXY.
 Parameters: (PROXY)
-  - PROXY: wl_output proxy pointer.
+  - PROXY: Pointer to wl_output proxy.
 Returns matching <output> record or #f."
   (and-let* (((valid-pointer? proxy)))
     (find (lambda (out) (equal? (output-wl-output-proxy out) proxy))
@@ -722,19 +723,39 @@ Returns matching <output> record or #f."
   (find (lambda (output) (= (output-id output) target-id))
         (manager-outputs *manager*)))
 
+(define* (output-find #:optional (output #f))
+  "Resolve OUTPUT specification into an <output> record, defaulting to the current output.
+Parameters: ([OUTPUT #f])
+  - OUTPUT: <output> record, string, integer, pointer, or #f; output specification.
+Returns matching <output> record or #f."
+  (cond
+   ((not output) (output-current))
+   ((output? output) output)
+   ((string? output)
+    (or (output-find-by-name output)
+        (output-find-by-wl-name output)))
+   ((number? output)
+    (or (output-find-by-id output)
+        (output-find-by-wl-output output)))
+   ((valid-pointer? output)
+    (or (output-find-by-proxy output)
+        (output-find-by-wl-output-proxy output)
+        (output-find-by-ls-proxy output)))
+   (else #f)))
+
 (define (output-wallpaper-set! output wallpaper)
   "Set the WALLPAPER for OUTPUT.
 Parameters: (OUTPUT WALLPAPER)
-  - OUTPUT: Target <output> record.
-  - WALLPAPER: Path string or hex color."
+  - OUTPUT: <output> record to update.
+  - WALLPAPER: String path, hex color string, or symbol mode (or #f)."
   (%output-wallpaper-set! output wallpaper)
   (gliver-hook-run! *output-wallpaper-changed-hook* output wallpaper))
 
 (define (output-statusbar-set! output statusbar)
   "Set the statusbar for OUTPUT.
 Parameters: (OUTPUT STATUSBAR)
-  - OUTPUT: Target <output> record.
-  - STATUSBAR: Target <statusbar> record."
+  - OUTPUT: <output> record to update.
+  - STATUSBAR: <statusbar> record to attach."
   (%output-statusbar-set! output statusbar)
   (gliver-hook-run! *output-statusbar-changed-hook* output statusbar))
 
@@ -776,7 +797,7 @@ Returns newly created <seat> record."
 (define (seat-find-by-proxy proxy)
   "Look up the <seat> record by PROXY address.
 Parameters: (PROXY)
-  - PROXY: river_seat_v1 proxy pointer.
+  - PROXY: Pointer to river_seat_v1 proxy.
 Returns matching <seat> record or #f."
   (and-let* (((valid-pointer? proxy)))
     (find (lambda (seat)
@@ -787,7 +808,7 @@ Returns matching <seat> record or #f."
 (define (seat-find-by-ls-proxy ls-proxy)
   "Look up the <seat> record by LS-PROXY address.
 Parameters: (LS-PROXY)
-  - LS-PROXY: river_layer_shell_seat_v1 proxy pointer.
+  - LS-PROXY: Pointer to river_layer_shell_seat_v1 proxy.
 Returns matching <seat> record or #f."
   (and-let* (((valid-pointer? ls-proxy)))
     (find (lambda (seat)
@@ -846,8 +867,8 @@ Returns matching <workspace> record or #f."
 (define (workspace-wallpaper-set! workspace wallpaper)
   "Set the wallpaper for WORKSPACE.
 Parameters: (WORKSPACE WALLPAPER)
-  - WORKSPACE: Target <workspace> record.
-  - WALLPAPER: Path string or hex color."
+  - WORKSPACE: <workspace> record to update.
+  - WALLPAPER: String path, hex color string, or symbol mode (or #f)."
   (%workspace-wallpaper-set! workspace wallpaper)
   (gliver-hook-run! *workspace-wallpaper-changed-hook* workspace wallpaper))
 
@@ -898,11 +919,11 @@ Returns currently active <workspace> on focused output, or #f."
 (define (container-usable-area-set! container x y width height)
   "Set the usable area coordinates (X, Y) and dimensions (WIDTH, HEIGHT) for CONTAINER.
 Parameters: (CONTAINER X Y WIDTH HEIGHT)
-  - CONTAINER: Target <container> record.
-  - X: Horizontal offset in pixels.
-  - Y: Vertical offset in pixels.
-  - WIDTH: Usable width in pixels.
-  - HEIGHT: Usable height in pixels."
+  - CONTAINER: <container> record to update.
+  - X: Integer horizontal offset in pixels.
+  - Y: Integer vertical offset in pixels.
+  - WIDTH: Integer usable width in pixels.
+  - HEIGHT: Integer usable height in pixels."
   (%container-usable-x-set! container (inexact->exact (floor x)))
   (%container-usable-y-set! container (inexact->exact (floor y)))
   (%container-usable-width-set! container (max 0 (inexact->exact (floor width))))
@@ -911,7 +932,7 @@ Parameters: (CONTAINER X Y WIDTH HEIGHT)
 (define (container-usable-area container)
   "Return (values x y width height) of the usable area for CONTAINER.
 Parameters: (CONTAINER)
-  - CONTAINER: Target <container> record.
+  - CONTAINER: <container> record to query.
 Returns 4 values: (values x y width height)."
   (values (container-usable-x container)
           (container-usable-y container)
@@ -939,7 +960,7 @@ Returns newly created <container> record."
 (define (container-find-by-number n workspace)
   "Find container with ID integer N in WORKSPACE.
 Parameters: (N WORKSPACE)
-  - N: Container integer ID.
+  - N: Integer container ID.
   - WORKSPACE: <workspace> record to search in.
 Returns matching <container> record or #f."
   (find (lambda (f) (= (container-id f) n))
@@ -1044,7 +1065,7 @@ Returns newly created <window> record."
 (define (window-find-by-proxy proxy)
   "Look up the <window> record by PROXY address.
 Parameters: (PROXY)
-  - PROXY: river_window_v1 proxy pointer.
+  - PROXY: Pointer to river_window_v1 proxy.
 Returns matching <window> record or #f."
   (and-let* (((valid-pointer? proxy)))
     (find (lambda (window)
@@ -1071,14 +1092,14 @@ Returns currently focused <window> in active container, or #f."
 (define (window-workspace window)
   "Return the parent <workspace> of WINDOW, or #f.
 Parameters: (WINDOW)
-  - WINDOW: Target <window> record.
+  - WINDOW: <window> record to query.
 Returns parent <workspace> of WINDOW, or #f."
   (container-workspace (window-container window)))
 
 (define (window-output window)
   "Return the parent <output> of WINDOW, or #f.
 Parameters: (WINDOW)
-  - WINDOW: Target <window> record.
+  - WINDOW: <window> record to query.
 Returns parent <output> of WINDOW, or #f."
   (workspace-output (window-workspace window)))
 

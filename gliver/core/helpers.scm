@@ -21,14 +21,15 @@
 			var-get
 			%var-set!
 			var-set!
+			re-export-modules
 ))
 
 (define (valid-pointer? ptr)
   "Validate that pointer PTR is valid and not null.
 Parameters: (PTR)
-  - PTR: Foreign pointer.
+  - PTR: Pointer to validate.
 Returns #t if PTR is valid, #f otherwise."
-  (and ptr (not (null-pointer? ptr))))
+  (and (pointer? ptr) (not (null-pointer? ptr))))
 
 ;;; variable introspection registry
 (define *variable-registry* (make-hash-table))
@@ -39,9 +40,9 @@ Returns #t if PTR is valid, #f otherwise."
 Parameters: (NAME MODULE DOCSTRING [GETTER SETTER])
   - NAME: Symbol name of the variable.
   - MODULE: Module record where the variable resides.
-  - DOCSTRING: Documentation string for the variable.
-  - GETTER: Optional zero-argument procedure returning the variable value.
-  - SETTER: Optional one-argument procedure updating the variable value."
+  - DOCSTRING: String documentation describing the variable.
+  - GETTER: Procedure taking zero arguments returning the variable value (optional).
+  - SETTER: Procedure taking one argument updating the variable value (optional)."
   (hash-table-set! *variable-registry* name (cons module docstring))
   (if (pair? accessors)
       (hash-table-set! *variable-accessors* name
@@ -134,7 +135,7 @@ Returns variable value, or #f if not found."
   "Update a registered variable NAME with NEW-VALUE.
 Parameters: (NAME NEW-VALUE)
   - NAME: Symbol name of the variable.
-  - NEW-VALUE: New value to set.
+  - NEW-VALUE: Value to assign to the variable.
 Returns the updated value, or #f if not found."
   (let ((acc (hash-table-ref/default *variable-accessors* name #f)))
     (if acc
@@ -147,3 +148,12 @@ Returns the updated value, or #f if not found."
   (syntax-rules ()
     ((_ name new-value)
      (%var-set! 'name new-value))))
+
+;; re-export all public bindings from each named module into the current module
+(define-syntax re-export-modules
+  (syntax-rules ()
+    ((_ (mod ...) ...)
+     (begin
+       (module-use! (module-public-interface (current-module))
+                    (resolve-interface '(mod ...)))
+       ...))))

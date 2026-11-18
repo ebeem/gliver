@@ -157,9 +157,9 @@ Returns list of active container entries in global screen coordinates."
 (define (container-dist-sq current target)
   "Calculate squared Euclidean distance between the centers of CURRENT container and TARGET container.
 Parameters: (CURRENT TARGET)
-  - CURRENT: Container geometry tuple.
-  - TARGET: Container geometry tuple.
-Returns squared Euclidean distance number."
+  - CURRENT: List container geometry tuple (container x0 y0 x1 y1 cx cy).
+  - TARGET: List container geometry tuple (container x0 y0 x1 y1 cx cy).
+Returns float squared Euclidean distance."
   (match-let (((_ _ _ _ _ ccx ccy) current)
               ((_ _ _ _ _ tcx tcy) target))
     (let ((dx (- tcx ccx))
@@ -170,9 +170,9 @@ Returns squared Euclidean distance number."
   "Check if TARGET is in direction DIR from CURRENT container.
 If STRICT? is #t, TARGET's near edge must be past CURRENT's far edge.
 Parameters: (DIR CURRENT TARGET STRICT?)
-  - DIR: Direction symbol ('up, 'down, 'left, 'right).
-  - CURRENT: Container geometry tuple.
-  - TARGET: Container geometry tuple.
+  - DIR: Symbol direction ('up, 'down, 'left, 'right).
+  - CURRENT: List container geometry tuple (container x0 y0 x1 y1 cx cy).
+  - TARGET: List container geometry tuple (container x0 y0 x1 y1 cx cy).
   - STRICT?: Boolean, whether to require strict far edge separation.
 Returns #t if TARGET is in direction DIR from CURRENT, #f otherwise."
   (match-let (((_ cx0 cy0 cx1 cy1 ccx ccy) current)
@@ -187,7 +187,7 @@ Returns #t if TARGET is in direction DIR from CURRENT, #f otherwise."
 (define (container-pick-closest current candidates)
   "Return the <container> record of the candidate closest to CURRENT, or #f if empty.
 Parameters: (CURRENT CANDIDATES)
-  - CURRENT: Container geometry tuple.
+  - CURRENT: List container geometry tuple (container x0 y0 x1 y1 cx cy).
   - CANDIDATES: List of container geometry tuples.
 Returns <container> record of the closest candidate, or #f if empty."
   (and (pair? candidates)
@@ -201,7 +201,7 @@ Returns <container> record of the closest candidate, or #f if empty."
 (define* (container-in-direction dir #:key (current (container-current)))
   "Find the closest container in direction DIR in unified screen space.
 Parameters: (DIR [#:current (container-current)])
-  - DIR: Direction symbol or string ('up, 'down, 'left, 'right).
+  - DIR: Symbol or string direction ('up, 'down, 'left, 'right).
   - CURRENT: <container> record to navigate from (defaults to current container).
 Returns closest <container> record in direction DIR, or #f if none."
   (let* ((all (container-active-global))
@@ -245,8 +245,8 @@ Parameters: (SOURCE-CONTAINER TARGET-CONTAINER)
   "Swap the positions of WIN1 and WIN2 in CONTAINER's window list.
 Parameters: (CONTAINER WIN1 WIN2)
   - CONTAINER: <container> record containing WIN1 and WIN2.
-  - WIN1: First <window> record.
-  - WIN2: Second <window> record."
+  - WIN1: <window> record to swap.
+  - WIN2: <window> record to swap with."
   (if (and (container? container)
            (window? win1)
            (window? win2)
@@ -272,7 +272,7 @@ Parameters: (CONTAINER WIN1 WIN2)
   "Remove CONTAINER from its workspace.
 Parameters: (CONTAINER [#:target-container #f] [#:focus #t])
   - CONTAINER: <container> record to remove.
-  - TARGET-CONTAINER: Optional fallback <container> record.
+  - TARGET-CONTAINER: <container> record or #f.
   - FOCUS: Boolean, whether to focus fallback container if CONTAINER was focused (default #t)."
   (and-let* ((workspace (container-workspace container))
 			 (container-target (or target-container
@@ -387,8 +387,8 @@ Parameters: (CONTAINER [#:animate #t])
   "Resize the container to the provided WIDTH and HEIGHT.
 Parameters: (CONTAINER WIDTH HEIGHT [#:animate #t])
   - CONTAINER: <container> record to resize.
-  - WIDTH: New width in pixels.
-  - HEIGHT: New height in pixels.
+  - WIDTH: Integer width in pixels.
+  - HEIGHT: Integer height in pixels.
   - ANIMATE: Boolean, whether to animate the resize (default #t)."
   (let* ((windows (container-windows container))
 		 (int-width (inexact->exact (floor width)))
@@ -425,8 +425,8 @@ Parameters: (CONTAINER WIDTH HEIGHT [#:animate #t])
   "Move the container position to the provided X and Y.
 Parameters: (CONTAINER X Y [#:animate #t])
   - CONTAINER: <container> record to move.
-  - X: New horizontal position in pixels.
-  - Y: New vertical position in pixels.
+  - X: Integer horizontal position in pixels.
+  - Y: Integer vertical position in pixels.
   - ANIMATE: Boolean, whether to animate the movement (default #t)."
   (let* ((windows (container-windows container))
 		 (int-x (inexact->exact (floor x)))

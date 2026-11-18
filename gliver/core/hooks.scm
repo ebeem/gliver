@@ -212,7 +212,7 @@
   "Create a new hook named NAME that expects ARITY arguments.
 Parameters: (NAME [ARITY])
   - NAME: Symbol name for the hook.
-  - ARITY: Number of arguments the hook expects (default 0).
+  - ARITY: Integer number of arguments the hook expects (default 0).
 Returns new <gliver-hook> record."
   (%make-gliver-hook name arity '()))
 
@@ -221,8 +221,8 @@ Returns new <gliver-hook> record."
 Parameters: (HOOK FN CALLER-MODULE [ORDER])
   - HOOK: <gliver-hook> record.
   - FN: Procedure or quoted symbol.
-  - CALLER-MODULE: Module of the caller.
-  - ORDER: Numeric priority (default 999, lower runs earlier)."
+  - CALLER-MODULE: Module record of the caller.
+  - ORDER: Integer priority (default 999, lower runs earlier)."
   (let* ((current-funcs (gliver-hook-functions hook))
          (fn-name (if (symbol? fn) fn (and (procedure? fn) (procedure-name fn))))
          (cleaned (filter (lambda (pair)
@@ -274,7 +274,7 @@ Parameters: (HOOK FN)
 Parameters: (HOOK STRICT? ARGS)
   - HOOK: <gliver-hook> record.
   - STRICT?: Boolean, whether unhandled exceptions terminate the process.
-  - ARGS: Argument list passed to hook callbacks."
+  - ARGS: List of arguments passed to hook callbacks."
   (when *log-hooks*
     (log-debug "Running hook ~a ~a" (gliver-hook-name hook) args))
   (for-each
@@ -314,7 +314,7 @@ Parameters: (HOOK STRICT? ARGS)
 If a function fails, the error is logged and the rest of the callbacks continue.
 Parameters: (HOOK . ARGS)
   - HOOK: <gliver-hook> record.
-  - ARGS: Arguments passed to hook callbacks."
+  - ARGS: List of arguments passed to hook callbacks."
   (%gliver-hook-run hook #f args))
 
 (define (gliver-hook-run-strict! hook . args)
@@ -322,7 +322,7 @@ Parameters: (HOOK . ARGS)
 If a function fails, the error is logged and Gliver is terminated.
 Parameters: (HOOK . ARGS)
   - HOOK: <gliver-hook> record.
-  - ARGS: Arguments passed to hook callbacks."
+  - ARGS: List of arguments passed to hook callbacks."
   (%gliver-hook-run hook #t args))
 
 (define (gliver-hook-clear! hook)
@@ -344,9 +344,9 @@ Returns #t if HOOK has no registered functions, #f otherwise."
   "Invoked during Wayland registry when a global interface is advertised.
 Parameters: (REGISTRY PROTOCOL-NAME OBJECT-ID VERSION)
   - REGISTRY: Pointer to wl_registry.
-  - PROTOCOL-NAME: Name of the advertised global interface.
-  - OBJECT-ID: Wayland object ID.
-  - VERSION: Interface version.")
+  - PROTOCOL-NAME: String name of the advertised global interface.
+  - OBJECT-ID: Integer Wayland object ID.
+  - VERSION: Integer interface version.")
 
 (define-var *gliver-globals-unbind-hook*
   (make-gliver-hook 'gliver-globals-unbind 0)
@@ -409,7 +409,7 @@ Parameters: None.")
   (make-gliver-hook '%window-created 3)
   "Invoked when new window is created/advertised.
 Parameters: (DATA PROXY-MANAGER PROXY-WIN)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-MANAGER: Pointer to river_window_manager_v1 proxy.
   - PROXY-WIN: Pointer to advertised river_window_v1 proxy.")
 
@@ -417,175 +417,179 @@ Parameters: (DATA PROXY-MANAGER PROXY-WIN)
   (make-gliver-hook 'window-container-removed 2)
   "Invoked when a window is removed from a container.
 Parameters: (WINDOW CONTAINER)
-  - WINDOW: The <window> record being detached.
-  - CONTAINER: The <container> record (parent).")
+  - WINDOW: <window> record being detached.
+  - CONTAINER: <container> record (parent).")
 
 (define-var *window-container-added-hook*
   (make-gliver-hook 'window-container-added 2)
   "Invoked when a window is placed into a container.
 Parameters: (WINDOW CONTAINER)
-  - WINDOW: The <window> record being attached.
-  - CONTAINER: The target <container> record.")
+  - WINDOW: <window> record being attached.
+  - CONTAINER: <container> record target.")
 
 (define-var %window-destroyed-hook
   (make-gliver-hook '%window-destroy 2)
   "Invoked just before river_window_v1 is destroyed from River's side.
 Parameters: (DATA PROXY-WINDOW)
-  - DATA: User context pointer (unused, null in Gliver).
-  - PROXY-WINDOW: river_window_v1 proxy handle.")
+  - DATA: Pointer to user context (unused, null in Gliver).
+  - PROXY-WINDOW: Pointer to river_window_v1 proxy.")
 
 (define-var %window-size-hint-changed-hook
   (make-gliver-hook '%window-size-hint-changed 5)
   "Invoked when a window updates its minimum and maximum sizing constraint hints.
 NOTE: you probably want to use *window-size-hint-changed-hook* instead.
 Parameters: (PROXY-WINDOW MIN-W MIN-H MAX-W MAX-H)
-  - PROXY-WINDOW: river_window_v1 proxy handle.
-  - MIN-W, MIN-H, MAX-W, MAX-H: Sizing dimensions in pixels.")
+  - PROXY-WINDOW: Pointer to river_window_v1 proxy.
+  - MIN-W: Integer minimum preferred width in pixels.
+  - MIN-H: Integer minimum preferred height in pixels.
+  - MAX-W: Integer maximum preferred width in pixels.
+  - MAX-H: Integer maximum preferred height in pixels.")
 
 (define-var %window-size-changed-hook
   (make-gliver-hook '%window-size-changed 3)
   "Invoked when a window width and height dimensions are changed.
 Parameters: (PROXY-WINDOW WIDTH HEIGHT)
-  - PROXY-WINDOW: river_window_v1 proxy handle.
-  - WIDTH, HEIGHT: Surface dimensions in pixels.")
+  - PROXY-WINDOW: Pointer to river_window_v1 proxy.
+  - WIDTH: Integer surface width in pixels.
+  - HEIGHT: Integer surface height in pixels.")
 
 (define-var %window-app-id-changed-hook
   (make-gliver-hook '%window-app-id-changed 2)
   "Invoked when window app_id is changed.
 Parameters: (PROXY-WINDOW APP-ID)
-  - PROXY-WINDOW: river_window_v1 proxy handle.
+  - PROXY-WINDOW: Pointer to river_window_v1 proxy.
   - APP-ID: String identifier of the application.")
 
 (define-var %window-title-changed-hook
   (make-gliver-hook '%window-title-changed 2)
   "Invoked when window title string is changed.
 Parameters: (PROXY-WINDOW TITLE)
-  - PROXY-WINDOW: river_window_v1 proxy handle.
-  - TITLE: Updated title string.")
+  - PROXY-WINDOW: Pointer to river_window_v1 proxy.
+  - TITLE: String updated window title.")
 
 (define-var %window-parent-changed-hook
   (make-gliver-hook '%window-parent-changed 2)
   "Invoked when window parent is changed.
 Parameters: (PROXY-WINDOW PARENT-PROXY)
-  - PROXY-WINDOW: river_window_v1 proxy handle.
-  - PARENT-PROXY: river_window_v1 proxy handle of parent or %null-pointer.")
+  - PROXY-WINDOW: Pointer to river_window_v1 proxy.
+  - PARENT-PROXY: Pointer to parent river_window_v1 proxy, or #f.")
 
 (define-var %window-decoration-hint-changed-hook
   (make-gliver-hook '%window-decoration-hint-changed 2)
   "Invoked when client decoration mode hint is changed.
 Parameters: (PROXY-WINDOW HINT)
-  - PROXY-WINDOW: river_window_v1 proxy handle.
+  - PROXY-WINDOW: Pointer to river_window_v1 proxy.
   - HINT: Integer decoration hint enum (CSD, SSD, No Preference).")
 
 (define-var %window-pointer-move-requested-hook
   (make-gliver-hook '%window-pointer-move-requested 2)
   "Invoked when a client requests an interactive window move via seat pointer.
 Parameters: (PROXY-WINDOW PROXY-SEAT)
-  - PROXY-WINDOW: river_window_v1 proxy handle.
-  - PROXY-SEAT: river_seat_v1 proxy handle.")
+  - PROXY-WINDOW: Pointer to river_window_v1 proxy.
+  - PROXY-SEAT: Pointer to river_seat_v1 proxy.")
 
 (define-var %window-pointer-resize-requested-hook
   (make-gliver-hook '%window-pointer-resize-requested 3)
   "Invoked when a client requests an interactive window resize via seat pointer.
 Parameters: (PROXY-WINDOW PROXY-SEAT EDGES)
-  - PROXY-WINDOW: river_window_v1 proxy handle.
-  - PROXY-SEAT: river_seat_v1 proxy handle.
+  - PROXY-WINDOW: Pointer to river_window_v1 proxy.
+  - PROXY-SEAT: Pointer to river_seat_v1 proxy.
   - EDGES: Integer bitmask of resizing edges.")
 
 (define-var %window-menu-requested-hook
   (make-gliver-hook '%window-menu-requested 3)
   "Invoked when a client requests a window context menu at coordinates.
-Parameters: (PROXY-WINDOW PROXY-SEAT X Y)
-  - PROXY-WINDOW: river_window_v1 proxy handle.
-  - PROXY-SEAT: river_seat_v1 proxy handle.
-  - X, Y: Surface coordinates in pixels.")
+Parameters: (PROXY-WINDOW X Y)
+  - PROXY-WINDOW: Pointer to river_window_v1 proxy.
+  - X: Integer horizontal surface coordinate in pixels.
+  - Y: Integer vertical surface coordinate in pixels.")
 
 (define-var %window-maximize-requested-hook
   (make-gliver-hook '%window-maximize-requested 1)
   "Invoked when a client requests to be maximized.
 Parameters: (PROXY-WINDOW)
-  - PROXY-WINDOW: river_window_v1 proxy handle.")
+  - PROXY-WINDOW: Pointer to river_window_v1 proxy.")
 
 (define-var %window-unmaximize-requested-hook
   (make-gliver-hook '%window-unmaximize-requested 1)
   "Invoked when a client requests to exit maximized state.
 Parameters: (PROXY-WINDOW)
-  - PROXY-WINDOW: river_window_v1 proxy handle.")
+  - PROXY-WINDOW: Pointer to river_window_v1 proxy.")
 
 (define-var %window-fullscreen-requested-hook
   (make-gliver-hook '%window-fullscreen-requested 2)
   "Invoked when a client requests fullscreen on a specified output.
 Parameters: (PROXY-WINDOW PROXY-OUTPUT)
-  - PROXY-WINDOW: river_window_v1 proxy handle.
-  - PROXY-OUTPUT: river_output_v1 proxy handle.")
+  - PROXY-WINDOW: Pointer to river_window_v1 proxy.
+  - PROXY-OUTPUT: Pointer to river_output_v1 proxy.")
 
 (define-var %window-fullscreen-exit-requested-hook
   (make-gliver-hook '%window-fullscreen-exit-requested 1)
   "Invoked when a client requests to exit fullscreen state.
 Parameters: (PROXY-WINDOW)
-  - PROXY-WINDOW: river_window_v1 proxy handle.")
+  - PROXY-WINDOW: Pointer to river_window_v1 proxy.")
 
 (define-var %window-minimize-requested-hook
   (make-gliver-hook '%window-minimize-requested 1)
   "Invoked when a client requests to be minimized.
 Parameters: (PROXY-WINDOW)
-  - PROXY-WINDOW: river_window_v1 proxy handle.
+  - PROXY-WINDOW: Pointer to river_window_v1 proxy.
 Note: Completely unused in the codebase (high-level *window-minimize-requested-hook* is dispatched instead).")
 
 (define-var %window-pid-changed-hook
   (make-gliver-hook '%window-pid-changed 2)
   "Invoked when client process PID is announced.
 Parameters: (PROXY-WINDOW PID)
-  - PROXY-WINDOW: river_window_v1 proxy handle.
+  - PROXY-WINDOW: Pointer to river_window_v1 proxy.
   - PID: Integer process ID.")
 
 (define-var %window-presentation-hint-changed-hook
   (make-gliver-hook '%window-presentation-hint-changed 2)
   "Invoked when a window presentation hint (async/vsync) is changed.
 Parameters: (PROXY-WINDOW HINT)
-  - PROXY-WINDOW: river_window_v1 proxy handle.
+  - PROXY-WINDOW: Pointer to river_window_v1 proxy.
   - HINT: Integer presentation hint enum.")
 
 (define-var %window-identifier-changed-hook
   (make-gliver-hook '%window-identifier-changed 2)
   "Invoked when a unique window identifier string is changed.
 Parameters: (PROXY-WINDOW IDENTIFIER)
-  - PROXY-WINDOW: river_window_v1 proxy handle.
+  - PROXY-WINDOW: Pointer to river_window_v1 proxy.
   - IDENTIFIER: String unique identifier.")
 
 (define-var *window-created-hook*
   (make-gliver-hook 'window-created 1)
   "Invoked when a new gliver <window> record is created.
 Parameters: (WINDOW)
-  - WINDOW: The initialized <window> record.")
+  - WINDOW: <window> record initialized.")
 
 (define-var *window-container-moved-hook*
   (make-gliver-hook 'window-container-removed 3)
   "Invoked when a window moves from one container to another.
 Parameters: (WINDOW TARGET-CONTAINER CURRENT-CONTAINER)
-  - WINDOW: The <window> being moved.
-  - TARGET-CONTAINER: The destination <container>.
-  - CURRENT-CONTAINER: The former <container>.")
+  - WINDOW: <window> record being moved.
+  - TARGET-CONTAINER: <container> record destination.
+  - CURRENT-CONTAINER: <container> record or #f; former container.")
 
 (define-var *window-destroyed-hook*
   (make-gliver-hook 'window-destroyed 3)
   "Invoked when a window is closed and its resources are destroyed.
 Parameters: (WINDOW CONTAINER WORKSPACE)
-  - WINDOW: The destroyed <window> record.
-  - CONTAINER: The <container> owning the window.
-  - WORKSPACE: The <workspace> owning the container.")
+  - WINDOW: <window> record destroyed.
+  - CONTAINER: <container> record or #f; container owning the window.
+  - WORKSPACE: <workspace> record or #f; workspace owning the container.")
 
 (define-var *window-focused-hook*
   (make-gliver-hook 'window-focused 1)
   "Invoked when a window gains keyboard focus.
 Parameters: (WINDOW)
-  - WINDOW: The focused <window> record.")
+  - WINDOW: <window> record focused.")
 
 (define-var *window-unfocused-hook*
   (make-gliver-hook 'window-unfocused 1)
   "Invoked when a window loses keyboard focus.
 Parameters: (WINDOW)
-  - WINDOW: The unfocused <window> record.")
+  - WINDOW: <window> record unfocused.")
 
 ;;; NOTE: these are supposed to be helpful if stacking/floating
 ;;; layout is to be implemented/supported
@@ -593,318 +597,336 @@ Parameters: (WINDOW)
   (make-gliver-hook 'window-place 2)
   "Invoked when window stacking/layer ordering is modified.
 Parameters: (WINDOW PLACE-MODE)
-  - WINDOW: The <window> record.
+  - WINDOW: <window> record.
+  - PLACE-MODE: Symbol placement mode.
 Note: currently unused.")
 
 (define-var *window-float-hook*
   (make-gliver-hook 'window-float 1)
   "Invoked when a window transitions to floating state.
 Parameters: (WINDOW)
-  - WINDOW: The <window> record.
+  - WINDOW: <window> record.
 Note: currently unused.")
 
 (define-var *window-unfloat-hook*
   (make-gliver-hook 'window-unfloat 1)
   "Invoked when a window transitions from floating to tiled state.
 Parameters: (WINDOW)
-  - WINDOW: The <window> record.
+  - WINDOW: <window> record.
 NOTE: currently unused.")
 
 (define-var *window-size-changed-hook*
   (make-gliver-hook 'window-size-changed 3)
   "Invoked when high-level window dimensions change.
 Parameters: (WINDOW WIDTH HEIGHT)
-  - WINDOW: The <window> record.
-  - WIDTH, HEIGHT: Surface dimensions in pixels.")
+  - WINDOW: <window> record.
+  - WIDTH: Integer surface width in pixels.
+  - HEIGHT: Integer surface height in pixels.")
 
 (define-var *window-size-hint-changed-hook*
   (make-gliver-hook 'window-size-hint-changed 5)
   "Invoked when high-level window sizing constraints change.
 Parameters: (WINDOW MIN-W MIN-H MAX-W MAX-H)
-  - WINDOW: The <window> record.
-  - MIN-W, MIN-H, MAX-W, MAX-H: Sizing dimensions in pixels.")
+  - WINDOW: <window> record.
+  - MIN-W: Integer minimum preferred width in pixels.
+  - MIN-H: Integer minimum preferred height in pixels.
+  - MAX-W: Integer maximum preferred width in pixels.
+  - MAX-H: Integer maximum preferred height in pixels.")
 
 (define-var *window-app-id-changed-hook*
   (make-gliver-hook 'window-app-id-changed 2)
   "Invoked when a window application ID updates.
 Parameters: (WINDOW APP-ID)
-  - WINDOW: The <window> record.
+  - WINDOW: <window> record.
   - APP-ID: String application identifier.")
 
 (define-var *window-title-changed-hook*
   (make-gliver-hook 'window-title-changed 2)
   "Invoked when a window title string updates.
 Parameters: (WINDOW TITLE)
-  - WINDOW: The <window> record.
-  - TITLE: Updated title string.")
+  - WINDOW: <window> record.
+  - TITLE: String updated window title.")
 
 (define-var *window-decoration-hint-changed-hook*
   (make-gliver-hook 'window-decoration-hint-changed 2)
   "Invoked when window decoration mode hint changes.
 Parameters: (WINDOW HINT)
-  - WINDOW: The <window> record.
-  - TITLE: Updated title string.")
+  - WINDOW: <window> record.
+  - HINT: Integer decoration mode hint enum.")
 
 (define-var *window-pointer-move-requested-hook*
   (make-gliver-hook 'window-pointer-move-requested 2)
   "Invoked when a window interactive move is initiated.
 Parameters: (WINDOW SEAT)
+  - WINDOW: <window> record.
+  - SEAT: <seat> record.
 NOTE: currently unused.")
 
 (define-var *window-pointer-resize-requested-hook*
   (make-gliver-hook 'window-pointer-resize-requested 3)
   "Invoked when a window interactive resize is initiated.
 Parameters: (WINDOW SEAT EDGES)
+  - WINDOW: <window> record.
+  - SEAT: <seat> record.
+  - EDGES: Integer bitmask of resizing edges.
 NOTE: currently unused.")
 
 (define-var *window-menu-requested-hook*
   (make-gliver-hook 'window-menu-requested 3)
   "Invoked when a window menu is requested.
 Parameters: (WINDOW SEAT X Y)
+  - WINDOW: <window> record.
+  - SEAT: <seat> record.
+  - X: Integer horizontal surface coordinate in pixels.
+  - Y: Integer vertical surface coordinate in pixels.
 NOTE: currently unused.")
 
 (define-var *window-resize-start-hook*
   (make-gliver-hook 'window-resize-start 1)
   "Invoked when an interactive window resize begins.
 Parameters: (WINDOW)
-  - WINDOW: The <window> being resized.")
+  - WINDOW: <window> record being resized.")
 
 (define-var *window-resize-end-hook*
   (make-gliver-hook 'window-resize-end 1)
   "Invoked when an interactive window resize completes.
 Parameters: (WINDOW)
-  - WINDOW: The resized <window>.")
+  - WINDOW: <window> record resized.")
 
 (define-var *window-capabilities-changed-hook*
   (make-gliver-hook 'window-capabilities-changed 2)
   "Invoked when window capabilities (e.g. can-maximize, can-fullscreen) are changed.
 Parameters: (WINDOW CAPABILITIES)
-  - WINDOW: The <window> record.
-  - CAPABILITIES: Capabilities flag (e.g. RIVER_WINDOW_V1_CAPABILITIES_WINDOW_MENU).")
+  - WINDOW: <window> record.
+  - CAPABILITIES: Integer capabilities flag bitmask (e.g. RIVER_WINDOW_V1_CAPABILITIES_WINDOW_MENU).")
 
 (define-var *window-fullscreen-entered-hook*
   (make-gliver-hook 'window-fullscreen-entered 2)
   "Invoked when a window enters fullscreen mode.
 Parameters: (WINDOW PREV-STATUS)
-  - WINDOW: The <window> record.
+  - WINDOW: <window> record.
   - PREV-STATUS: Boolean previous fullscreen status.")
 
 (define-var *window-fullscreen-exited-hook*
   (make-gliver-hook 'window-fullscreen-exited 2)
   "Invoked when a window exits fullscreen mode.
 Parameters: (WINDOW PREV-STATUS)
-  - WINDOW: The <window> record.
+  - WINDOW: <window> record.
   - PREV-STATUS: Boolean previous fullscreen status.")
 
 (define-var *window-fullscreen-entered-informed-hook*
   (make-gliver-hook 'window-fullscreen-entered-informed 2)
   "Invoked when a window is informed that it entered fullscreen.
 Parameters: (WINDOW OUTPUT)
-  - WINDOW: The <window> record.
-  - OUTPUT: The <output> displaying the fullscreen window.")
+  - WINDOW: <window> record.
+  - PREV-STATUS: Boolean previous fullscreen status.")
 
 (define-var *window-fullscreen-exited-informed-hook*
   (make-gliver-hook 'window-fullscreen-exited-informed 2)
   "Invoked when a window is informed that it exited fullscreen.
 Parameters: (WINDOW OUTPUT)
-  - WINDOW: The <window> record.
-  - OUTPUT: The <output> that had the fullscreen window.")
+  - WINDOW: <window> record.
+  - PREV-STATUS: Boolean previous fullscreen status.")
 
 (define-var *window-maximized-hook*
   (make-gliver-hook 'window-maximized 2)
   "Invoked when a window enters maximized state.
 Parameters: (WINDOW PREV-STATUS)
-  - WINDOW: The <window> record.
+  - WINDOW: <window> record.
   - PREV-STATUS: Boolean previous maximized status.")
 
 (define-var *window-unmaximized-hook*
   (make-gliver-hook 'window-unmaximized 2)
   "Invoked when a window exits maximized state.
 Parameters: (WINDOW PREV-STATUS)
-  - WINDOW: The <window> record.
+  - WINDOW: <window> record.
   - PREV-STATUS: Boolean previous maximized status.")
 
 (define-var *window-pid-changed-hook*
   (make-gliver-hook 'window-pid-changed 2)
   "Invoked when window process ID is changed.
 Parameters: (WINDOW PID)
-  - WINDOW: The <window> record.
-  - PID: The integer process identifier.")
+  - WINDOW: <window> record.
+  - PID: Integer process identifier.")
 
 (define-var *window-parent-changed-hook*
   (make-gliver-hook 'window-parent-changed 2)
   "Invoked when window parent is changed.
 Parameters: (WINDOW PARENT)
-  - WINDOW: The <window> record.
-  - PARENT: The river_window_v1 proxy handle.")
+  - WINDOW: <window> record.
+  - PARENT: Pointer to parent river_window_v1 proxy, or #f.")
 
 (define-var *window-presentation-hint-changed-hook*
   (make-gliver-hook 'window-presentation-hint-changed 2)
   "Invoked when window presentation hint is changed.
 Parameters: (WINDOW HINT)
-  - WINDOW: The <window> record.
-  - HINT: The presentation flag (e.g. RIVER_OUTPUT_V1_PRESENTATION_MODE_VSYNC).")
+  - WINDOW: <window> record.
+  - HINT: Integer presentation mode flag (e.g. RIVER_OUTPUT_V1_PRESENTATION_MODE_VSYNC).")
 
 (define-var *window-identifier-changed-hook*
   (make-gliver-hook 'window-identifier-changed 2)
   "Invoked when window presentation hint is changed.
-Parameters: (WINDOW HINT)
-  - WINDOW: The <window> record.
-  - ID-PTR: Pointer to identifier ASCII string.")
+Parameters: (WINDOW IDENTIFIER)
+  - WINDOW: <window> record.
+  - IDENTIFIER: String unique window identifier.")
 
 (define-var *window-fullscreen-requested-hook*
   (make-gliver-hook 'window-fullscreen-requested 1)
   "Invoked when a client requests to enter fullscreen mode.
 Parameters: (WINDOW)
-  - WINDOW: The target <window> record.")
+  - WINDOW: <window> record.")
 
 (define-var *window-fullscreen-exit-requested-hook*
   (make-gliver-hook 'window-fullscreen-exit-requested 1)
   "Invoked when a client requests to exit fullscreen mode.
 Parameters: (WINDOW)
-  - WINDOW: The target <window> record.")
+  - WINDOW: <window> record.")
 
 (define-var *window-minimize-requested-hook*
   (make-gliver-hook 'window-minimize-requested 1)
   "Invoked when a client requests to be minimized.
 Parameters: (WINDOW)
-  - WINDOW: The target <window> record.")
+  - WINDOW: <window> record.")
 
 (define-var *container-created-hook*
   (make-gliver-hook 'container-created 1)
   "Invoked when a new <container> record is created.
 Parameters: (CONTAINER)
-  - CONTAINER: The newly created <container> record.")
+  - CONTAINER: <container> record newly created.")
 
 (define-var *container-focused-hook*
   (make-gliver-hook 'container-focused 1)
   "Invoked when a container is focused.
 Parameters: (CONTAINER)
-  - CONTAINER: The focused <container> record.")
+  - CONTAINER: <container> record focused.")
 
 (define-var *container-unfocused-hook*
   (make-gliver-hook 'container-unfocused 1)
   "Invoked when a container is unfocused.
 Parameters: (CONTAINER)
-  - CONTAINER: The unfocused <container> record.")
+  - CONTAINER: <container> record unfocused.")
 
 (define-var *container-split-hook*
   (make-gliver-hook 'container-split 2)
   "Invoked when a container is split into two slots.
-Parameters: (CONTAINER DIRECTION)
-  - CONTAINER: The <container> that was splitted.
-  - NEW-CONTAINER: The new created <container>.")
+Parameters: (CONTAINER NEW-CONTAINER)
+  - CONTAINER: <container> record that was split.
+  - NEW-CONTAINER: <container> record newly created.")
 
 (define-var *container-destroy-hook*
   (make-gliver-hook 'container-destroy 2)
   "Invoked when a container is destroyed and removed from its workspace.
 Parameters: (CONTAINER WORKSPACE)
-  - CONTAINER: The destroyed <container> record.
-  - WORKSPACE: The <workspace> owning the container.")
+  - CONTAINER: <container> record destroyed.
+  - WORKSPACE: <workspace> record owning the container.")
 
 (define-var *container-resize-hook*
   (make-gliver-hook 'container-resize 1)
   "Invoked when a container dimensions/size change.
 Parameters: (CONTAINER)
-  - CONTAINER: The resized <container> record.")
+  - CONTAINER: <container> record resized.")
 
 (define-var *container-position-changed-hook*
   (make-gliver-hook 'container-resize 1)
   "Invoked when a container position change.
 Parameters: (CONTAINER)
-  - CONTAINER: The resized <container> record.")
+  - CONTAINER: <container> record resized.")
 
 (define-var *workspace-switch-hook*
   (make-gliver-hook 'workspace-switch 2)
   "Invoked when the active workspace on an output is changed.
 Parameters: (WORKSPACE PREV-WORKSPACE)
-  - WORKSPACE: The newly active <workspace>.
-  - PREV-WORKSPACE: The previously active <workspace> or #f.")
+  - WORKSPACE: <workspace> record newly active.
+  - PREV-WORKSPACE: <workspace> record or #f; previously active workspace.")
 
 (define-var *workspace-created-hook*
   (make-gliver-hook 'workspace-created 1)
   "Invoked when a new <workspace> record is created.
 Parameters: (WORKSPACE)
-  - WORKSPACE: The newly created <workspace> record.")
+  - WORKSPACE: <workspace> record newly created.")
 
 (define-var *workspace-destroy-hook*
   (make-gliver-hook 'workspace-destroy 1)
   "Invoked when a workspace is removed.
 Parameters: (WORKSPACE)
-  - WORKSPACE: The removed <workspace> record.")
+  - WORKSPACE: <workspace> record removed.")
 
 (define-var *workspace-wallpaper-changed-hook*
   (make-gliver-hook 'workspace-wallpaper-changed 2)
   "Invoked when a workspace wallpaper is changed.
 Parameters: (WORKSPACE WALLPAPER)
-  - WORKSPACE: The <workspace> record.
+  - WORKSPACE: <workspace> record.
   - WALLPAPER: String path, color string, or symbol mode.")
 
 (define-var %output-created-hook
   (make-gliver-hook '%output-created 3)
   "Invoked when a new output is advertised.
 Parameters: (DATA PROXY-MANAGER PROXY-OUTPUT)
-  - DATA: User context pointer (unused, null in Gliver).
-  - PROXY-MANAGER: river_window_manager_v1 proxy handle.
-  - PROXY-OUTPUT: river_output_v1 proxy handle.")
+  - DATA: Pointer to user context (unused, null in Gliver).
+  - PROXY-MANAGER: Pointer to river_window_manager_v1 proxy.
+  - PROXY-OUTPUT: Pointer to river_output_v1 proxy.")
 
 (define-var %output-removed-hook
   (make-gliver-hook '%output-destroy 2)
   "Invoked when an output has been disconnected.
 Parameters: (DATA PROXY-OUTPUT)
-  - DATA: User context pointer (unused, null in Gliver).
-  - PROXY-OUTPUT: river_output_v1 proxy handle.")
+  - DATA: Pointer to user context (unused, null in Gliver).
+  - PROXY-OUTPUT: Pointer to river_output_v1 proxy.")
 
 (define-var %output-object-id-changed-hook
   (make-gliver-hook '%output-object-id-changed 3)
   "Invoked when an output Wayland object ID changes.
 Parameters: (DATA PROXY-OUTPUT OBJECT-ID)
-  - DATA: User context pointer (unused, null in Gliver).
-  - PROXY-OUTPUT: river_output_v1 proxy handle.
+  - DATA: Pointer to user context (unused, null in Gliver).
+  - PROXY-OUTPUT: Pointer to river_output_v1 proxy.
   - OBJECT-ID: Integer object IDs.")
 
 (define-var %output-geometry-changed-hook
   (make-gliver-hook '%output-geometry-changed 10)
   "Invoked when wl_output geometric properties are advertised.
 Parameters: (DATA PROXY X Y PHYSICAL-WIDTH PHYSICAL-HEIGHT SUBPIXEL MAKE MODEL TRANSFORM)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY: Pointer to wl_output proxy.
-  - X, Y: Integer coordinates in compositor logical space.
-  - PHYSICAL-WIDTH, PHYSICAL-HEIGHT: Integer physical screen dimensions in millimeters.
-  - SUBPIXEL: Integer Subpixel orientation code.
-  - MAKE, MODEL: String manufacturer and model name.
+  - X: Integer horizontal coordinate in compositor logical space.
+  - Y: Integer vertical coordinate in compositor logical space.
+  - PHYSICAL-WIDTH: Integer physical screen width in millimeters.
+  - PHYSICAL-HEIGHT: Integer physical screen height in millimeters.
+  - SUBPIXEL: Integer subpixel orientation code.
+  - MAKE: String or #f; manufacturer name.
+  - MODEL: String or #f; model name.
   - TRANSFORM: Integer buffer transform code.")
 
 (define-var %output-mode-changed-hook
   (make-gliver-hook '%output-mode-changed 6)
   "Invoked when wl_output mode is advertised.
 Parameters: (DATA PROXY FLAGS WIDTH HEIGHT REFRESH)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY: Pointer to wl_output proxy.
   - FLAGS: Integer mode flags bitfield (1 = current, 2 = preferred).
-  - WIDTH, HEIGHT: Integer mode resolution in pixels.
+  - WIDTH: Integer mode width in pixels.
+  - HEIGHT: Integer mode height in pixels.
   - REFRESH: Integer vertical refresh rate in mHz.")
 
 (define-var %output-done-hook
   (make-gliver-hook '%output-done 2)
   "Invoked when all wl_output properties in the current batch have been sent.
 Parameters: (DATA PROXY)
-  - DATA: User context pointer (unused, null in Gliver).
-  - PROXY: Pointer to wl_output proxy handle.")
+  - DATA: Pointer to user context (unused, null in Gliver).
+  - PROXY: Pointer to wl_output proxy.")
 
 (define-var %output-scale-changed-hook
   (make-gliver-hook '%output-scale-changed 3)
   "Invoked when wl_output scaling factor changes.
 Parameters: (DATA PROXY FACTOR)
-  - DATA: User context pointer (unused, null in Gliver).
-  - PROXY: Pointer to wl_output proxy handle.
+  - DATA: Pointer to user context (unused, null in Gliver).
+  - PROXY: Pointer to wl_output proxy.
   - FACTOR: Integer scaling factor.")
 
 (define-var %output-name-changed-hook
   (make-gliver-hook '%output-name-changed 3)
   "Invoked when wl_output advertises hardware output name.
 Parameters: (DATA PROXY NAME)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY: Pointer to wl_output proxy.
   - NAME: String hardware output name (e.g. \"eDP-1\").")
 
@@ -912,7 +934,7 @@ Parameters: (DATA PROXY NAME)
   (make-gliver-hook '%output-description-changed 3)
   "Invoked when wl_output advertises human-readable description.
 Parameters: (DATA PROXY DESCRIPTION)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY: Pointer to wl_output proxy.
   - DESCRIPTION: String human-readable description.")
 
@@ -920,42 +942,44 @@ Parameters: (DATA PROXY DESCRIPTION)
   (make-gliver-hook '%output-position-changed 4)
   "Invoked when output global screen coordinates are changed.
 Parameters: (DATA PROXY-OUTPUT X Y)
-  - DATA: User context pointer (unused, null in Gliver).
-  - PROXY-OUTPUT: river_output_v1 proxy handle.
-  - X, Y: Global coordinates in pixels.")
+  - DATA: Pointer to user context (unused, null in Gliver).
+  - PROXY-OUTPUT: Pointer to river_output_v1 proxy.
+  - X: Integer global horizontal coordinate in pixels.
+  - Y: Integer global vertical coordinate in pixels.")
 
 (define-var %output-dimensions-changed-hook
   (make-gliver-hook '%output-dimensions-changed 4)
   "Invoked when output width and height dimensions are changed.
-Parameters: (PROXY-OUTPUT WIDTH HEIGHT DATA)
-  - DATA: User context pointer (unused, null in Gliver).
-  - PROXY-OUTPUT: river_output_v1 proxy handle.
-  - WIDTH, HEIGHT: Resolution dimensions in pixels.")
+Parameters: (DATA PROXY-OUTPUT WIDTH HEIGHT)
+  - DATA: Pointer to user context (unused, null in Gliver).
+  - PROXY-OUTPUT: Pointer to river_output_v1 proxy.
+  - WIDTH: Integer output width in pixels.
+  - HEIGHT: Integer output height in pixels.")
 
 (define-var *output-created-hook*
   (make-gliver-hook 'output-created 1)
   "Invoked when an <output> record is created.
 Parameters: (OUTPUT)
-  - OUTPUT: The initialized <output> record.")
+  - OUTPUT: <output> record initialized.")
 
 (define-var *output-removed-hook*
   (make-gliver-hook 'output-removed 1)
   "Invoked when an output is removed.
 Parameters: (OUTPUT)
-  - OUTPUT: The removed <output> record.")
+  - OUTPUT: <output> record removed.")
 
 (define-var *output-object-id-changed-hook*
   (make-gliver-hook 'output-object-id-changed 2)
   "Invoked when an output Wayland proxy object ID is changed.
 Parameters: (OUTPUT PREV-OBJECT-ID)
-  - OUTPUT: The <output> record.
-  - PREV-OBJECT-ID: Previous integer Object ID.")
+  - OUTPUT: <output> record.
+  - PREV-OBJECT-ID: Integer or #f; previous object ID.")
 
 (define-var *output-name-changed-hook*
   (make-gliver-hook 'output-name-changed 3)
   "Invoked when an output name changes.
 Parameters: (OUTPUT OLD-NAME NEW-NAME)
-  - OUTPUT: The <output> record.
+  - OUTPUT: <output> record.
   - OLD-NAME: String previous output name.
   - NEW-NAME: String new output name.")
 
@@ -963,95 +987,100 @@ Parameters: (OUTPUT OLD-NAME NEW-NAME)
   (make-gliver-hook 'output-wl-name-changed 2)
   "Invoked when an output's wl_output hardware name is changed.
 Parameters: (OUTPUT NAME)
-  - OUTPUT: The <output> record.
+  - OUTPUT: <output> record.
   - NAME: String hardware name (e.g. \"eDP-1\", \"HDMI-A-1\").")
 
 (define-var *output-description-changed-hook*
   (make-gliver-hook 'output-description-changed 2)
   "Invoked when an output's wl_output description is changed.
 Parameters: (OUTPUT DESCRIPTION)
-  - OUTPUT: The <output> record.
+  - OUTPUT: <output> record.
   - DESCRIPTION: String human-readable description.")
 
 (define-var *output-scale-changed-hook*
   (make-gliver-hook 'output-scale-changed 2)
   "Invoked when an output's wl_output scaling factor changes.
 Parameters: (OUTPUT FACTOR)
-  - OUTPUT: The <output> record.
+  - OUTPUT: <output> record.
   - FACTOR: Integer scaling factor.")
 
 (define-var *output-mode-changed-hook*
   (make-gliver-hook 'output-mode-changed 5)
   "Invoked when an output's mode is changed.
 Parameters: (OUTPUT FLAGS WIDTH HEIGHT REFRESH)
-  - OUTPUT: The <output> record.
+  - OUTPUT: <output> record.
   - FLAGS: Integer mode flags bitfield.
-  - WIDTH, HEIGHT: Integer mode resolution in pixels.
+  - WIDTH: Integer mode width in pixels.
+  - HEIGHT: Integer mode height in pixels.
   - REFRESH: Integer vertical refresh rate in mHz.")
 
 (define-var *output-geometry-changed-hook*
   (make-gliver-hook 'output-geometry-changed 7)
   "Invoked when wl_output geometric properties are advertised.
 Parameters: (OUTPUT PHYSICAL-WIDTH PHYSICAL-HEIGHT SUBPIXEL MAKE MODEL TRANSFORM)
-  - OUTPUT: The <output> record.
-  - PHYSICAL-WIDTH, PHYSICAL-HEIGHT: Integer physical screen dimensions in millimeters.
-  - SUBPIXEL: Integer Subpixel orientation code.
-  - MAKE, MODEL: String manufacturer and model name.
-  - TRANSFORM: Integer buffer transform code.")
+  - OUTPUT: <output> record.
+  - PHYSICAL-WIDTH: Integer physical screen width in millimeters.
+  - PHYSICAL-HEIGHT: Integer physical screen height in millimeters.
+  - SUBPIXEL: Symbol subpixel orientation (e.g. 'unknown, 'horizontal-rgb).
+  - MAKE: String or #f; manufacturer name.
+  - MODEL: String or #f; model name.
+  - TRANSFORM: Symbol buffer transform (e.g. 'normal, '90).")
 
 (define-var *output-done-hook*
   (make-gliver-hook 'output-done 1)
   "Invoked when all wl_output properties for an output in the current batch have completed.
 Parameters: (OUTPUT)
-  - OUTPUT: The <output> record.")
+  - OUTPUT: <output> record.")
 
 (define-var *output-position-changed-hook*
   (make-gliver-hook 'output-position-changed 3)
   "Invoked when an output position coordinates are changed.
 Parameters: (OUTPUT X Y)
-  - OUTPUT: The <output> record.
-  - X, Y: Output screen coordinates in pixels.")
+  - OUTPUT: <output> record.
+  - X: Integer output horizontal coordinate in pixels.
+  - Y: Integer output vertical coordinate in pixels.")
 
 (define-var *output-dimensions-changed-hook*
   (make-gliver-hook 'output-dimensions-changed 3)
   "Invoked when an output dimensions are changed.
 Parameters: (OUTPUT WIDTH HEIGHT)
-  - OUTPUT: The <output> record.
-  - WIDTH, HEIGHT: Pixel dimensions.")
+  - OUTPUT: <output> record.
+  - WIDTH: Integer output width in pixels.
+  - HEIGHT: Integer output height in pixels.")
 
 (define-var *output-destroy-hook*
   (make-gliver-hook 'output-destroy 1)
   "Invoked when an output is destroyed.
 Parameters: (OUTPUT)
-  - OUTPUT: The destroyed <output> record.")
+  - OUTPUT: <output> record destroyed.")
 
 (define-var *output-focus-hook*
   (make-gliver-hook 'output-focus 2)
   "Invoked when focus transitions between outputs.
 Parameters: (OUTPUT PREV-OUTPUT)
-  - OUTPUT: The newly focused <output>.
-  - PREV-OUTPUT: The previously focused <output> or #f.")
+  - OUTPUT: <output> record newly focused.
+  - PREV-OUTPUT: <output> record or #f; previously focused output.")
 
 (define-var *output-wallpaper-changed-hook*
   (make-gliver-hook 'output-wallpaper-changed 2)
   "Invoked when output's wallpaper is changed.
 Parameters: (OUTPUT WALLPAPER)
-  - OUTPUT: The <output> record.
+  - OUTPUT: <output> record.
   - WALLPAPER: String path, color string, or symbol.")
 
 (define-var *output-statusbar-changed-hook*
   (make-gliver-hook 'output-statusbar-changed 2)
   "Invoked when a statusbar is attached or modified on an output.
 Parameters: (OUTPUT STATUSBAR)
-  - OUTPUT: The <output> record.
-  - STATUSBAR: The statusbar record instance.")
+  - OUTPUT: <output> record.
+  - STATUSBAR: <statusbar> record instance.")
 
 (define-var %seat-created-hook
   (make-gliver-hook '%seat-created 3)
   "Invoked when a seat is advertised.
 Attach the river_seat_v1 listener.
 Parameters: (DATA MANAGER SEAT-PROXY)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - MANAGER: Pointer to river_window_manager_v1 proxy.
   - SEAT-PROXY: Pointer to river_seat_v1 proxy.")
 
@@ -1059,22 +1088,22 @@ Parameters: (DATA MANAGER SEAT-PROXY)
   (make-gliver-hook '%seat-removed 2)
   "Invoked when a seat is removed from compositor.
 Parameters: (DATA PROXY-SEAT)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-SEAT: Pointer to river_seat_v1 proxy.")
 
 (define-var %seat-object-id-changed-hook
   (make-gliver-hook '%seat-object-id-changed 3)
   "Invoked when a wl_seat is advertised river_seat_v1.
 Parameters: (DATA PROXY-SEAT OBJECT-ID)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-SEAT: Pointer to river_seat_v1 proxy.
-  - OBJECT-ID: Numeric Wayland object ID of the wl_seat global.")
+  - OBJECT-ID: Integer Wayland object ID of the wl_seat global.")
 
 (define-var %seat-window-pointer-entered-hook
   (make-gliver-hook '%seat-window-pointer-entered 3)
   "Invoked when a seat pointer enters a window area.
 Parameters: (DATA PROXY-SEAT PROXY-WINDOW)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-SEAT: Pointer to river_seat_v1 proxy.
   - PROXY-WINDOW: Pointer to river_window_v1 proxy.")
 
@@ -1082,14 +1111,14 @@ Parameters: (DATA PROXY-SEAT PROXY-WINDOW)
   (make-gliver-hook '%seat-window-pointer-left 2)
   "Invoked when a seat pointer leaves a window area.
 Parameters: (DATA PROXY-SEAT)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-SEAT: Pointer to river_seat_v1 proxy.")
 
 (define-var %seat-window-interacted-hook
   (make-gliver-hook '%seat-window-interacted 3)
   "Invoked when a seat interacts (click or input) with a window surface.
 Parameters: (DATA PROXY-SEAT PROXY-WIN)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-SEAT: Pointer to river_seat_v1 proxy.
   - PROXY-WIN: Pointer to river_window_v1 proxy.")
 
@@ -1097,7 +1126,7 @@ Parameters: (DATA PROXY-SEAT PROXY-WIN)
   (make-gliver-hook '%seat-shell-interacted 3)
   "Invoked when a seat interacts (click or input) with a shell surface.
 Parameters: (DATA PROXY-SEAT SHELL-PROXY)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-SEAT: Pointer to river_seat_v1 proxy.
   - SHELL-PROXY: Pointer to river_shell_surface_v1 proxy.")
 
@@ -1105,102 +1134,102 @@ Parameters: (DATA PROXY-SEAT SHELL-PROXY)
   (make-gliver-hook '%seat-op-delta-changed 4)
   "Invoked when a pointer/touch position delta changes during an interactive operation.
 Parameters: (DATA PROXY-SEAT DX DY)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-SEAT: Pointer to river_seat_v1 proxy.
-  - DX: Horizontal delta since operation start.
-  - DY: Vertical delta since operation start.")
+  - DX: Integer horizontal delta since operation start.
+  - DY: Integer vertical delta since operation start.")
 
 (define-var %seat-op-released-hook
   (make-gliver-hook '%seat-op-released 2)
   "Invoked when a seat interaction is released (pointer/touch release).
 Parameters: (DATA PROXY-SEAT)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-SEAT: Pointer to river_seat_v1 proxy.")
 
 (define-var %seat-pointer-position-changed-hook
   (make-gliver-hook '%seat-pointer-position-changed 4)
   "Invoked when a pointer position update in compositor logical coordinates.
 Parameters: (DATA PROXY-SEAT X Y)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-SEAT: Pointer to river_seat_v1 proxy.
-  - X: Logical horizontal pointer position.
-  - Y: Logical vertical pointer position.")
+  - X: Integer logical horizontal pointer position.
+  - Y: Integer logical vertical pointer position.")
 
 (define-var *seat-created-hook*
   (make-gliver-hook 'seat-created 1)
   "Invoked when a <seat> record is created.
 Parameters: (SEAT)
-  - SEAT: The <seat> record.")
+  - SEAT: <seat> record.")
 
 (define-var *seat-destroy-hook*
   (make-gliver-hook 'seat-destroy 1)
   "Invoked when a <seat> record is destroyed.
 Parameters: (SEAT)
-  - SEAT: The destroyed <seat> record.")
+  - SEAT: <seat> record destroyed.")
 
 (define-var *seat-object-id-changed-hook*
   (make-gliver-hook 'seat-object-id-changed 2)
   "Invoked when a <seat> record wl_seat is updated.
 Parameters: (SEAT PREV-OBJECT-ID)
-  - SEAT: The <seat> record.
-  - PREV-OBJECT-ID: Previous integer ID.")
+  - SEAT: <seat> record.
+  - PREV-OBJECT-ID: Integer or #f; previous object ID.")
 
 (define-var *seat-window-entered-changed-hook*
   (make-gliver-hook 'seat-window-entered-changed 2)
   "Invoked when a <seat> enters a window.
 Parameters: (SEAT WINDOW)
-  - SEAT: The <seat> record.
-  - WINDOW: The <window> entered or #f.")
+  - SEAT: <seat> record.
+  - WINDOW: <window> record or #f; window entered.")
 
 (define-var *seat-window-interacted-hook*
   (make-gliver-hook 'seat-window-interacted 2)
   "Invoked when a <seat> interacts with a window surface.
 Parameters: (SEAT WINDOW)
-  - SEAT: The <seat> record.
-  - WINDOW: The <window> interacted with.")
+  - SEAT: <seat> record.
+  - WINDOW: <window> record interacted with.")
 
 (define-var *seat-shell-interacted-hook*
   (make-gliver-hook 'seat-shell-interacted 2)
   "Invoked when a <seat> interacts with a shell surface.
 Parameters: (SEAT PROXY-SHELL)
-  - SEAT: The <seat> record.
-  - PROXY-SHELL: Pointer to river_shell_surface_v1.")
+  - SEAT: <seat> record.
+  - PROXY-SHELL: Pointer to river_shell_surface_v1 proxy.")
 
 (define-var *seat-seat-op-delta-changed-hook*
   (make-gliver-hook 'seat-seat-op-delta-changed 3)
   "Invoked when a <seat> position update in compositor logical coordinates.
 Parameters: (SEAT DX DY)
-  - SEAT: The <seat> record.
-  - X: Logical horizontal pointer position.
-  - Y: Logical vertical pointer position.")
+  - SEAT: <seat> record.
+  - DX: Integer horizontal pointer delta.
+  - DY: Integer vertical pointer delta.")
 
 (define-var *seat-seat-op-released-hook*
   (make-gliver-hook 'seat-seat-op-released 1)
   "Invoked when a <seat> interaction is released (pointer/touch release).
 Parameters: (SEAT)
-  - SEAT: The <seat> record.")
+  - SEAT: <seat> record.")
 
 (define-var *seat-seat-pointer-position-changed-hook*
   (make-gliver-hook 'seat-seat-pointer-position-changed 3)
   "Invoked when a <seat> position update in compositor logical coordinates.
 Parameters: (SEAT X Y)
-  - SEAT: The <seat> record.
-  - X: Logical horizontal pointer position.
-  - Y: Logical vertical pointer position.")
+  - SEAT: <seat> record.
+  - X: Integer logical horizontal pointer position.
+  - Y: Integer logical vertical pointer position.")
 
 (define-var *seat-window-focused-hook*
   (make-gliver-hook 'seat-window-focused 2)
   "Invoked when a <seat> focuses a window.
 Parameters: (SEAT WINDOW)
-  - SEAT: The <seat> record.
-  - WINDOW: The focused <window> record or #f.")
+  - SEAT: <seat> record.
+  - WINDOW: <window> record or #f; focused window.")
 
 (define-var *seat-focus-type-changed-hook*
   (make-gliver-hook 'seat-window-focused 2)
   "Invoked when a <seat> changes its focus type.
 Parameters: (SEAT TYPE)
-  - SEAT: The <seat> record.
-  - TYPE: Symbol focus type ('exclusive 'non-exclusive 'none).")
+  - SEAT: <seat> record.
+  - TYPE: Symbol previous focus type ('exclusive, 'non-exclusive, or 'none).")
 
 (define-var %keybinding-pressed-hook
   (make-gliver-hook '%keybinding-pressed-hook 1)
@@ -1230,21 +1259,23 @@ Parameters: (PROXY-SEAT)
   (make-gliver-hook 'keymap-change 1)
   "Invoked when active keymap changes.
 Parameters: (TARGET-MODE)
-  - TARGET-MODE: Symbol representing the target keymap mode.")
+  - TARGET-MODE: <keymap> record or symbol representing the target keymap mode.")
 
 (define-var *command-pre-hook*
   (make-gliver-hook 'command-pre 2)
   "Invoked before an interactive command is executed via command-run.
-Parameters: (COMMAND-NAME ARGS)
+Parameters: (COMMAND-NAME ARGS RESULT)
   - COMMAND-NAME: Symbol representing the command name.
-  - ARGS: List of arguments passed to the command.")
+  - ARGS: List of arguments passed to the command.
+  - RESULT: Value returned by the command, or #f on failure.")
 
 (define-var *command-post-hook*
   (make-gliver-hook 'command-post 3)
   "Invoked after an interactive command is executed via command-run.
-Parameters: (COMMAND-NAME ARGS)
+Parameters: (COMMAND-NAME ARGS RESULT)
   - COMMAND-NAME: Symbol representing the command name.
-  - ARGS: List of arguments passed to the command.")
+  - ARGS: List of arguments passed to the command.
+  - RESULT: Value returned by the command, or #f on failure.")
 
 (define-var *startup-hook*
   (make-gliver-hook 'startup 0)
@@ -1277,7 +1308,7 @@ Parameters: (PATH-OR-COLOR)
   "Invoked when keyboard layout changes.
 Parameters: (LAYOUT-INDEX LAYOUT-CODE)
   - LAYOUT-INDEX: Integer layout index (0-indexed).
-  - LAYOUT-CODE: Short layout code string (e.g. \"us\", \"ara\").")
+  - LAYOUT-CODE: String short layout code (e.g. \"us\", \"ara\").")
 
 (define-var %layer-shell-output-non-exclusive-area-changed-hook
   (make-gliver-hook '%layer-shell-output-non-exclusive-area-changed-hook 6)
@@ -1285,34 +1316,34 @@ Parameters: (LAYOUT-INDEX LAYOUT-CODE)
 Window manager should respect this area and update output available space accordingly.
 The area maybe occupied by layer shell components like statusbar.
 Parameters: (DATA PROXY-LS-OUTPUT X Y WIDTH HEIGHT)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-LS-OUTPUT: Pointer to river_layer_shell_output_v1 proxy.
-  - X: Remaining usable area top-left corner global x coordinate.
-  - Y: Remaining usable area top-left corner global y coordinate.
-  - WIDTH: Remaining usable area width of the output.
-  - HEIGHT: Remaining usable area height of the output.")
+  - X: Integer remaining usable area top-left corner global x coordinate.
+  - Y: Integer remaining usable area top-left corner global y coordinate.
+  - WIDTH: Integer remaining usable area width of the output.
+  - HEIGHT: Integer remaining usable area height of the output.")
 
 (define-var %layer-shell-seat-focus-changed-hook
   (make-gliver-hook '%layer-shell-seat-focus-changed-hook 3)
   "Invoked when seat focus changes between exclusive and non-exclusive areas.
 Parameters: (DATA PROXY-LS-SEAT TYPE)
-  - DATA: User context pointer (unused, null in Gliver).
-  - PROXY-LS-SEAT: Pointer to river_layer_shell_output_v1 proxy.
-  - TYPE: Symbol focus type ('exclusive 'non-exclusive 'none).")
+  - DATA: Pointer to user context (unused, null in Gliver).
+  - PROXY-LS-SEAT: Pointer to river_layer_shell_seat_v1 proxy.
+  - TYPE: Symbol previous focus type ('exclusive, 'non-exclusive, or 'none).")
 
 (define-var %xkb-config-destroyed-hook
   (make-gliver-hook '%xkb-config-destroyed-hook 2)
   "Invoked when river decides to stop sending events for river_xkb_config_v1 object.
 It will be invoked after sending the stop request and it means that the object should be destroyed.
 Parameters: (DATA PROXY)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY: Pointer to river_xkb_config_v1 proxy.")
 
 (define-var %xkb-config-keyboard-created-hook
   (make-gliver-hook '%xkb-config-keyboard-created-hook 3)
   "Invoked when a new river_xkb_keyboard_v1 is advertised by compositor.
 Parameters: (DATA PROXY-CONFIG PROXY-KEYBOARD)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-CONFIG: Pointer to river_xkb_config_v1 proxy.
   - PROXY-KEYBOARD: Pointer to river_xkb_keyboard_v1 proxy.")
 
@@ -1321,7 +1352,7 @@ Parameters: (DATA PROXY-CONFIG PROXY-KEYBOARD)
   "Invoked when created river_xkb_keymap_v1 via river_xkb_config_v1 succeeded.
 It's possible after the event to set this keymap to a keyboard.
 Parameters: (DATA PROXY)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY: Pointer to river_xkb_keymap_v1 proxy.")
 
 (define-var %xkb-config-keymap-failed-hook
@@ -1329,7 +1360,7 @@ Parameters: (DATA PROXY)
   "Invoked when created river_xkb_keymap_v1 via river_xkb_config_v1 failed.
 This may be error in configuration like incorrect language.
 Parameters: (DATA PROXY ERROR-MSG)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY: Pointer to river_xkb_keymap_v1 proxy.
   - ERROR-MSG: String of the error message.")
 
@@ -1337,14 +1368,14 @@ Parameters: (DATA PROXY ERROR-MSG)
   (make-gliver-hook '%xkb-config-keyboard-removed 2)
   "Invoked when river_xkb_keyboard_v1 is removed from compositor.
 Parameters: (DATA PROXY)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY: Pointer to river_xkb_keyboard_v1 proxy.")
 
 (define-var %xkb-keyboard-input-device-hook
   (make-gliver-hook '%xkb-keyboard-input-device-hook 3)
   "Invoked when river_xkb_keyboard_v1 is associated with river_input_device_v1.
 Parameters: (DATA PROXY-KEYBOARD PROXY-DEVICE)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-KEYBOARD: Pointer to river_xkb_keyboard_v1 proxy.
   - PROXY-DEVICE: Pointer to river_input_device_v1 proxy.")
 
@@ -1352,51 +1383,51 @@ Parameters: (DATA PROXY-KEYBOARD PROXY-DEVICE)
   (make-gliver-hook '%xkb-keyboard-layout-changed-hook 4)
   "Invoked when active layout on river_xkb_keyboard_v1 changes.
 Parameters: (DATA PROXY-KEYBOARD INDEX NAME)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-KEYBOARD: Pointer to river_xkb_keyboard_v1 proxy.
-  - INDEX: Numeric 0-based layout index.
+  - INDEX: Integer 0-based layout index.
   - NAME: String layout name or #f.")
 
 (define-var %xkb-keyboard-capslock-enabled-hook
   (make-gliver-hook '%xkb-keyboard-capslock-enabled-hook 2)
   "Invoked when capslock is enabled on river_xkb_keyboard_v1.
 Parameters: (DATA PROXY-KEYBOARD)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-KEYBOARD: Pointer to river_xkb_keyboard_v1 proxy.")
 
 (define-var %xkb-keyboard-capslock-disabled-hook
   (make-gliver-hook '%xkb-keyboard-capslock-disabled-hook 2)
   "Invoked when capslock is disabled on river_xkb_keyboard_v1.
 Parameters: (DATA PROXY-KEYBOARD)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-KEYBOARD: Pointer to river_xkb_keyboard_v1 proxy.")
 
 (define-var %xkb-keyboard-numlock-enabled-hook
   (make-gliver-hook '%xkb-keyboard-numlock-enabled-hook 2)
   "Invoked when numlock is enabled on river_xkb_keyboard_v1.
 Parameters: (DATA PROXY-KEYBOARD)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-KEYBOARD: Pointer to river_xkb_keyboard_v1 proxy.")
 
 (define-var %xkb-keyboard-numlock-disabled-hook
   (make-gliver-hook '%xkb-keyboard-numlock-disabled-hook 2)
   "Invoked when numlock is disabled on river_xkb_keyboard_v1.
 Parameters: (DATA PROXY-KEYBOARD)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-KEYBOARD: Pointer to river_xkb_keyboard_v1 proxy.")
 
 (define-var %input-manager-finished-hook
   (make-gliver-hook '%input-manager-finished-hook 2)
   "Invoked when river compositor has finished sending events for river_input_manager_v1.
 Parameters: (DATA PROXY-MANAGER)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-MANAGER: Pointer to river_input_manager_v1 proxy.")
 
 (define-var %input-manager-device-created-hook
   (make-gliver-hook '%input-manager-device-created-hook 3)
   "Invoked when a new river_input_device_v1 is advertised.
 Parameters: (DATA PROXY-MANAGER PROXY-DEVICE)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-MANAGER: Pointer to river_input_manager_v1 proxy.
   - PROXY-DEVICE: Pointer to river_input_device_v1 proxy.")
 
@@ -1404,22 +1435,22 @@ Parameters: (DATA PROXY-MANAGER PROXY-DEVICE)
   (make-gliver-hook '%input-device-removed-hook 2)
   "Invoked when river_input_device_v1 is removed from compositor.
 Parameters: (DATA PROXY-DEVICE)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-DEVICE: Pointer to river_input_device_v1 proxy.")
 
 (define-var %input-device-type-hook
   (make-gliver-hook '%input-device-type-hook 3)
   "Invoked when river_input_device_v1 type is advertised.
 Parameters: (DATA PROXY-DEVICE TYPE)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-DEVICE: Pointer to river_input_device_v1 proxy.
-  - TYPE: Numeric type enum (0=keyboard, 1=pointer, 2=touch, 3=tablet).")
+  - TYPE: Integer type enum (0=keyboard, 1=pointer, 2=touch, 3=tablet).")
 
 (define-var %input-device-name-hook
   (make-gliver-hook '%input-device-name-hook 3)
   "Invoked when river_input_device_v1 name is advertised.
 Parameters: (DATA PROXY-DEVICE NAME)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-DEVICE: Pointer to river_input_device_v1 proxy.
   - NAME: String device name.")
 
@@ -1427,30 +1458,30 @@ Parameters: (DATA PROXY-DEVICE NAME)
   (make-gliver-hook '%wlr-layer-surface-configure-hook 5)
   "Invoked when zwlr_layer_surface_v1 is configured by compositor.
 Parameters: (DATA PROXY-LAYER-SURFACE SERIAL WIDTH HEIGHT)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-LAYER-SURFACE: Pointer to zwlr_layer_surface_v1 proxy.
-  - SERIAL: Serial number from compositor.
-  - WIDTH: Allocated width in pixels.
-  - HEIGHT: Allocated height in pixels.")
+  - SERIAL: Integer serial number from compositor.
+  - WIDTH: Integer allocated width in pixels.
+  - HEIGHT: Integer allocated height in pixels.")
 
 (define-var %wlr-layer-surface-closed-hook
   (make-gliver-hook '%wlr-layer-surface-closed-hook 2)
   "Invoked when zwlr_layer_surface_v1 is closed by compositor.
 Parameters: (DATA PROXY-LAYER-SURFACE)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-LAYER-SURFACE: Pointer to zwlr_layer_surface_v1 proxy.")
 
 (define-var %fractional-scale-preferred-scale-hook
   (make-gliver-hook '%fractional-scale-preferred-scale-hook 3)
   "Invoked when wp_fractional_scale_v1 preferred_scale event is sent by compositor.
 Parameters: (DATA PROXY-FRACTIONAL-SCALE SCALE)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-FRACTIONAL-SCALE: Pointer to wp_fractional_scale_v1 proxy.
-  - SCALE: Preferred scale numerator with denominator 120 (uint32).")
+  - SCALE: Integer preferred scale numerator with denominator 120 (uint32).")
 
 (define-var *surface-scale-changed-hook*
   (make-gliver-hook '*surface-scale-changed-hook* 2)
   "Invoked when a Wayland surface scale changes via fractional scale protocol.
 Parameters: (SURFACE SCALE)
-  - SURFACE: Pointer to wl_surface proxy.
-  - SCALE: Preferred scale factor as a real number (e.g. 1.0, 1.25, 2.0).")
+  - SURFACE: Pointer to Wayland wl_surface.
+  - SCALE: Float preferred scale factor (e.g. 1.0, 1.25, 2.0).")

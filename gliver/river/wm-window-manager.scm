@@ -104,7 +104,7 @@ Parameters: None."
 (define (wm-window-on-window data manager window-proxy)
   "Invoked when a window is advertised.
 Parameters: (DATA MANAGER WINDOW-PROXY)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - MANAGER: Pointer to river_window_manager_v1 proxy.
   - WINDOW-PROXY: Pointer to river_window_v1 proxy."
   (when (valid-pointer? window-proxy)
@@ -145,7 +145,8 @@ Parameters: (PROXY-WINDOW)
 (define (wm-window-node-get proxy-window)
   "Get node corresponding to the window (called once per window).
 Parameters: (PROXY-WINDOW)
-  - PROXY-WINDOW: Pointer to river_window_v1 proxy."
+  - PROXY-WINDOW: Pointer to river_window_v1 proxy.
+Returns pointer to river_node_v1 proxy or #f."
   (when (and (valid-pointer? proxy-window)
              (hash-get-handle *wm-windows* proxy-window))
     (or (hash-ref *wm-windows* proxy-window)
@@ -162,8 +163,8 @@ Parameters: (PROXY-WINDOW)
 Must be called in a manage sequence.
 Parameters: (PROXY-WINDOW WIDTH HEIGHT)
   - PROXY-WINDOW: Pointer to river_window_v1 proxy.
-  - WIDTH: Proposed window width in pixels.
-  - HEIGHT: Proposed window height in pixels."
+  - WIDTH: Integer proposed window width in pixels.
+  - HEIGHT: Integer proposed window height in pixels."
   (when (and (valid-pointer? proxy-window)
              (hash-get-handle *wm-windows* proxy-window)
              (integer? width) (> width 0)
@@ -221,12 +222,12 @@ Parameters: (PROXY-WINDOW)
 Must be called in a render sequence.
 Parameters: (PROXY-WINDOW EDGES WIDTH R G B A)
   - PROXY-WINDOW: Pointer to river_window_v1 proxy.
-  - EDGES: Border edge bitmask flags (e.g. RIVER_WINDOW_V1_EDGES_TOP).
-  - WIDTH: Border width in pixels.
-  - R: Red color component (0 - 4294967295).
-  - G: Green color component (0 - 4294967295).
-  - B: Blue color component (0 - 4294967295).
-  - A: Alpha opacity component (0 - 4294967295)."
+  - EDGES: Integer border edge bitmask flags (e.g. RIVER_WINDOW_V1_EDGES_TOP).
+  - WIDTH: Integer border width in pixels.
+  - R: Integer red color component (0 - 4294967295).
+  - G: Integer green color component (0 - 4294967295).
+  - B: Integer blue color component (0 - 4294967295).
+  - A: Integer alpha opacity component (0 - 4294967295)."
   (when (and (valid-pointer? proxy-window)
              (hash-get-handle *wm-windows* proxy-window)
              (integer? edges) (<= 0 edges 15)
@@ -244,7 +245,7 @@ Parameters: (PROXY-WINDOW EDGES WIDTH R G B A)
 Must be called in a manage sequence.
 Parameters: (PROXY-WINDOW EDGES)
   - PROXY-WINDOW: Pointer to river_window_v1 proxy.
-  - EDGES: Tiled edge bitmask flags (e.g. RIVER_WINDOW_V1_EDGES_TOP)."
+  - EDGES: Integer tiled edge bitmask flags (e.g. RIVER_WINDOW_V1_EDGES_TOP)."
   (when (and (valid-pointer? proxy-window)
              (hash-get-handle *wm-windows* proxy-window)
              (integer? edges) (>= edges 0))
@@ -257,7 +258,8 @@ Parameters: (PROXY-WINDOW EDGES)
 assign the river_decoration_v1 role to it.
 Parameters: (PROXY-WINDOW PROXY-SURFACE)
   - PROXY-WINDOW: Pointer to river_window_v1 proxy.
-  - PROXY-SURFACE: Pointer to unmapped wl_surface proxy."
+  - PROXY-SURFACE: Pointer to unmapped wl_surface proxy.
+Returns pointer to river_decoration_v1 proxy or #f."
   (when (and (valid-pointer? proxy-window)
              (hash-get-handle *wm-windows* proxy-window)
              (valid-pointer? proxy-surface))
@@ -273,7 +275,8 @@ Parameters: (PROXY-WINDOW PROXY-SURFACE)
 assign the river_decoration_v1 role to it.
 Parameters: (PROXY-WINDOW PROXY-SURFACE)
   - PROXY-WINDOW: Pointer to river_window_v1 proxy.
-  - PROXY-SURFACE: Pointer to unmapped wl_surface proxy."
+  - PROXY-SURFACE: Pointer to unmapped wl_surface proxy.
+Returns pointer to river_decoration_v1 proxy or #f."
   (when (and (valid-pointer? proxy-window)
              (hash-get-handle *wm-windows* proxy-window)
              (valid-pointer? proxy-surface))
@@ -311,7 +314,7 @@ Parameters: (PROXY-WINDOW)
 Must be called in a manage sequence.
 Parameters: (PROXY-WINDOW CAPS)
   - PROXY-WINDOW: Pointer to river_window_v1 proxy.
-  - CAPS: Capabilities bitmask flags (e.g. RIVER_WINDOW_V1_CAPABILITIES_MAXIMIZE)."
+  - CAPS: Integer capabilities bitmask flags (e.g. RIVER_WINDOW_V1_CAPABILITIES_MAXIMIZE)."
   (when (and (valid-pointer? proxy-window)
              (hash-get-handle *wm-windows* proxy-window)
              (integer? caps) (>= caps 0))
@@ -393,10 +396,10 @@ Clip box is ignored while window is on fullscreen.
 Must be called in a render sequence.
 Parameters: (PROXY-WINDOW X Y WIDTH HEIGHT)
   - PROXY-WINDOW: Pointer to river_window_v1 proxy.
-  - X: Horizontal clip origin in window coordinates.
-  - Y: Vertical clip origin in window coordinates.
-  - WIDTH: Clip box width (0 disables clipping).
-  - HEIGHT: Clip box height (0 disables clipping)."
+  - X: Integer horizontal clip origin in window coordinates.
+  - Y: Integer vertical clip origin in window coordinates.
+  - WIDTH: Integer clip box width (0 disables clipping).
+  - HEIGHT: Integer clip box height (0 disables clipping)."
   (when (and (valid-pointer? proxy-window)
              (hash-get-handle *wm-windows* proxy-window)
              (integer? x) (integer? y)
@@ -411,10 +414,10 @@ Parameters: (PROXY-WINDOW X Y WIDTH HEIGHT)
 Must be called in a render sequence.
 Parameters: (PROXY-WINDOW X Y WIDTH HEIGHT)
   - PROXY-WINDOW: Pointer to river_window_v1 proxy.
-  - X: Horizontal clip origin in content coordinates.
-  - Y: Vertical clip origin in content coordinates.
-  - WIDTH: Content clip width (0 disables clipping).
-  - HEIGHT: Content clip height (0 disables clipping)."
+  - X: Integer horizontal clip origin in content coordinates.
+  - Y: Integer vertical clip origin in content coordinates.
+  - WIDTH: Integer content clip width (0 disables clipping).
+  - HEIGHT: Integer content clip height (0 disables clipping)."
   (when (and (valid-pointer? proxy-window)
              (hash-get-handle *wm-windows* proxy-window)
              (integer? x) (integer? y)
@@ -429,8 +432,8 @@ Parameters: (PROXY-WINDOW X Y WIDTH HEIGHT)
 Must be called in a manage sequence.
 Parameters: (PROXY-WINDOW MAX-WIDTH MAX-HEIGHT)
   - PROXY-WINDOW: Pointer to river_window_v1 proxy.
-  - MAX-WIDTH: Maximum recommended width (0 indicates no limit).
-  - MAX-HEIGHT: Maximum recommended height (0 indicates no limit)."
+  - MAX-WIDTH: Integer maximum recommended width (0 indicates no limit).
+  - MAX-HEIGHT: Integer maximum recommended height (0 indicates no limit)."
   (when (and (valid-pointer? proxy-window)
              (hash-get-handle *wm-windows* proxy-window)
              (integer? max-width) (>= max-width 0)
@@ -443,7 +446,7 @@ Parameters: (PROXY-WINDOW MAX-WIDTH MAX-HEIGHT)
 (define (wm-window-on-window-closed data proxy-window)
   "Invoked when window is closed.
 Parameters: (DATA PROXY-WINDOW)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-WINDOW: Pointer to river_window_v1 proxy."
   ;; just let the window manager handle it
   (when *log-river-calls*
@@ -455,12 +458,12 @@ Parameters: (DATA PROXY-WINDOW)
 (define (wm-window-on-window-dimensions-hint data proxy-window min-w min-h max-w max-h)
   "Invoked when window's preferred minimum and maximum dimension hints change.
 Parameters: (DATA PROXY-WINDOW MIN-W MIN-H MAX-W MAX-H)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-WINDOW: Pointer to river_window_v1 proxy.
-  - MIN-W: Minimum preferred width in pixels.
-  - MIN-H: Minimum preferred height in pixels.
-  - MAX-W: Maximum preferred width in pixels.
-  - MAX-H: Maximum preferred height in pixels."
+  - MIN-W: Integer minimum preferred width in pixels.
+  - MIN-H: Integer minimum preferred height in pixels.
+  - MAX-W: Integer maximum preferred width in pixels.
+  - MAX-H: Integer maximum preferred height in pixels."
   (when *log-river-calls*
     (log-debug "Window dimensions hint: ~a min=~ax~a max=~ax~a"
                proxy-window min-w min-h max-w max-h))
@@ -470,10 +473,10 @@ Parameters: (DATA PROXY-WINDOW MIN-W MIN-H MAX-W MAX-H)
 (define (wm-window-on-window-dimensions data proxy-window width height)
   "Invoked when window's dimensions (width and height) change.
 Parameters: (DATA PROXY-WINDOW WIDTH HEIGHT)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-WINDOW: Pointer to river_window_v1 proxy.
-  - WIDTH: Width in pixels.
-  - HEIGHT: Height in pixels."
+  - WIDTH: Integer width in pixels.
+  - HEIGHT: Integer height in pixels."
   (when *log-river-calls*
     (log-debug "Window dimensions: ~a ~ax~a" proxy-window width height))
   (gliver-hook-run! %window-size-changed-hook proxy-window width height))
@@ -481,7 +484,7 @@ Parameters: (DATA PROXY-WINDOW WIDTH HEIGHT)
 (define (wm-window-on-window-app-id data proxy-window app-id-ptr)
   "Invoked when window's app_id string change.
 Parameters: (DATA PROXY-WINDOW APP-ID-PTR)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-WINDOW: Pointer to river_window_v1 proxy.
   - APP-ID-PTR: Pointer to app_id string."
   (let ((app-id (if (or (not (pointer? app-id-ptr)) (null-pointer? app-id-ptr))
@@ -494,7 +497,7 @@ Parameters: (DATA PROXY-WINDOW APP-ID-PTR)
 (define (wm-window-on-window-title data proxy-window title-ptr)
   "Invoked when window's title change.
 Parameters: (DATA PROXY-WINDOW TITLE-PTR)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-WINDOW: Pointer to river_window_v1 proxy.
   - TITLE-PTR: Pointer to title string."
   (let ((title (if (or (not (pointer? title-ptr)) (null-pointer? title-ptr))
@@ -507,7 +510,7 @@ Parameters: (DATA PROXY-WINDOW TITLE-PTR)
 (define (wm-window-on-window-parent data proxy-window parent-proxy)
   "Invoked when window's transient parent change.
 Parameters: (DATA PROXY-WINDOW PARENT-PROXY)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-WINDOW: Pointer to child river_window_v1 proxy.
   - PARENT-PROXY: Pointer to parent river_window_v1 proxy (or null for top-level)."
   (let ((parent (if (valid-pointer? parent-proxy)
@@ -520,9 +523,9 @@ Parameters: (DATA PROXY-WINDOW PARENT-PROXY)
 (define (wm-window-on-window-decoration-hint data proxy-window hint)
   "Invoked when window's decoration mode preference hint change.
 Parameters: (DATA PROXY-WINDOW HINT)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-WINDOW: Pointer to river_window_v1 proxy.
-  - HINT: Decoration hint enum value (e.g. RIVER_WINDOW_V1_DECORATION_HINT_NO_PREFERENCE)."
+  - HINT: Integer decoration hint enum value (e.g. RIVER_WINDOW_V1_DECORATION_HINT_NO_PREFERENCE)."
   (when *log-river-calls*
     (log-debug "Window ~a updated its decoration hint to ~a" proxy-window hint))
   (gliver-hook-run! %window-decoration-hint-changed-hook proxy-window hint))
@@ -530,7 +533,7 @@ Parameters: (DATA PROXY-WINDOW HINT)
 (define (wm-window-on-window-pointer-move-requested data proxy-window proxy-seat)
   "Invoked when interactive window move request initiated (dragging).
 Parameters: (DATA PROXY-WINDOW PROXY-SEAT)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-WINDOW: Pointer to river_window_v1 proxy.
   - PROXY-SEAT: Pointer to river_seat_v1 proxy."
   (when *log-river-calls*
@@ -540,10 +543,10 @@ Parameters: (DATA PROXY-WINDOW PROXY-SEAT)
 (define (wm-window-on-window-pointer-resize-requested data proxy-window proxy-seat edges)
   "Invoked when interactive window resize request initiated (resizing).
 Parameters: (DATA PROXY-WINDOW PROXY-SEAT EDGES)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-WINDOW: Pointer to river_window_v1 proxy.
   - PROXY-SEAT: Pointer to river_seat_v1 proxy.
-  - EDGES: Resize edge bitmask flags (e.g. RIVER_WINDOW_V1_EDGES_*)."
+  - EDGES: Integer resize edge bitmask flags (e.g. RIVER_WINDOW_V1_EDGES_*)."
   (when *log-river-calls*
     (log-debug "Window ~a is being dragged by seat ~a, edges ~a" proxy-window proxy-seat edges))
   (gliver-hook-run! %window-pointer-resize-requested-hook proxy-window proxy-seat edges))
@@ -552,10 +555,10 @@ Parameters: (DATA PROXY-WINDOW PROXY-SEAT EDGES)
   "Invoked when the client request to display window's menu.
 For example, right clicking window decorations (no used in Gliver).
 Parameters: (DATA PROXY-WINDOW X Y)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-WINDOW: Pointer to river_window_v1 proxy.
-  - X: Horizontal position in window coordinates.
-  - Y: Vertical position in window coordinates."
+  - X: Integer horizontal position in window coordinates.
+  - Y: Integer vertical position in window coordinates."
   (when *log-river-calls*
     (log-debug "Window ~a requested to show menu at ~ax~a" proxy-window x y))
   (gliver-hook-run! %window-menu-requested-hook proxy-window x y))
@@ -563,7 +566,7 @@ Parameters: (DATA PROXY-WINDOW X Y)
 (define (wm-window-on-window-maximize-requested data proxy-window)
   "Invoked when a client request to maximize the window.
 Parameters: (DATA PROXY-WINDOW)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-WINDOW: Pointer to river_window_v1 proxy."
   (when *log-river-calls*
     (log-debug "Window ~a requested to be maximized" proxy-window))
@@ -572,7 +575,7 @@ Parameters: (DATA PROXY-WINDOW)
 (define (wm-window-on-window-unmaximize-requested data proxy-window)
   "Invoked when a client request to unmaximize the window.
 Parameters: (DATA PROXY-WINDOW)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-WINDOW: Pointer to river_window_v1 proxy."
   (when *log-river-calls*
     (log-debug "Window ~a requested to be unmaximized" proxy-window))
@@ -581,7 +584,7 @@ Parameters: (DATA PROXY-WINDOW)
 (define (wm-window-on-window-fullscreen-requested data proxy-window output-ptr)
   "Invoked when a client request to enter fullscreen mode.
 Parameters: (DATA PROXY-WINDOW OUTPUT-PTR)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-WINDOW: Pointer to river_window_v1 proxy.
   - OUTPUT-PTR: Pointer to target river_output_v1 proxy (or null for current output)."
   (when *log-river-calls*
@@ -591,7 +594,7 @@ Parameters: (DATA PROXY-WINDOW OUTPUT-PTR)
 (define (wm-window-on-window-exit-fullscreen-requested data proxy-window)
   "Invoked when a client request to exit fullscreen mode.
 Parameters: (DATA PROXY-WINDOW)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-WINDOW: Pointer to river_window_v1 proxy."
   (when *log-river-calls*
     (log-debug "Window ~a requested to exit fullscreen" proxy-window))
@@ -600,7 +603,7 @@ Parameters: (DATA PROXY-WINDOW)
 (define (wm-window-on-window-minimize-requested data proxy-window)
   "Invoked when a client request to minimize the window.
 Parameters: (DATA PROXY-WINDOW)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-WINDOW: Pointer to river_window_v1 proxy."
   (when *log-river-calls*
     (log-debug "Window ~a requested to be minimized" proxy-window))
@@ -609,7 +612,7 @@ Parameters: (DATA PROXY-WINDOW)
 (define (wm-window-on-window-unreliable-pid data proxy-window pid)
   "Invoke when window's process PID is advertised.
 Parameters: (DATA PROXY-WINDOW PID)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-WINDOW: Pointer to river_window_v1 proxy.
   - PID: Integer process ID (unverified)."
   (when *log-river-calls*
@@ -619,9 +622,9 @@ Parameters: (DATA PROXY-WINDOW PID)
 (define (wm-window-on-window-presentation-hint data proxy-window hint)
   "Invoked when window's preferred presentation mode hint change (like vsync).
 Parameters: (DATA PROXY-WINDOW HINT)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-WINDOW: Pointer to river_window_v1 proxy.
-  - HINT: Presentation mode enum (e.g. RIVER_OUTPUT_V1_PRESENTATION_MODE_VSYNC)."
+  - HINT: Integer presentation mode enum (e.g. RIVER_OUTPUT_V1_PRESENTATION_MODE_VSYNC)."
   (when *log-river-calls*
     (log-debug "Window ~a updated its preferred presentation hint to ~a" proxy-window hint))
   (gliver-hook-run! %window-presentation-hint-changed-hook proxy-window hint))
@@ -629,7 +632,7 @@ Parameters: (DATA PROXY-WINDOW HINT)
 (define (wm-window-on-window-identifier data proxy-window id-ptr)
   "Invoked when window's identifier string is advertised.
 Parameters: (DATA PROXY-WINDOW ID-PTR)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-WINDOW: Pointer to river_window_v1 proxy.
   - ID-PTR: Pointer to identifier ASCII string."
   (let ((identifier (if (or (not (pointer? id-ptr)) (null-pointer? id-ptr))

@@ -98,9 +98,9 @@ Matches PROTOCOL-NAME against `RIVER_LAYER_SHELL_V1_NAME` and binds OBJECT-ID
 with VERSION.
 Parameters: (REGISTRY PROTOCOL-NAME OBJECT-ID VERSION)
   - REGISTRY: Pointer to wl_registry proxy.
-  - PROTOCOL-NAME: Interface name string.
-  - OBJECT-ID: Numeric Wayland object ID.
-  - VERSION: Maximum interface version supported by compositor."
+  - PROTOCOL-NAME: String interface name.
+  - OBJECT-ID: Integer Wayland object ID.
+  - VERSION: Integer maximum interface version supported by compositor."
   (when (string=? protocol-name RIVER_LAYER_SHELL_V1_NAME)
     (log-info "Binding ~a..." protocol-name)
     (set! *layer-shell*
@@ -226,12 +226,12 @@ Parameters: (PROXY-LS-OUTPUT)
 Window manager should respect this area and update output available space accordingly.
 The area maybe occupied by layer shell components like statusbar.
 Parameters: (DATA PROXY-LS-OUTPUT X Y WIDTH HEIGHT)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-LS-OUTPUT: Pointer to river_layer_shell_output_v1 proxy.
-  - X: Remaining usable area top-left corner global x coordinate.
-  - Y: Remaining usable area top-left corner global y coordinate.
-  - WIDTH: Remaining usable area width of the output.
-  - HEIGHT: Remaining usable area height of the output."
+  - X: Integer remaining usable area top-left corner global x coordinate.
+  - Y: Integer remaining usable area top-left corner global y coordinate.
+  - WIDTH: Integer remaining usable area width of the output.
+  - HEIGHT: Integer remaining usable area height of the output."
   (when *log-river-calls*
     (log-debug "Non-exclusive area for output ~a is updated to ~ax~a+(~a+~a)"
                proxy-ls-output width height x y))
@@ -256,7 +256,7 @@ Parameters: (PROXY-LS-SEAT)
 (define (layer-shell-seat-on-focus-exclusive data proxy-ls-seat)
   "Invoked when seat focus changes to exclusive areas.
 Parameters: (DATA PROXY-LS-SEAT)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-LS-SEAT: Pointer to river_layer_shell_seat_v1 proxy."
   (when *log-river-calls*
     (log-debug "Focusing exclusive area for seat ~a" proxy-ls-seat))
@@ -266,7 +266,7 @@ Parameters: (DATA PROXY-LS-SEAT)
 (define (layer-shell-seat-on-focus-non-exclusive data proxy-ls-seat)
   "Invoked when seat focus changes to non-exclusive areas.
 Parameters: (DATA PROXY-LS-SEAT)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-LS-SEAT: Pointer to river_layer_shell_seat_v1 proxy."
   (when *log-river-calls*
     (log-debug "Focusing non-exclusive area for seat ~a" proxy-ls-seat))
@@ -276,7 +276,7 @@ Parameters: (DATA PROXY-LS-SEAT)
 (define (layer-shell-seat-on-focus-none data proxy-ls-seat)
   "Invoked when seat focus changes to none.
 Parameters: (DATA PROXY-LS-SEAT)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-LS-SEAT: Pointer to river_layer_shell_seat_v1 proxy."
   (when *log-river-calls*
     (log-debug "Focusing no area (none) for seat ~a" proxy-ls-seat))

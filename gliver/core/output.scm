@@ -120,7 +120,7 @@ Parameters: (OUTPUT)
   "Restore saved detached workspace state for OUTPUT matching WL-NAME.
 Parameters: (WL-NAME [OUTPUT])
   - WL-NAME: String hardware output name (e.g. \"eDP-1\").
-  - OUTPUT: Optional <output> record (looked up by WL-NAME if omitted).
+  - OUTPUT: <output> record or #f; optional output (looked up by WL-NAME if omitted).
 Returns #t if state was restored, #f otherwise."
   (and-let* ((saved-state (%detached-workspaces-pop! wl-name))
 			 (out (or output (output-find-by-wl-name wl-name))))
@@ -299,7 +299,7 @@ Returns previous <output> record, or #f if not found."
   "Set the preferred presentation mode of OUTPUT to MODE.
 Parameters: (OUTPUT MODE)
   - OUTPUT: <output> record.
-  - MODE: Presentation mode (e.g. RIVER_OUTPUT_V1_PRESENTATION_MODE_VSYNC)."
+  - MODE: Integer presentation mode enum (e.g. RIVER_OUTPUT_V1_PRESENTATION_MODE_VSYNC)."
   (let ((proxy-output (output-wl-proxy output)))
     (log-debug "Setting output ~a presentation mode to ~a" proxy-output mode)
     (wm-output-presentation-mode-set proxy-output mode)))
@@ -308,7 +308,7 @@ Parameters: (OUTPUT MODE)
 (define (output-on-output data manager proxy-output)
   "Invoked when an output is advertised.
 Parameters: (DATA MANAGER PROXY-OUTPUT)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - MANAGER: Pointer to river_window_manager_v1 proxy.
   - PROXY-OUTPUT: Pointer to river_output_v1 proxy."
   (let* ((name (%output-find-free-name))
@@ -328,7 +328,7 @@ Parameters: (OUTPUT)
 (define (output-on-output-removed data proxy-output)
   "Invoked when OUTPUT is removed.
 Parameters: (DATA PROXY-OUTPUT)
-  - DATA: User context pointer (unused).
+  - DATA: Pointer to user context (unused).
   - PROXY-OUTPUT: Pointer to river_output_v1 proxy."
   (log-info "Output removed: ~a" proxy-output)
   (and-let* ((output (output-find-by-proxy proxy-output)))
@@ -340,9 +340,9 @@ Parameters: (DATA PROXY-OUTPUT)
 (define (output-on-output-wl-output data proxy-output object-id)
   "Invoked when wl_output Wayland object is advertisement for river_output_v1.
 Parameters: (DATA PROXY-OUTPUT OBJECT-ID)
-  - DATA: User context pointer (unused).
+  - DATA: Pointer to user context (unused).
   - PROXY-OUTPUT: Pointer to river_output_v1 proxy.
-  - OBJECT-ID: Numeric Wayland object ID of the wl_output."
+  - OBJECT-ID: Integer Wayland object ID of the wl_output."
   (log-debug "Output wl_output object-id: ~a = ~a" proxy-output object-id)
   (and-let* ((output (output-find-by-proxy proxy-output)))
 	(log-debug "Setting output ~a object-id to ~a" output object-id)
@@ -434,10 +434,10 @@ Parameters: (DATA PROXY-OUTPUT OBJECT-ID)
   "Invoked when the position of the output in the compositor's logical coordinate space changed.
 Dispatches *output-position-changed-hook*.
 Parameters: (DATA PROXY-OUTPUT X Y)
-  - DATA: User context pointer (unused).
+  - DATA: Pointer to user context (unused).
   - PROXY-OUTPUT: Pointer to river_output_v1 proxy.
-  - X: Logical horizontal position in compositor space.
-  - Y: Logical vertical position in compositor space."
+  - X: Integer logical horizontal position in compositor space.
+  - Y: Integer logical vertical position in compositor space."
   (log-info "Output position: ~a = ~a,~a" proxy-output x y)
   (and-let* ((output (output-find-by-proxy proxy-output))
 			 (prev-x (output-x output))
@@ -453,10 +453,10 @@ Parameters: (DATA PROXY-OUTPUT X Y)
 (define (output-on-output-dimensions data proxy-output width height)
   "Invoked when the output dimension of PROXY-OUTPUT is changed.
 Parameters: (DATA PROXY-OUTPUT WIDTH HEIGHT)
-  - DATA: User context pointer (unused).
+  - DATA: Pointer to user context (unused).
   - PROXY-OUTPUT: Pointer to river_output_v1 proxy.
-  - WIDTH: Logical output width in pixels.
-  - HEIGHT: Logical output height in pixels."
+  - WIDTH: Integer logical output width in pixels.
+  - HEIGHT: Integer logical output height in pixels."
   (log-info "Output dimensions: ~a = ~ax~a" proxy-output width height)
   (and-let* ((output (output-find-by-proxy proxy-output))
 			 (prev-width (output-width output))

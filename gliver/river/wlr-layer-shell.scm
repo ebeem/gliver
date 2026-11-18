@@ -94,9 +94,9 @@ Matches PROTOCOL-NAME against `ZWLR_LAYER_SHELL_V1_NAME` and binds OBJECT-ID
 with VERSION.
 Parameters: (REGISTRY PROTOCOL-NAME OBJECT-ID VERSION)
   - REGISTRY: Pointer to wl_registry proxy.
-  - PROTOCOL-NAME: Interface name string.
-  - OBJECT-ID: Numeric Wayland object ID.
-  - VERSION: Maximum interface version supported by compositor."
+  - PROTOCOL-NAME: String interface name.
+  - OBJECT-ID: Integer Wayland object ID.
+  - VERSION: Integer maximum interface version supported by compositor."
   (when (string=? protocol-name ZWLR_LAYER_SHELL_V1_NAME)
     (log-info "Binding ~a..." protocol-name)
     (set! *wlr-layer-shell*
@@ -149,7 +149,7 @@ Parameters: (PROXY-SHELL PROXY-SURFACE PROXY-OUTPUT LAYER NAMESPACE)
   - PROXY-SHELL: Pointer to zwlr_layer_shell_v1 proxy.
   - PROXY-SURFACE: Pointer to wl_surface proxy.
   - PROXY-OUTPUT: Pointer to wl_output proxy, or %null-pointer / #f for compositor default.
-  - LAYER: Layer enum (e.g. *wlr-layer-shell-layer-background*).
+  - LAYER: Integer layer enum (e.g. *wlr-layer-shell-layer-background*).
   - NAMESPACE: String namespace identifying surface purpose.
 Returns: zwlr_layer_surface_v1 proxy pointer."
   (when (and (valid-pointer? proxy-shell)
@@ -189,8 +189,8 @@ Parameters: (PROXY-LAYER-SURFACE)
 indicates that the compositor should allocate size based on anchors/exclusive zone.
 Parameters: (PROXY-LAYER-SURFACE WIDTH HEIGHT)
   - PROXY-LAYER-SURFACE: Pointer to zwlr_layer_surface_v1 proxy.
-  - WIDTH: Width in pixels.
-  - HEIGHT: Height in pixels."
+  - WIDTH: Integer width in pixels.
+  - HEIGHT: Integer height in pixels."
   (when (and (valid-pointer? proxy-layer-surface)
              (member proxy-layer-surface *wlr-layer-surfaces*)
              (integer? width) (>= width 0)
@@ -204,7 +204,7 @@ Parameters: (PROXY-LAYER-SURFACE WIDTH HEIGHT)
   "Configure anchor point of layer surface.
 Parameters: (PROXY-LAYER-SURFACE ANCHOR)
   - PROXY-LAYER-SURFACE: Pointer to zwlr_layer_surface_v1 proxy.
-  - ANCHOR: Flag using enums *wlr-layer-shell-anchor-*."
+  - ANCHOR: Integer flag using enums *wlr-layer-shell-anchor-*."
   (when (and (valid-pointer? proxy-layer-surface)
              (member proxy-layer-surface *wlr-layer-surfaces*)
              (integer? anchor) (<= 0 anchor 15))
@@ -220,7 +220,7 @@ Parameters: (PROXY-LAYER-SURFACE ANCHOR)
 -1 no exclusive space and allows occlusion.
 Parameters: (PROXY-LAYER-SURFACE ZONE)
   - PROXY-LAYER-SURFACE: Pointer to zwlr_layer_surface_v1 proxy.
-  - ZONE: Exclusive zone in pixels (integer)."
+  - ZONE: Integer exclusive zone in pixels."
   (when (and (valid-pointer? proxy-layer-surface)
              (member proxy-layer-surface *wlr-layer-surfaces*)
              (integer? zone) (>= zone -1))
@@ -233,10 +233,10 @@ Parameters: (PROXY-LAYER-SURFACE ZONE)
   "Set margins from anchor points.
 Parameters: (PROXY-LAYER-SURFACE TOP RIGHT BOTTOM LEFT)
   - PROXY-LAYER-SURFACE: Pointer to zwlr_layer_surface_v1 proxy.
-  - TOP: Top margin in pixels.
-  - RIGHT: Right margin in pixels.
-  - BOTTOM: Bottom margin in pixels.
-  - LEFT: Left margin in pixels."
+  - TOP: Integer top margin in pixels.
+  - RIGHT: Integer right margin in pixels.
+  - BOTTOM: Integer bottom margin in pixels.
+  - LEFT: Integer left margin in pixels."
   (when (and (valid-pointer? proxy-layer-surface)
              (member proxy-layer-surface *wlr-layer-surfaces*)
              (integer? top) (integer? right)
@@ -250,7 +250,7 @@ Parameters: (PROXY-LAYER-SURFACE TOP RIGHT BOTTOM LEFT)
   "Request keyboard interactivity mode for layer surface.
 Parameters: (PROXY-LAYER-SURFACE INTERACTIVITY)
   - PROXY-LAYER-SURFACE: Pointer to zwlr_layer_surface_v1 proxy.
-  - INTERACTIVITY: Interactivity mode enum (e.g. *wlr-layer-shell-interactivity-none*)."
+  - INTERACTIVITY: Integer interactivity mode enum (e.g. *wlr-layer-shell-interactivity-none*)."
   (when (and (valid-pointer? proxy-layer-surface)
              (member proxy-layer-surface *wlr-layer-surfaces*)
              (integer? interactivity) (<= 0 interactivity 2))
@@ -277,7 +277,7 @@ Parameters: (PROXY-LAYER-SURFACE POPUP)
 Must be called after processing a configure event.
 Parameters: (PROXY-LAYER-SURFACE SERIAL)
   - PROXY-LAYER-SURFACE: Pointer to zwlr_layer_surface_v1 proxy.
-  - SERIAL: Serial number from configure event."
+  - SERIAL: Integer serial number from configure event."
   (when (and (valid-pointer? proxy-layer-surface)
              (member proxy-layer-surface *wlr-layer-surfaces*)
              (integer? serial) (>= serial 0))
@@ -290,7 +290,7 @@ Parameters: (PROXY-LAYER-SURFACE SERIAL)
   "Change layer of surface.
 Parameters: (PROXY-LAYER-SURFACE LAYER)
   - PROXY-LAYER-SURFACE: Pointer to zwlr_layer_surface_v1 proxy.
-  - LAYER: Layer enum (e.g. *wlr-layer-shell-layer-background*)."
+  - LAYER: Integer layer enum (e.g. *wlr-layer-shell-layer-background*)."
   (when (and (valid-pointer? proxy-layer-surface)
              (member proxy-layer-surface *wlr-layer-surfaces*)
              (integer? layer) (<= 0 layer 3))
@@ -303,7 +303,7 @@ Parameters: (PROXY-LAYER-SURFACE LAYER)
   "Set edge the exclusive zone will be applied to.
 Parameters: (PROXY-LAYER-SURFACE EDGE)
   - PROXY-LAYER-SURFACE: Pointer to zwlr_layer_surface_v1 proxy.
-  - EDGE: Anchor edge flag (e.g. *wlr-layer-shell-anchor-top*)."
+  - EDGE: Integer anchor edge flag (e.g. *wlr-layer-shell-anchor-top*)."
   (when (and (valid-pointer? proxy-layer-surface)
              (member proxy-layer-surface *wlr-layer-surfaces*)
              (integer? edge) (<= 0 edge 15))
@@ -316,11 +316,11 @@ Parameters: (PROXY-LAYER-SURFACE EDGE)
 (define (wlr-layer-surface-on-configure data proxy-layer-surface serial width height)
   "Invoked when compositor configures layer surface.
 Parameters: (DATA PROXY-LAYER-SURFACE SERIAL WIDTH HEIGHT)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-LAYER-SURFACE: Pointer to zwlr_layer_surface_v1 proxy.
-  - SERIAL: Serial number of this configure event.
-  - WIDTH: Allocated width of the layer surface in pixels.
-  - HEIGHT: Allocated height of the layer surface in pixels."
+  - SERIAL: Integer serial number of this configure event.
+  - WIDTH: Integer allocated width of the layer surface in pixels.
+  - HEIGHT: Integer allocated height of the layer surface in pixels."
   (when *log-river-calls*
     (log-debug "Layer surface ~a configure: serial=~a ~ax~a"
                proxy-layer-surface serial width height))
@@ -330,7 +330,7 @@ Parameters: (DATA PROXY-LAYER-SURFACE SERIAL WIDTH HEIGHT)
 (define (wlr-layer-surface-on-closed data proxy-layer-surface)
   "Invoked when layer surface has been closed by compositor.
 Parameters: (DATA PROXY-LAYER-SURFACE)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-LAYER-SURFACE: Pointer to zwlr_layer_surface_v1 proxy."
   (when *log-river-calls*
     (log-debug "Layer surface closed: ~a" proxy-layer-surface))

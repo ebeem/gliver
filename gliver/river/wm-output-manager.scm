@@ -82,7 +82,7 @@ Parameters: None."
   "Invoked when an output is advertised.
 Attach the river_output_v1 listener.
 Parameters: (DATA MANAGER PROXY-OUTPUT)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - MANAGER: Pointer to river_window_manager_v1 proxy.
   - PROXY-OUTPUT: Pointer to river_output_v1 proxy."
   (when (valid-pointer? proxy-output)
@@ -112,8 +112,7 @@ Parameters: (PROXY-OUTPUT)
 Must be called in a render sequence.
 Parameters: (PROXY-OUTPUT MODE)
   - PROXY-OUTPUT: Pointer to river_output_v1 proxy.
-  - MODE: Presentation mode enum RIVER_OUTPUT_V1_PRESENTATION_MODE_VSYNC,
-or RIVER_OUTPUT_V1_PRESENTATION_MODE_ASYNC."
+  - MODE: Integer presentation mode enum (RIVER_OUTPUT_V1_PRESENTATION_MODE_VSYNC or RIVER_OUTPUT_V1_PRESENTATION_MODE_ASYNC)."
   (when (and (valid-pointer? proxy-output)
              (member proxy-output *wm-outputs*)
              (integer? mode)
@@ -126,8 +125,8 @@ or RIVER_OUTPUT_V1_PRESENTATION_MODE_ASYNC."
 (define* (wm-output-wl-output-bind object-id #:optional (version 4))
   "Bind wl_output global OBJECT-ID from Wayland registry.
 Parameters: (OBJECT-ID [VERSION])
-  - OBJECT-ID: Numeric Wayland object ID.
-  - VERSION: Interface version (default 4).
+  - OBJECT-ID: Integer Wayland object ID.
+  - VERSION: Integer interface version (default 4).
 Returns: wl_output proxy pointer, or #f if registry is unavailable or invalid."
   (when (and (valid-pointer? *wl-registry*)
              (number? object-id) (> object-id 0)
@@ -157,7 +156,7 @@ Parameters: (PROXY-WL-OUTPUT)
 (define (wm-output-on-output-removed data proxy-output)
   "Invoked when output is removed, destroy proxy, and clean up state.
 Parameters: (DATA PROXY-OUTPUT)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-OUTPUT: Pointer to river_output_v1 proxy."
   (when *log-river-calls*
     (log-debug "Output removed: ~a" proxy-output))
@@ -167,9 +166,9 @@ Parameters: (DATA PROXY-OUTPUT)
 (define (wm-output-on-output-wl-output data proxy-output object-id)
   "Invoked when a wl_output is advertised to a river_output_v1.
 Parameters: (DATA PROXY-OUTPUT OBJECT-ID)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-OUTPUT: Pointer to river_output_v1 proxy.
-  - OBJECT-ID: Numeric Wayland object ID of the wl_output global."
+  - OBJECT-ID: Integer Wayland object ID of the wl_output global."
   (when *log-river-calls*
     (log-debug "Output wl_output object-id: ~a = ~a" proxy-output object-id))
   (gliver-hook-run! %output-object-id-changed-hook data proxy-output object-id))
@@ -178,10 +177,10 @@ Parameters: (DATA PROXY-OUTPUT OBJECT-ID)
   "Invoked when position of output in the compositor's logical space
 has changed. The X and Y coordinates may be positive or negative.
 Parameters: (DATA PROXY-OUTPUT X Y)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-OUTPUT: Pointer to river_output_v1 proxy.
-  - X: Logical horizontal position in compositor space.
-  - Y: Logical vertical position in compositor space."
+  - X: Integer logical horizontal position in compositor space.
+  - Y: Integer logical vertical position in compositor space."
   (when *log-river-calls*
     (log-debug "Output position: ~a = ~a,~a" proxy-output x y))
   (gliver-hook-run! %output-position-changed-hook data proxy-output x y))
@@ -190,17 +189,28 @@ Parameters: (DATA PROXY-OUTPUT X Y)
   "Invoked when dimensions of the output in the compositor's logical coordinate
 space has changed. The WIDTH and HEIGHT will always be greater than zero.
 Parameters: (DATA PROXY-OUTPUT WIDTH HEIGHT)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-OUTPUT: Pointer to river_output_v1 proxy.
-  - WIDTH: Logical output width in pixels.
-  - HEIGHT: Logical output height in pixels."
+  - WIDTH: Integer logical output width in pixels.
+  - HEIGHT: Integer logical output height in pixels."
   (when *log-river-calls*
     (log-debug "Output dimensions: ~a = ~ax~a" proxy-output width height))
   (gliver-hook-run! %output-dimensions-changed-hook data proxy-output width height))
 
 ;;; wl-output events
 (define (wm-output-on-wl-output-geometry data proxy x y physical-width physical-height subpixel make-ptr model-ptr transform)
-  "Invoked when wl_output advertises geometric properties."
+  "Invoked when wl_output advertises geometric properties.
+Parameters: (DATA PROXY X Y PHYSICAL-WIDTH PHYSICAL-HEIGHT SUBPIXEL MAKE-PTR MODEL-PTR TRANSFORM)
+  - DATA: Pointer to user context (unused, null in Gliver).
+  - PROXY: Pointer to wl_output proxy.
+  - X: Integer horizontal position in global compositor space.
+  - Y: Integer vertical position in global compositor space.
+  - PHYSICAL-WIDTH: Integer physical width of the output in millimeters.
+  - PHYSICAL-HEIGHT: Integer physical height of the output in millimeters.
+  - SUBPIXEL: Integer subpixel orientation enum.
+  - MAKE-PTR: Pointer to manufacturer name string (or null).
+  - MODEL-PTR: Pointer to model name string (or null).
+  - TRANSFORM: Integer output transform enum."
   (let ((make (and (valid-pointer? make-ptr)
                    (pointer->string make-ptr)))
         (model (and (valid-pointer? model-ptr)
@@ -211,26 +221,44 @@ Parameters: (DATA PROXY-OUTPUT WIDTH HEIGHT)
     (gliver-hook-run! %output-geometry-changed-hook data proxy x y physical-width physical-height subpixel make model transform)))
 
 (define (wm-output-on-wl-output-mode data proxy flags width height refresh)
-  "Invoked when wl_output advertises an available mode."
+  "Invoked when wl_output advertises an available mode.
+Parameters: (DATA PROXY FLAGS WIDTH HEIGHT REFRESH)
+  - DATA: Pointer to user context (unused, null in Gliver).
+  - PROXY: Pointer to wl_output proxy.
+  - FLAGS: Integer mode bitmask flags (current/preferred).
+  - WIDTH: Integer mode width in hardware pixels.
+  - HEIGHT: Integer mode height in hardware pixels.
+  - REFRESH: Integer vertical refresh rate in millihertz."
   (when *log-river-calls*
     (log-debug "wl_output ~a mode: ~ax~a @ ~amHz flags=~a"
                proxy width height refresh flags))
   (gliver-hook-run! %output-mode-changed-hook data proxy flags width height refresh))
 
 (define (wm-output-on-wl-output-done data proxy)
-  "Invoked when all wl_output properties in the current batch have been sent."
+  "Invoked when all wl_output properties in the current batch have been sent.
+Parameters: (DATA PROXY)
+  - DATA: Pointer to user context (unused, null in Gliver).
+  - PROXY: Pointer to wl_output proxy."
   (when *log-river-calls*
     (log-debug "wl_output ~a done" proxy))
   (gliver-hook-run! %output-done-hook data proxy))
 
 (define (wm-output-on-wl-output-scale data proxy factor)
-  "Invoked when wl_output advertises output scaling factor."
+  "Invoked when wl_output advertises output scaling factor.
+Parameters: (DATA PROXY FACTOR)
+  - DATA: Pointer to user context (unused, null in Gliver).
+  - PROXY: Pointer to wl_output proxy.
+  - FACTOR: Integer output scale factor."
   (when *log-river-calls*
     (log-debug "wl_output ~a scale: ~a" proxy factor))
   (gliver-hook-run! %output-scale-changed-hook data proxy factor))
 
 (define (wm-output-on-wl-output-name data proxy name-ptr)
-  "Invoked when wl_output advertises hardware output name."
+  "Invoked when wl_output advertises hardware output name.
+Parameters: (DATA PROXY NAME-PTR)
+  - DATA: Pointer to user context (unused, null in Gliver).
+  - PROXY: Pointer to wl_output proxy.
+  - NAME-PTR: Pointer to output name string (or null)."
   (let ((name (and (valid-pointer? name-ptr) (pointer->string name-ptr))))
     (when name
       (when *log-river-calls*
@@ -238,7 +266,11 @@ Parameters: (DATA PROXY-OUTPUT WIDTH HEIGHT)
       (gliver-hook-run! %output-name-changed-hook data proxy name))))
 
 (define (wm-output-on-wl-output-description data proxy desc-ptr)
-  "Invoked when wl_output advertises human-readable description."
+  "Invoked when wl_output advertises human-readable description.
+Parameters: (DATA PROXY DESC-PTR)
+  - DATA: Pointer to user context (unused, null in Gliver).
+  - PROXY: Pointer to wl_output proxy.
+  - DESC-PTR: Pointer to output description string (or null)."
   (let ((desc (and (valid-pointer? desc-ptr) (pointer->string desc-ptr))))
     (when desc
       (when *log-river-calls*

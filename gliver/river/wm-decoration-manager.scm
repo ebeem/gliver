@@ -51,8 +51,8 @@ Parameters: (PROXY-DECORATION)
 Must be called in a render sequence.
 Parameters: (PROXY-DECORATION X Y)
   - PROXY-DECORATION: Pointer to river_decoration_v1 proxy.
-  - X: Horizontal offset in compositor coordinates.
-  - Y: Vertical offset in compositor coordinates."
+  - X: Integer horizontal offset in compositor coordinates.
+  - Y: Integer vertical offset in compositor coordinates."
   (when (and (valid-pointer? proxy-decoration)
              (member proxy-decoration *wm-decorations*)
              (integer? x) (integer? y))

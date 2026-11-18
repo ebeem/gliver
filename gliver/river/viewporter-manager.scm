@@ -58,9 +58,9 @@ Matches PROTOCOL-NAME against `WP_VIEWPORTER_NAME` and binds OBJECT-ID
 with VERSION.
 Parameters: (REGISTRY PROTOCOL-NAME OBJECT-ID VERSION)
   - REGISTRY: Pointer to wl_registry proxy.
-  - PROTOCOL-NAME: Interface name string.
-  - OBJECT-ID: Numeric Wayland object ID.
-  - VERSION: Maximum interface version supported by compositor."
+  - PROTOCOL-NAME: String interface name.
+  - OBJECT-ID: Integer Wayland object ID.
+  - VERSION: Integer maximum interface version supported by compositor."
   (when (string=? protocol-name WP_VIEWPORTER_NAME)
     (log-info "Binding ~a..." protocol-name)
     (set! *viewporter*
@@ -130,10 +130,10 @@ Parameters: (PROXY-VIEWPORT)
 
 (define (viewport-set-source proxy-viewport x y width height)
   "Set the source rectangle for cropping.
-Parameters: (PROXY-VIEWPORT X Y WIDTH HEIGHT):
+Parameters: (PROXY-VIEWPORT X Y WIDTH HEIGHT)
   - PROXY-VIEWPORT: Pointer to wp_viewport proxy.
-  - X: Integer source rectangle x.
-  - Y: Integer source rectangle y.
+  - X: Integer source rectangle x coordinate.
+  - Y: Integer source rectangle y coordinate.
   - WIDTH: Integer source rectangle width.
   - HEIGHT: Integer source rectangle height."
   (when (and (valid-pointer? proxy-viewport)
@@ -148,10 +148,10 @@ Parameters: (PROXY-VIEWPORT X Y WIDTH HEIGHT):
 
 (define (viewport-set-destination proxy-viewport width height)
   "Set the surface destination size for scaling.
-Parameters: (PROXY-VIEWPORT WIDTH HEIGHT):
+Parameters: (PROXY-VIEWPORT WIDTH HEIGHT)
   - PROXY-VIEWPORT: Pointer to wp_viewport proxy.
-  - WIDTH: Integer surface width.
-  - HEIGHT: Integer surface height."
+  - WIDTH: Integer surface width in pixels.
+  - HEIGHT: Integer surface height in pixels."
   (when (and (valid-pointer? proxy-viewport)
              (hash-ref *viewport-surfaces* proxy-viewport)
              (number? width) (number? height)
@@ -165,15 +165,15 @@ Parameters: (PROXY-VIEWPORT WIDTH HEIGHT):
 ;;; surface tracking helpers
 (define (viewport->surface proxy-viewport)
   "Get the wl_surface associated with PROXY-VIEWPORT.
-Parameters: (PROXY-VIEWPORT):
+Parameters: (PROXY-VIEWPORT)
   - PROXY-VIEWPORT: Pointer to wp_viewport proxy.
 Returns: Pointer to wl_surface or #f."
   (and (valid-pointer? proxy-viewport)
        (hash-ref *viewport-surfaces* proxy-viewport)))
 
 (define (surface->viewport proxy-surface)
-  "Get the wp_viewport proxy associated with SURFACE.
-Parameters: (PROXY-SURFACE:)
+  "Get the wp_viewport proxy associated with PROXY-SURFACE.
+Parameters: (PROXY-SURFACE)
   - PROXY-SURFACE: Pointer to wl_surface proxy.
 Returns: Pointer to wp_viewport or #f."
   (and (valid-pointer? proxy-surface)

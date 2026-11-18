@@ -82,9 +82,9 @@ Returns: Pointer to river_shell_surface_v1 proxy or #f."
   "Bind river_window_manager_v1 global interface from REGISTRY.
 Parameters: (REGISTRY PROTOCOL-NAME OBJECT-ID VERSION)
   - REGISTRY: Pointer to wl_registry proxy.
-  - PROTOCOL-NAME: Interface name string.
-  - OBJECT-ID: Numeric Wayland object ID.
-  - VERSION: Maximum interface version supported by compositor."
+  - PROTOCOL-NAME: String interface name.
+  - OBJECT-ID: Integer Wayland object ID.
+  - VERSION: Integer maximum interface version supported by compositor."
   (when (string=? protocol-name RIVER_WINDOW_MANAGER_V1_NAME)
     (log-info "Binding ~a..." protocol-name)
 	(let ((proxy (gliver-wl-registry-bind registry object-id
@@ -192,19 +192,20 @@ Parameters: (PROXY-MANAGER)
 and assign river_shell_surface_v1 role to it.
 Parameters: (PROXY-MANAGER PROXY-SURFACE)
   - PROXY-MANAGER: Pointer to river_window_manager_v1 proxy.
-  - PROXY-SURFACE: Pointer to wl_surface proxy."
-  (when (and (valid-pointer? proxy-manager)
-             (equal? (manager-wl-proxy *manager*) proxy-manager)
-             (valid-pointer? proxy-surface))
-    (or (wm-shell-surface-find-by-surface proxy-surface)
-        (begin
-          (when *log-river-calls*
-            (log-debug "Creating a new shell surface ~a" proxy-surface))
-          (and-let* ((shell-surf (river-window-manager-v1-get-shell-surface proxy-manager proxy-surface))
-                     ((valid-pointer? shell-surf)))
-            (hash-set! *wm-shell-surfaces* shell-surf proxy-surface)
-            (hash-set! *wm-shell-surface-nodes* shell-surf #f)
-            shell-surf)))))
+  - PROXY-SURFACE: Pointer to wl_surface proxy.
+Returns pointer to river_shell_surface_v1 proxy or #f."
+  (and (valid-pointer? proxy-manager)
+       (equal? (manager-wl-proxy *manager*) proxy-manager)
+       (valid-pointer? proxy-surface)
+       (or (wm-shell-surface-find-by-surface proxy-surface)
+           (begin
+             (when *log-river-calls*
+               (log-debug "Creating a new shell surface ~a" proxy-surface))
+             (and-let* ((shell-surf (river-window-manager-v1-get-shell-surface proxy-manager proxy-surface))
+                        ((valid-pointer? shell-surf)))
+               (hash-set! *wm-shell-surfaces* shell-surf proxy-surface)
+               (hash-set! *wm-shell-surface-nodes* shell-surf #f)
+               shell-surf)))))
 
 (define (wm-manager-exit proxy-manager)
   "End the current Wayland session and exit the compositor.
@@ -224,7 +225,7 @@ Parameters: (PROXY-MANAGER)
   "Invoked when window management is not available to the
 client, perhaps due to another window management client already running.
 Parameters: (DATA PROXY-MANAGER)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-MANAGER: Pointer to river_window_manager_v1 proxy."
   (log-error "Window management is unavailable, another window manager may be running")
   (river-disconnect!))
@@ -233,7 +234,7 @@ Parameters: (DATA PROXY-MANAGER)
   "Invoked when the compositor decides not to send any further
 events on this object. Destroy the river_window_manager_v1 object.
 Parameters: (DATA PROXY-MANAGER)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-MANAGER: Pointer to river_window_manager_v1 proxy."
   (log-info "Window manager finished event received.")
   ;; assuming only one manager will be available at a time
@@ -248,7 +249,7 @@ Parameters: (DATA PROXY-MANAGER)
 Creates a core <window> record, attaches the event listener, and queues
 the window for initial setup in the upcoming manage sequence.
 Parameters: (DATA PROXY-MANAGER PROXY-WIN)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-MANAGER: Pointer to river_window_manager_v1 proxy.
   - PROXY-WIN: Pointer to advertised river_window_v1 proxy."
   (when *log-river-calls*
@@ -258,7 +259,7 @@ Parameters: (DATA PROXY-MANAGER PROXY-WIN)
 (define (wm-on-output data proxy-manager proxy-output)
   "Invoked when a new output is created/advertised.
 Parameters: (DATA PROXY-MANAGER PROXY-OUTPUT)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-MANAGER: Pointer to river_window_manager_v1 proxy.
   - PROXY-OUTPUT: Pointer to advertised river_output_v1 proxy."
   (when *log-river-calls*
@@ -268,7 +269,7 @@ Parameters: (DATA PROXY-MANAGER PROXY-OUTPUT)
 (define (wm-on-seat data proxy-manager seat-proxy)
   "Invoked when a new seat is created/advertised.
 Parameters: (DATA PROXY-MANAGER SEAT-PROXY)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-MANAGER: Pointer to river_window_manager_v1 proxy.
   - SEAT-PROXY: Pointer to advertised river_seat_v1 proxy."
   (when *log-river-calls*
@@ -278,7 +279,7 @@ Parameters: (DATA PROXY-MANAGER SEAT-PROXY)
 (define (wm-on-session-locked data proxy-manager)
   "Invoked when session is locked.
 Parameters: (DATA PROXY-MANAGER)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-MANAGER: Pointer to river_window_manager_v1 proxy."
   (log-info "Session locked.")
   (gliver-hook-run! %manager-session-locked-hook data proxy-manager))
@@ -286,7 +287,7 @@ Parameters: (DATA PROXY-MANAGER)
 (define (wm-on-session-unlocked data proxy-manager)
   "Invoked when session is unlocked.
 Parameters: (DATA PROXY-MANAGER)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-MANAGER: Pointer to river_window_manager_v1 proxy."
   (log-info "Session unlocked.")
   (gliver-hook-run! %manager-session-unlocked-hook data proxy-manager))
@@ -295,7 +296,7 @@ Parameters: (DATA PROXY-MANAGER)
   "Invoked when manage sequence is started.
 run queue and send finish manage sequence request.
 Parameters: (DATA PROXY-MANAGER)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-MANAGER: Pointer to river_window_manager_v1 proxy."
   (when (and *log-sequences* *log-river-calls*)
     (log-debug "Start manage sequence"))
@@ -325,7 +326,7 @@ Parameters: (DATA PROXY-MANAGER)
   "Invoked when render sequence is started.
 run queue and send finish render sequence request.
 Parameters: (DATA PROXY-MANAGER)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-MANAGER: Pointer to river_window_manager_v1 proxy."
   (when (and *log-sequences* *log-river-calls*)
     (log-debug "Start render sequence"))

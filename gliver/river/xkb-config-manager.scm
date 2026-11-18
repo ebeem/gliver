@@ -89,9 +89,9 @@ Matches PROTOCOL-NAME against `RIVER_XKB_CONFIG_V1_NAME` and binds OBJECT-ID
 with VERSION.
 Parameters: (REGISTRY PROTOCOL-NAME OBJECT-ID VERSION)
   - REGISTRY: Pointer to wl_registry proxy.
-  - PROTOCOL-NAME: Interface name string.
-  - OBJECT-ID: Numeric Wayland object ID.
-  - VERSION: Maximum interface version supported by compositor."
+  - PROTOCOL-NAME: String interface name.
+  - OBJECT-ID: Integer Wayland object ID.
+  - VERSION: Integer maximum interface version supported by compositor."
   (when (string=? protocol-name RIVER_XKB_CONFIG_V1_NAME)
     (log-info "Binding ~a..." protocol-name)
     (set! *xkb-config*
@@ -181,8 +181,8 @@ Parameters: (PROXY-CONFIG)
 (define (xkb-config-compile-keymap layout-str variant-str)
   "Compile keymap definition from LAYOUT-STR and VARIANT-STR.
 Parameters: (LAYOUT-STR VARIANT-STR)
-  - LAYOUT-STR: Comma-separated layout string (e.g. \"us,ara\").
-  - VARIANT-STR: Comma-separated variant string (e.g. \",digits\").
+  - LAYOUT-STR: String comma-separated layout list (e.g. \"us,ara\").
+  - VARIANT-STR: String comma-separated variant list (e.g. \",digits\").
 Returns: String representing keymap definition, or #f on failure."
   (when *log-river-calls*
     (log-debug "Compiling keymap (layout=~s, variant=~s)"
@@ -212,8 +212,8 @@ Returns: String representing keymap definition, or #f on failure."
   "Create a keymap object from file descriptor FD and FORMAT.
 Parameters: (PROXY-CONFIG FD [FORMAT])
   - PROXY-CONFIG: Pointer to river_xkb_config_v1 proxy.
-  - FD: File descriptor containing keymap definition.
-  - FORMAT: Keymap format enum (default RIVER_XKB_CONFIG_V1_KEYMAP_FORMAT_TEXT_V1).
+  - FD: Integer file descriptor containing keymap definition.
+  - FORMAT: Integer keymap format enum (default RIVER_XKB_CONFIG_V1_KEYMAP_FORMAT_TEXT_V1).
 Returns river_xkb_keymap_v1 proxy pointer."
   (when (and (valid-pointer? proxy-config)
              (equal? *xkb-config* proxy-config)
@@ -238,7 +238,7 @@ Allocates a sealed anonymous memory file descriptor (memfd) and sends create_key
 Parameters: (PROXY-CONFIG KEYMAP-STR [FORMAT])
   - PROXY-CONFIG: Pointer to river_xkb_config_v1 proxy.
   - KEYMAP-STR: String containing compiled XKB keymap definition.
-  - FORMAT: Keymap format enum (default text_v1).
+  - FORMAT: Integer keymap format enum (default text_v1).
 Returns river_xkb_keymap_v1 proxy pointer or #f on failure."
   (when (and (valid-pointer? proxy-config)
              (equal? *xkb-config* proxy-config)
@@ -278,7 +278,7 @@ Parameters: (PROXY-CONFIG LAYOUTS VARIANTS [FORMAT])
   - PROXY-CONFIG: Pointer to river_xkb_config_v1 proxy.
   - LAYOUTS: List of layouts (e.g. '(\"us\" \"ara\")).
   - VARIANTS: List of variants (e.g. '(\"\" \"digits\")) - can be left empty.
-  - FORMAT: Keymap format enum (default text_v1).
+  - FORMAT: Integer keymap format enum (default text_v1).
 Returns river_xkb_keymap_v1 proxy pointer or #f on failure."
   (when (and (valid-pointer? proxy-config)
              (equal? *xkb-config* proxy-config)
@@ -296,7 +296,7 @@ Returns river_xkb_keymap_v1 proxy pointer or #f on failure."
   "Invoked when river compositor indicates that it will send no further events
 on river_xkb_config_v1. The client should destroy the object.
 Parameters: (DATA PROXY-CONFIG)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-CONFIG: Pointer to river_xkb_config_v1 proxy."
   (when *log-river-calls*
     (log-debug "River_xkb_config_v1 ~a finished" proxy-config))
@@ -306,7 +306,7 @@ Parameters: (DATA PROXY-CONFIG)
 (define (xkb-config-on-keyboard data proxy-config proxy-keyboard)
   "Invoked when a new river_xkb_keyboard_v1 is advertised.
 Parameters: (DATA PROXY-CONFIG PROXY-KEYBOARD)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-CONFIG: Pointer to river_xkb_config_v1 proxy.
   - PROXY-KEYBOARD: Pointer to river_xkb_keyboard_v1 proxy."
   (when (valid-pointer? proxy-keyboard)
@@ -338,7 +338,7 @@ Parameters: (PROXY-KEYMAP)
   "Invoked when keymap creation succeeded. The keymap may now be used
 with river_xkb_keyboard_v1.set_keymap.
 Parameters: (DATA PROXY-KEYMAP)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-KEYMAP: Pointer to river_xkb_keymap_v1 proxy."
   (when (valid-pointer? proxy-keymap)
     (hash-set! *xkb-config-keymaps* proxy-keymap #t)
@@ -349,7 +349,7 @@ Parameters: (DATA PROXY-KEYMAP)
 (define (xkb-keymap-on-failure data proxy-keymap error-msg-ptr)
   "Invoked when compositor failed to create keymap from parameters.
 Parameters: (DATA PROXY-KEYMAP ERROR-MSG-PTR)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-KEYMAP: Pointer to river_xkb_keymap_v1 proxy.
   - ERROR-MSG-PTR: Pointer to error message string."
   (let ((msg (if (valid-pointer? error-msg-ptr)
@@ -393,7 +393,7 @@ Parameters: (PROXY-KEYBOARD PROXY-KEYMAP)
 Has no effect if index is out of bounds for the current keymap.
 Parameters: (PROXY-KEYBOARD INDEX)
   - PROXY-KEYBOARD: Pointer to river_xkb_keyboard_v1 proxy.
-  - INDEX: Numeric 0-based layout index (integer)."
+  - INDEX: Integer 0-based layout index."
   (when (and (valid-pointer? proxy-keyboard)
              (member proxy-keyboard *xkb-config-keyboards*)
              (integer? index) (>= index 0))
@@ -460,7 +460,7 @@ Parameters: (PROXY-KEYBOARD)
 (define (xkb-keyboard-on-removed data proxy-keyboard)
   "Invoked when river_xkb_keyboard_v1 is removed from compositor.
 Parameters: (DATA PROXY-KEYBOARD)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-KEYBOARD: Pointer to river_xkb_keyboard_v1 proxy."
   (when *log-river-calls*
     (log-debug "Xkb keyboard removed: ~a" proxy-keyboard))
@@ -471,7 +471,7 @@ Parameters: (DATA PROXY-KEYBOARD)
   "Invoked when river_xkb_keyboard_v1 is associated with river_input_device_v1.
 Sent once immediately after creation.
 Parameters: (DATA PROXY-KEYBOARD PROXY-DEVICE)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-KEYBOARD: Pointer to river_xkb_keyboard_v1 proxy.
   - PROXY-DEVICE: Pointer to river_input_device_v1 proxy."
   (when *log-river-calls*
@@ -483,9 +483,9 @@ Parameters: (DATA PROXY-KEYBOARD PROXY-DEVICE)
 (define (xkb-keyboard-on-layout data proxy-keyboard index name-ptr)
   "Invoked when active layout on keyboard changes.
 Parameters: (DATA PROXY-KEYBOARD INDEX NAME-PTR)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-KEYBOARD: Pointer to river_xkb_keyboard_v1 proxy.
-  - INDEX: Currently active layout index.
+  - INDEX: Integer currently active layout index.
   - NAME-PTR: Pointer to layout name string (or null pointer)."
   (let ((name (if (valid-pointer? name-ptr)
                   (pointer->string name-ptr)
@@ -499,7 +499,7 @@ Parameters: (DATA PROXY-KEYBOARD INDEX NAME-PTR)
 (define (xkb-keyboard-on-capslock-enabled data proxy-keyboard)
   "Invoked when capslock is enabled on keyboard.
 Parameters: (DATA PROXY-KEYBOARD)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-KEYBOARD: Pointer to river_xkb_keyboard_v1 proxy."
   (when *log-river-calls*
     (log-debug "Xkb keyboard ~a capslock enabled" proxy-keyboard))
@@ -509,7 +509,7 @@ Parameters: (DATA PROXY-KEYBOARD)
 (define (xkb-keyboard-on-capslock-disabled data proxy-keyboard)
   "Invoked when capslock is disabled on keyboard.
 Parameters: (DATA PROXY-KEYBOARD)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-KEYBOARD: Pointer to river_xkb_keyboard_v1 proxy."
   (when *log-river-calls*
     (log-debug "Xkb keyboard ~a capslock disabled" proxy-keyboard))
@@ -519,7 +519,7 @@ Parameters: (DATA PROXY-KEYBOARD)
 (define (xkb-keyboard-on-numlock-enabled data proxy-keyboard)
   "Invoked when numlock is enabled on keyboard.
 Parameters: (DATA PROXY-KEYBOARD)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-KEYBOARD: Pointer to river_xkb_keyboard_v1 proxy."
   (when *log-river-calls*
     (log-debug "Xkb keyboard ~a numlock enabled" proxy-keyboard))
@@ -529,7 +529,7 @@ Parameters: (DATA PROXY-KEYBOARD)
 (define (xkb-keyboard-on-numlock-disabled data proxy-keyboard)
   "Invoked when numlock is disabled on keyboard.
 Parameters: (DATA PROXY-KEYBOARD)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-KEYBOARD: Pointer to river_xkb_keyboard_v1 proxy."
   (when *log-river-calls*
     (log-debug "Xkb keyboard ~a numlock disabled" proxy-keyboard))

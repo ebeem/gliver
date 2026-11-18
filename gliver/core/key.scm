@@ -48,7 +48,7 @@
 (define (key->string key)
   "Convert a KEY to its display string, e.g., \"C-t\".
 Parameters: (KEY)
-  - KEY: Target <key> record or key description string.
+  - KEY: <key> record or string key description.
 Returns formatted key string (e.g. \"C-t\", \"s-Return\")."
   (define (%modifier->string m)
     "Return string representation of modifiers as per *key-modifier-map*"
@@ -128,7 +128,7 @@ Returns formatted key string (e.g. \"C-t\", \"s-Return\")."
 (define (key-keysym-name->xkb-value sym)
   "Convert a keysym symbol or string to its XKB uint value.
 Parameters: (SYM)
-  - SYM: Keysym symbol, string, or character.
+  - SYM: Symbol, string, or character keysym name.
 Returns 32-bit unsigned integer XKB keysym code."
   (let* ((syms (cond ((symbol? sym) (symbol->string sym))
                      ((string? sym) sym)
@@ -152,7 +152,7 @@ Returns 32-bit unsigned integer XKB keysym code."
 (define (key->xkb-binding-args key)
   "Convert a key to XKB binding arguments.
 Parameters: (KEY)
-  - KEY: Target <key> record.
+  - KEY: <key> record to convert.
 Returns a pair: (modifier-bitmask . xkb-keysym-uint)."
   (define (%modifiers->bitmask mods)
 	"Return bit from list of modifiers."
@@ -169,8 +169,8 @@ Returns a pair: (modifier-bitmask . xkb-keysym-uint)."
 (define (xkb-args->key modifier-bitmask keysym-value)
   "Convert an XKB modifier bitmask and numeric keysym value to a <key> record.
 Parameters: (MODIFIER-BITMASK KEYSYM-VALUE)
-  - MODIFIER-BITMASK: River/Wayland modifier bitmask integer.
-  - KEYSYM-VALUE: Numeric XKB keysym.
+  - MODIFIER-BITMASK: Integer River/Wayland modifier bitmask.
+  - KEYSYM-VALUE: Integer XKB keysym value.
 Returns <key> record."
   (let* ((mods (filter-map (lambda (pair)
                              (let ((mod-name (car pair))

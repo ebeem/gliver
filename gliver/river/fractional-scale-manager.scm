@@ -53,10 +53,11 @@
 proxy-scale -> proxy-surface.")
 
 (define (fractional-scale-find-by-surface proxy-surface)
-  "Get the wp_fractional_scale_v1 proxy associated with SURFACE.
-This is a reverse lookup for *fractional-scale-surfaces*
+  "Get the wp_fractional_scale_v1 proxy associated with PROXY-SURFACE.
+This is a reverse lookup for *fractional-scale-surfaces*.
 Parameters: (PROXY-SURFACE)
-Returns: wp_fractional_scale_v1 pointer or #f."
+  - PROXY-SURFACE: Pointer to wl_surface proxy.
+Returns pointer to wp_fractional_scale_v1 proxy or #f."
   (and (valid-pointer? proxy-surface)
        (hash-fold (lambda (scale-obj s acc)
                     (if (equal? s proxy-surface) scale-obj acc))
@@ -74,9 +75,9 @@ Matches PROTOCOL-NAME against `WP_FRACTIONAL_SCALE_MANAGER_V1_NAME` and binds OB
 with VERSION.
 Parameters: (REGISTRY PROTOCOL-NAME OBJECT-ID VERSION)
   - REGISTRY: Pointer to wl_registry proxy.
-  - PROTOCOL-NAME: Interface name string.
-  - OBJECT-ID: Numeric Wayland object ID.
-  - VERSION: Maximum interface version supported by compositor."
+  - PROTOCOL-NAME: String interface name.
+  - OBJECT-ID: Integer Wayland object ID.
+  - VERSION: Integer maximum interface version supported by compositor."
   (when (string=? protocol-name WP_FRACTIONAL_SCALE_MANAGER_V1_NAME)
     (log-info "Binding ~a..." protocol-name)
     (set! *fractional-scale-manager*
@@ -164,9 +165,9 @@ Parameters: (PROXY-SCALE)
 (define (fractional-scale-on-preferred-scale data proxy-scale scale)
   "Invoked when compositor announces preferred scale for surface.
 Parameters: (DATA PROXY-SCALE SCALE)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-SCALE: Pointer to wp_fractional_scale_v1 proxy.
-  - SCALE: Preferred scale numerator with denominator 120 (uint32)."
+  - SCALE: Integer preferred scale numerator with denominator 120 (uint32)."
   (when *log-river-calls*
     (let* ((scale-val (fractional-scale->number scale)))
       (log-debug "Fractional scale ~a preferred_scale: ~a (~a)"
@@ -185,9 +186,9 @@ Returns: Inexact real scale number."
       1.0))
 
 (define (number->fractional-scale n)
-  "Convert a real number N to a fractional scale numerator (with denominator 120).
+  "Convert float N to a fractional scale numerator (with denominator 120).
 Parameters: (N)
-  - N: Real number (e.g. 1.0, 1.25).
+  - N: Float scale factor (e.g. 1.0, 1.25).
 Returns: Integer scale numerator."
   (inexact->exact (round (* n *fractional-scale-denominator*))))
 

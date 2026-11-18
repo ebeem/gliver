@@ -59,9 +59,9 @@ will be passed to this callback upon connecting to Wayland.
 Parameters: (DATA REGISTRY OBJECT-ID PROTOCOL-PTR VERSION)
   - DATA: Pointer to user context (unused, null in Gliver).
   - REGISTRY: Pointer to wl_registry proxy.
-  - OBJECT-ID: Numeric Wayland object ID.
+  - OBJECT-ID: Integer Wayland object ID.
   - PROTOCOL-PTR: Pointer to interface name string.
-  - VERSION: Maximum interface version supported by compositor."
+  - VERSION: Integer maximum interface version supported by compositor."
   (let ((protocol-name (pointer->string protocol-ptr)))
     ;; any interface should start binding with this hook
     (log-debug "Binding ~a..." protocol-name)
@@ -73,7 +73,7 @@ Parameters: (DATA REGISTRY OBJECT-ID PROTOCOL-PTR VERSION)
 Parameters: (DATA REGISTRY OBJECT-ID)
   - DATA: Pointer to user context (unused, null in Gliver).
   - REGISTRY: Pointer to wl_registry proxy.
-  - OBJECT-ID: Numeric Wayland object ID."
+  - OBJECT-ID: Integer Wayland object ID."
   ;; currently isn't used at all, it should be useful
   ;; for certain situations were advertised protocols become
   ;; unavailable, but using river will probably make this useless
@@ -152,7 +152,9 @@ Parameters: None."
     (log-info "Disconnected.")))
 
 (define (log-wayland-error! context)
-  "Log wayland error given CONTEXT. "
+  "Log Wayland error given CONTEXT.
+Parameters: (CONTEXT)
+  - CONTEXT: String description of the operation where the error occurred."
   (let ((proto-err (wl-display-get-protocol-error *wl-display*))
         (err (wl-display-get-error *wl-display*)))
     (if proto-err
@@ -218,9 +220,9 @@ Parameters: None."
   "Bind Wayland compositor and shm globals from REGISTRY.
 Parameters: (REGISTRY PROTOCOL-NAME OBJECT-ID VERSION)
   - REGISTRY: Pointer to wl_registry proxy.
-  - PROTOCOL-NAME: Interface name string.
-  - OBJECT-ID: Numeric Wayland object ID.
-  - VERSION: Maximum interface version supported by compositor."
+  - PROTOCOL-NAME: String interface name.
+  - OBJECT-ID: Integer Wayland object ID.
+  - VERSION: Integer maximum interface version supported by compositor."
   (cond
    ;; binding *wl-compositor*
    ((string=? protocol-name %WL_COMPOSITOR_NAME)

@@ -316,7 +316,7 @@ Parameters: (WINDOW [#:seat #f] [#:focus-parent #t] [#:force #f])
   "Move WINDOW to CONTAINER.
 Parameters: (WINDOW CONTAINER [#:focus #t])
   - WINDOW: <window> record to move.
-  - CONTAINER: Target <container> record.
+  - CONTAINER: <container> record target.
   - FOCUS: Boolean, whether to focus WINDOW in the new container (default #t)."
   (let ((container-current (window-container window)))
 	(log-debug "Moving window ~a to container ~a with focus=~a" window container focus)
@@ -342,7 +342,7 @@ Parameters: (WINDOW CONTAINER [#:focus #t])
   "Move WINDOW to WORKSPACE, and place it in WORKSPACE's active container.
 Parameters: (WINDOW WORKSPACE [#:focus #t])
   - WINDOW: <window> record to move.
-  - WORKSPACE: Target <workspace> record.
+  - WORKSPACE: <workspace> record target.
   - FOCUS: Boolean, whether to focus WINDOW in the new workspace (default #t)."
   (and-let* (((window? window))
 			 ((not (window-destroyed? window)))
@@ -401,7 +401,7 @@ Parameters: (WINDOW)
   "Place WINDOW above WINDOW-OTHER.
 Parameters: (WINDOW WINDOW-OTHER)
   - WINDOW: <window> record.
-  - WINDOW-OTHER: Reference <window> record."
+  - WINDOW-OTHER: <window> record reference."
   (and-let* ((node (window-node-get! window))
 			 (node-other (window-node-get! window-other)))
     (with-render-sequence
@@ -419,7 +419,7 @@ Parameters: (WINDOW)
   "Place WINDOW below WINDOW-OTHER.
 Parameters: (WINDOW WINDOW-OTHER)
   - WINDOW: <window> record.
-  - WINDOW-OTHER: Reference <window> record."
+  - WINDOW-OTHER: <window> record reference."
   (and-let* ((node (window-node-get! window))
 			 (node-other (window-node-get! window-other)))
     (with-render-sequence
@@ -429,8 +429,8 @@ Parameters: (WINDOW WINDOW-OTHER)
   "Propose dimensions (WIDTH and HEIGHT) for a WINDOW.
 Parameters: (WINDOW WIDTH HEIGHT [#:animate #t])
   - WINDOW: <window> record.
-  - WIDTH: Proposed width in pixels.
-  - HEIGHT: Proposed height in pixels.
+  - WIDTH: Integer proposed width in pixels.
+  - HEIGHT: Integer proposed height in pixels.
   - ANIMATE: Boolean, whether to animate the dimension change (default #t)."
   (and-let* (((window? window))
 			 (proxy-window (window-wl-proxy window))
@@ -482,9 +482,9 @@ Parameters: (WINDOW)
   "Set border state for WINDOW.
 Parameters: (WINDOW EDGES WIDTH COLOR-HEX)
   - WINDOW: <window> record.
-  - EDGES: Flag enum bitmask (e.g. RIVER_WINDOW_V1_EDGES_TOP).
-  - WIDTH: Border width in pixels.
-  - COLOR-HEX: Hex color string (e.g. \"#ff0000\")."
+  - EDGES: Integer edge bitmask flags (e.g. RIVER_WINDOW_V1_EDGES_TOP).
+  - WIDTH: Integer border width in pixels.
+  - COLOR-HEX: String hex color (e.g. \"#ff0000\")."
   (and-let* (((window? window))
 			 (proxy-window (window-wl-proxy window)))
 	(log-debug "Setting border color of window: ~a to ~a" window color-hex)
@@ -497,7 +497,7 @@ Parameters: (WINDOW EDGES WIDTH COLOR-HEX)
   "Set tiled state for WINDOW.
 Parameters: (WINDOW EDGES)
   - WINDOW: <window> record.
-  - EDGES: Flag enum bitmask (e.g. RIVER_WINDOW_V1_EDGES_NONE)."
+  - EDGES: Integer tiled edge bitmask flags (e.g. RIVER_WINDOW_V1_EDGES_NONE)."
   (and-let* (((window? window))
 			 (proxy-window (window-wl-proxy window)))
 	(with-manage-sequence
@@ -508,7 +508,7 @@ Parameters: (WINDOW EDGES)
 Provided PROXY-SURFACE shouldn't have a role or buffer attached.
 Parameters: (WINDOW PROXY-SURFACE)
   - WINDOW: <window> record.
-  - PROXY-SURFACE: Pointer to wl_surface proxy.
+  - PROXY-SURFACE: Pointer to Wayland wl_surface.
 Returns pointer to river_decoration_v1 proxy."
   (when window
     (let ((proxy-window (window-wl-proxy window))
@@ -526,7 +526,7 @@ Returns pointer to river_decoration_v1 proxy."
 Provided WL_SURFACE shouldn't have a role or buffer attached.
 Parameters: (WINDOW PROXY-SURFACE)
   - WINDOW: <window> record.
-  - PROXY-SURFACE: Pointer to wl_surface proxy.
+  - PROXY-SURFACE: Pointer to Wayland wl_surface.
 Returns river_decoration_v1 proxy pointer."
   (when window
     (let ((proxy-window (window-wl-proxy window))
@@ -565,7 +565,7 @@ Parameters: (WINDOW)
   "Inform the WINDOW of the CAPABILITIES supported (maximize, minimize).
 Parameters: (WINDOW CAPABILITIES)
   - WINDOW: <window> record.
-  - CAPABILITIES: Capabilities enum flags bitmask."
+  - CAPABILITIES: Integer capabilities enum flags bitmask."
   (and-let* (((window? window))
 			 (proxy-window (window-wl-proxy window))
 			 (prev-capabilities (window-capabilities window)))
@@ -665,10 +665,10 @@ Parameters: (WINDOW)
 Clip box is ignored while window is on fullscreen.
 Parameters: (WINDOW X Y WIDTH HEIGHT)
   - WINDOW: <window> record.
-  - X: Horizontal clip coordinate in compositor space.
-  - Y: Vertical clip coordinate in compositor space.
-  - WIDTH: Clip box width in pixels (disabled if 0).
-  - HEIGHT: Clip box height in pixels (disabled if 0)."
+  - X: Integer horizontal clip coordinate in compositor space.
+  - Y: Integer vertical clip coordinate in compositor space.
+  - WIDTH: Integer clip box width in pixels (disabled if 0).
+  - HEIGHT: Integer clip box height in pixels (disabled if 0)."
   (and-let* (((window? window))
 			 (proxy-window (window-wl-proxy window)))
     (with-manage-sequence
@@ -679,10 +679,10 @@ Parameters: (WINDOW X Y WIDTH HEIGHT)
 Clip box is ignored while window is on fullscreen.
 Parameters: (WINDOW X Y WIDTH HEIGHT)
   - WINDOW: <window> record.
-  - X: Horizontal content clip coordinate in compositor space.
-  - Y: Vertical content clip coordinate in compositor space.
-  - WIDTH: Content clip box width in pixels (disabled if 0).
-  - HEIGHT: Content clip box height in pixels (disabled if 0)."
+  - X: Integer horizontal content clip coordinate in compositor space.
+  - Y: Integer vertical content clip coordinate in compositor space.
+  - WIDTH: Integer content clip box width in pixels (disabled if 0).
+  - HEIGHT: Integer content clip box height in pixels (disabled if 0)."
   (and-let* (((window? window))
 			 (proxy-window (window-wl-proxy window)))
     (with-manage-sequence
@@ -692,8 +692,8 @@ Parameters: (WINDOW X Y WIDTH HEIGHT)
   "Recommend that the WINDOW keep its dimensions within a given MAX-WIDTH and MAX-HEIGHT.
 Parameters: (WINDOW MAX-WIDTH MAX-HEIGHT)
   - WINDOW: <window> record.
-  - MAX-WIDTH: Maximum allowable width in pixels (unbounded if 0).
-  - MAX-HEIGHT: Maximum allowable height in pixels (unbounded if 0)."
+  - MAX-WIDTH: Integer maximum allowable width in pixels (unbounded if 0).
+  - MAX-HEIGHT: Integer maximum allowable height in pixels (unbounded if 0)."
   (and-let* (((window? window))
 			 (proxy-window (window-wl-proxy window)))
     (with-manage-sequence
@@ -703,8 +703,8 @@ Parameters: (WINDOW MAX-WIDTH MAX-HEIGHT)
   "Set the position of the WINDOW.
 Parameters: (WINDOW X Y [#:animate #t])
   - WINDOW: <window> record.
-  - X: Horizontal position in pixels.
-  - Y: Vertical position in pixels.
+  - X: Integer horizontal position in pixels.
+  - Y: Integer vertical position in pixels.
   - ANIMATE: Boolean, whether to animate position change (default #t)."
   (let ((node (window-node-get! window))
 		(int-x (inexact->exact (floor x)))
@@ -718,7 +718,7 @@ Parameters: (WINDOW X Y [#:animate #t])
 (define (window-on-window data manager proxy-window)
   "Invoked when a window is advertised.
 Parameters: (DATA MANAGER WINDOW-PROXY)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - MANAGER: Pointer to river_window_manager_v1 proxy.
   - WINDOW-PROXY: Pointer to river_window_v1 proxy."
   (let ((window (make-window
@@ -729,7 +729,7 @@ Parameters: (DATA MANAGER WINDOW-PROXY)
 (define (window-on-window-closed data proxy-window)
   "Invoked when window is closed.
 Parameters: (DATA PROXY-WINDOW)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-WINDOW: Pointer to river_window_v1 proxy."
   (let ((window (window-find-by-proxy proxy-window)))
     (window-remove! window)))
@@ -765,7 +765,7 @@ Parameters: (WINDOW)
   "Invoked when a window title is changed.
 Parameters: (PROXY-WINDOW TITLE)
   - PROXY-WINDOW: Pointer to river_window_v1 proxy.
-  - TITLE: New window title string."
+  - TITLE: String new window title."
   (and-let* ((window (window-find-by-proxy proxy-window)))
 	;; avoid unnecessary calls
 	(unless (string= title (window-title window))
@@ -780,7 +780,7 @@ Parameters: (PROXY-WINDOW TITLE)
   "Invoked when window's transient parent change.
 Parameters: (PROXY-WINDOW PARENT-PROXY)
   - PROXY-WINDOW: Pointer to child river_window_v1 proxy.
-  - PARENT: Pointer to parent river_window_v1 proxy."
+  - PARENT: Pointer to parent river_window_v1 proxy, or #f."
   (and-let* ((window (window-find-by-proxy proxy-window)))
     (%window-parent-set! window parent)
 	(gliver-hook-run! *window-parent-changed-hook* window parent)))
@@ -798,9 +798,9 @@ Parameters: (PROXY-WINDOW APP-ID-PTR)
 
 (define (window-on-window-identifier-changed proxy-window identifier)
   "Invoked when window's identifier string is advertised.
-Parameters: (PROXY-WINDOW ID-PTR)
+Parameters: (PROXY-WINDOW IDENTIFIER)
   - PROXY-WINDOW: Pointer to river_window_v1 proxy.
-  - ID-PTR: Pointer to identifier ASCII string."
+  - IDENTIFIER: String unique window identifier."
   (and-let* ((window (window-find-by-proxy proxy-window)))
     (%window-identifier-set! window identifier)
 	(gliver-hook-run! *window-identifier-changed-hook* window identifier)))
@@ -809,9 +809,9 @@ Parameters: (PROXY-WINDOW ID-PTR)
 (define (window-on-window-presentation-hint data proxy-window hint)
   "Invoked when window's preferred presentation mode hint change (like vsync).
 Parameters: (DATA PROXY-WINDOW HINT)
-  - DATA: User context pointer (unused, null in Gliver).
+  - DATA: Pointer to user context (unused, null in Gliver).
   - PROXY-WINDOW: Pointer to river_window_v1 proxy.
-  - HINT: Presentation mode enum (e.g. RIVER_OUTPUT_V1_PRESENTATION_MODE_VSYNC)."
+  - HINT: Integer presentation mode enum (e.g. RIVER_OUTPUT_V1_PRESENTATION_MODE_VSYNC)."
   (and-let* ((window (window-find-by-proxy proxy-window)))
     (%window-presentation-hint-set! window hint)
 	(gliver-hook-run! *window-presentation-hint-changed-hook* window hint)))
@@ -831,8 +831,8 @@ Parameters: (PROXY-WINDOW PID)
   "Invoked when window's dimensions (width and height) change.
 Parameters: (PROXY-WINDOW WIDTH HEIGHT)
   - PROXY-WINDOW: Pointer to river_window_v1 proxy.
-  - WIDTH: Width in pixels.
-  - HEIGHT: Height in pixels."
+  - WIDTH: Integer width in pixels.
+  - HEIGHT: Integer height in pixels."
   (and-let* ((window (window-find-by-proxy proxy-window)))
 	(%window-width-set! window width)
 	(%window-height-set! window height)
@@ -843,10 +843,10 @@ Parameters: (PROXY-WINDOW WIDTH HEIGHT)
   "Invoked when window's preferred minimum and maximum dimension hints change.
 Parameters: (PROXY-WINDOW MIN-W MIN-H MAX-W MAX-H)
   - PROXY-WINDOW: Pointer to river_window_v1 proxy.
-  - MIN-W: Minimum preferred width in pixels.
-  - MIN-H: Minimum preferred height in pixels.
-  - MAX-W: Maximum preferred width in pixels.
-  - MAX-H: Maximum preferred height in pixels."
+  - MIN-W: Integer minimum preferred width in pixels.
+  - MIN-H: Integer minimum preferred height in pixels.
+  - MAX-W: Integer maximum preferred width in pixels.
+  - MAX-H: Integer maximum preferred height in pixels."
   (and-let* ((window (window-find-by-proxy proxy-window)))
 	(%window-width-min-set! window min-w)
 	(%window-height-min-set! window min-h)
@@ -859,7 +859,7 @@ Parameters: (PROXY-WINDOW MIN-W MIN-H MAX-W MAX-H)
   "Invoked when window's decoration mode preference hint change.
 Parameters: (PROXY-WINDOW HINT)
   - PROXY-WINDOW: Pointer to river_window_v1 proxy.
-  - HINT: Decoration hint enum value (e.g. RIVER_WINDOW_V1_DECORATION_HINT_NO_PREFERENCE)."
+  - HINT: Integer decoration hint enum value (e.g. RIVER_WINDOW_V1_DECORATION_HINT_NO_PREFERENCE)."
   (and-let* ((window (window-find-by-proxy proxy-window)))
 	(%window-decoration-hint-set! window hint)
 	(gliver-hook-run! *window-decoration-hint-changed-hook* window hint)))
@@ -869,7 +869,7 @@ Parameters: (PROXY-WINDOW HINT)
   "Invoked when SEAT focuses WINDOW.
 Parameters: (SEAT WINDOW)
   - SEAT: <seat> record.
-  - WINDOW: <window> record being focused."
+  - WINDOW: <window> record or #f; window being focused."
   (log-debug "Window seat has focused ~a" window)
   (if (and window (window? window) (not (window-destroyed? window)))
 	  ;; just try to focus window, window-check! already has guard checks
@@ -884,8 +884,8 @@ Parameters: (SEAT WINDOW)
 (define (window-on-workspace-switch workspace prev-workspace)
   "Invoked when active workspace is switched to WORKSPACE.
 Parameters: (WORKSPACE PREV-WORKSPACE)
-  - WORKSPACE: Currently focused <workspace> record.
-  - PREV-WORKSPACE: Previously focused <workspace> record."
+  - WORKSPACE: <workspace> record currently focused.
+  - PREV-WORKSPACE: <workspace> record or #f; previously focused workspace."
   ;; hide all windows of previous workspace
   (when (and prev-workspace (workspace? prev-workspace) (not (eq? prev-workspace workspace)))
     (for-each window-hide! (workspace-windows prev-workspace)))
@@ -896,9 +896,9 @@ Parameters: (WORKSPACE PREV-WORKSPACE)
 
 (define (window-on-fullscreen-requested proxy-window proxy-output)
   "Invoked when a client request to enter fullscreen mode.
-Parameters: (DATA PROXY-WINDOW OUTPUT-PTR)
+Parameters: (PROXY-WINDOW PROXY-OUTPUT)
   - PROXY-WINDOW: Pointer to river_window_v1 proxy.
-  - proxy-output Pointer to target river_output_v1 proxy (or null for current output)."
+  - PROXY-OUTPUT: Pointer to target river_output_v1 proxy (or null pointer for current output)."
   (and-let* ((window (window-find-by-proxy proxy-window))
 			 ;; NOTE: if not output proxy is passed then current client
 			 ;; is requesting fullscreen on current output
@@ -910,7 +910,7 @@ Parameters: (DATA PROXY-WINDOW OUTPUT-PTR)
 
 (define (window-on-fullscreen-exit-requested proxy-window)
   "Invoked when a client request to exit fullscreen mode.
-Parameters: (DATA PROXY-WINDOW)
+Parameters: (PROXY-WINDOW)
   - PROXY-WINDOW: Pointer to river_window_v1 proxy."
   (and-let* ((window (window-find-by-proxy proxy-window)))
     (window-fullscreen-exit! window)

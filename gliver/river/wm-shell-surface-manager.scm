@@ -49,17 +49,17 @@ Parameters: (PROXY-SHELL-SURFACE)
   "Get node corresponding to the shell surface (called once per surface).
 Parameters: (PROXY-SHELL-SURFACE)
   - PROXY-SHELL-SURFACE: Pointer to river_shell_surface_v1 proxy.
-Returns: river_node_v1 proxy pointer."
-  (when (and (valid-pointer? proxy-shell-surface)
-             (hash-get-handle *wm-shell-surface-nodes* proxy-shell-surface))
-    (or (hash-ref *wm-shell-surface-nodes* proxy-shell-surface)
-        (let ((node (river-shell-surface-v1-get-node proxy-shell-surface)))
-          (when *log-river-calls*
-            (log-debug "Getting node of shell-surface ~a -> ~a" proxy-shell-surface node))
-          (when (valid-pointer? node)
-            (hash-set! *wm-shell-surface-nodes* proxy-shell-surface node)
-            (set! *wm-nodes* (cons node *wm-nodes*)))
-          node))))
+Returns: river_node_v1 proxy pointer, or #f if unavailable."
+  (and (valid-pointer? proxy-shell-surface)
+       (hash-get-handle *wm-shell-surface-nodes* proxy-shell-surface)
+       (or (hash-ref *wm-shell-surface-nodes* proxy-shell-surface)
+           (let ((node (river-shell-surface-v1-get-node proxy-shell-surface)))
+             (when *log-river-calls*
+               (log-debug "Getting node of shell-surface ~a -> ~a" proxy-shell-surface node))
+             (when (valid-pointer? node)
+               (hash-set! *wm-shell-surface-nodes* proxy-shell-surface node)
+               (set! *wm-nodes* (cons node *wm-nodes*)))
+             (and (valid-pointer? node) node)))))
 
 (define (wm-shell-surface-sync-next-commit! proxy-shell-surface)
   "Synchronize application of the next wl_surface commit
