@@ -181,6 +181,14 @@ This was observed so far in ~vlc~ where it will resize itself based on video res
 Note: this issue doesn't seem to be easy to resolve, clients in this case violate the wayland protocol and it doesn't seem to me that there is a way to stop them from doing so.
 #+end_quote
 
+Emacs also has this problem by default, but good news, there is a solution! Simply add the following to your .emacs:
+
+#+BEGIN_SRC elisp
+;; Make emacs cooperate better with tiling wms
+(setq frame-inhibit-implied-resize 'force)
+(setq frame-resize-pixelwise t)
+#+END_SRC
+
 *** Some clients include their own decorations
 This was observered so far in ~Emacs~ and ~librewolf~ where they will include a titlebar, I believe all ~gtk~ applications will do so. While it's possible to have a workaround from ~gtk~ css, I again want to have a solution that will work on other clients as well.
 
