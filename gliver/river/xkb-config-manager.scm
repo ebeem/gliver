@@ -175,16 +175,16 @@ Parameters: (PROXY-CONFIG)
     (river-xkb-config-v1-destroy proxy-config)
 	(set! *xkb-config* %null-pointer)))
 
-(define (xkb-config-compile-keymap layout-str variant-str option-str)
-  "Compile keymap definition from LAYOUT-STR, VARIANT-STR and OPTION-STR.
-Parameters: (LAYOUT-STR VARIANT-STR OPTION-STR)
+(define (xkb-config-compile-keymap layout-str variant-str options-str)
+  "Compile keymap definition from LAYOUT-STR, VARIANT-STR and OPTIONS-STR.
+Parameters: (LAYOUT-STR VARIANT-STR OPTIONS-STR)
   - LAYOUT-STR: Comma-separated layout string (e.g. \"us,ara\").
   - VARIANT-STR: Comma-separated variant string (e.g. \",digits\").
-  - OPTION-STR: Comma-separated option string (e.g. \"terminate:ctrl_alt_bksp\").
+  - OPTIONS-STR: Comma-separated option string (e.g. \"terminate:ctrl_alt_bksp\").
 Returns: String representing keymap definition, or #f on failure."
   (when *log-river-calls*
 	(log-debug "Compiling keymap (layout=~s, variant=~s, options=~s)"
-               layout-str variant-str option-str))
+               layout-str variant-str options-str))
   (call-with-values
       (lambda ()
 		;; NOTE: rules and model can be optionally passed
@@ -192,7 +192,7 @@ Returns: String representing keymap definition, or #f on failure."
 		;; I also don't very well understand the meaning of these values
         (xkb-keymap-compile-from-names #:layout layout-str
                                        #:variant variant-str
-                                       #:options option-str))
+                                       #:options options-str))
     (lambda (km ctx)
       (let ((keymap-def (and (valid-pointer? km) (xkb-keymap->string km))))
 		;; cleanup keymap and context as they are not needed anymore
@@ -276,9 +276,9 @@ Returns river_xkb_keymap_v1 proxy pointer or #f on failure."
   ;; layout and variant need to be in comma separated format (e.g. "en, ara")
   (and-let* ((layout-str   (string-join layouts ","))
              (variant-str  (string-join variants ","))
-             (option-str   (string-join options ","))
+             (options-str   (string-join options ","))
 			 ;; create keymap-def from layout and variant
-			 (keymap-def   (xkb-config-compile-keymap layout-str variant-str option-str)))
+			 (keymap-def   (xkb-config-compile-keymap layout-str variant-str options-str)))
 	;; pass the keymap-def string to xkb-config-create-keymap-from-string
 	(xkb-config-create-keymap-from-string proxy-config keymap-def format)))
 
