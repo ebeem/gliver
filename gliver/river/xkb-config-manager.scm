@@ -192,7 +192,7 @@ Returns: String representing keymap definition, or #f on failure."
 		;; I also don't very well understand the meaning of these values
         (xkb-keymap-compile-from-names #:layout layout-str
                                        #:variant variant-str
-				       #:options option-str))
+                                       #:options option-str))
     (lambda (km ctx)
       (let ((keymap-def (and (valid-pointer? km) (xkb-keymap->string km))))
 		;; cleanup keymap and context as they are not needed anymore
@@ -276,7 +276,7 @@ Returns river_xkb_keymap_v1 proxy pointer or #f on failure."
   ;; layout and variant need to be in comma separated format (e.g. "en, ara")
   (and-let* ((layout-str   (string-join layouts ","))
              (variant-str  (string-join variants ","))
-	     (option-str   (string-join options ","))
+             (option-str   (string-join options ","))
 			 ;; create keymap-def from layout and variant
 			 (keymap-def   (xkb-config-compile-keymap layout-str variant-str option-str)))
 	;; pass the keymap-def string to xkb-config-create-keymap-from-string
