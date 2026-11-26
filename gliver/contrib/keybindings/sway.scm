@@ -85,12 +85,12 @@
   (define-key *resize-map* "Escape" 'prefix-abort)
 
   ;; special keys for volume, brightness, and screenshot
-  (define-key *top-map* "XF86AudioMute" "exec pactl set-sink-mute @DEFAULT_SINK@ toggle")
-  (define-key *top-map* "XF86AudioLowerVolume" "exec pactl set-sink-volume @DEFAULT_SINK@ -5%")
-  (define-key *top-map* "XF86AudioRaiseVolume" "exec pactl set-sink-volume @DEFAULT_SINK@ +5%")
-  (define-key *top-map* "XF86AudioMicMute" "exec pactl set-source-mute @DEFAULT_SOURCE@ toggle")
-  (define-key *top-map* "XF86MonBrightnessDown" "exec brightnessctl set 5%-")
-  (define-key *top-map* "XF86MonBrightnessUp" "exec brightnessctl set 5%+")
-  (define-key *top-map* "Print" "exec grim")
+  (define-key *top-map* "XF86AudioMute" 'media-audio-mute)
+  (define-key *top-map* "XF86AudioLowerVolume" 'media-audio-volume-decrease)
+  (define-key *top-map* "XF86AudioRaiseVolume" 'media-audio-volume-increase)
+  (define-key *top-map* "XF86AudioMicMute" 'media-mic-mute)
+  (define-key *top-map* "XF86MonBrightnessDown" 'media-brightness-decrease)
+  (define-key *top-map* "XF86MonBrightnessUp" 'media-brightness-increase)
+  (define-key *top-map* "Print" 'media-screenshot)
 
   (keybinding-sync!))
