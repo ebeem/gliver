@@ -837,7 +837,11 @@ Returns active <seat> record, or #f if no seats exist."
                          (tag-mask (manager-tag-next!))
                          (containers '())
                          (output #f)
-                         (layout 'manual)
+                         (layout '((layout . manual)
+                                  (layout-type . manual)
+                                  (split-ratio . 0.5)
+                                  (inner-gap . #f)
+                                  (outer-gap . #f)))
                          (wallpaper #f)
 						 (metadata '()))
   "Create a new <workspace> record.
