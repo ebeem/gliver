@@ -1,0 +1,58 @@
+# Woodpecker CI pipeline configuration for Gliver
+# Minimal Alpine Linux environment with required dependencies
+
+when:
+  - event: [push, pull_request]
+
+steps:
+  - name: build-install-and-test
+    image: alpine:latest
+    environment:
+      GUILE_AUTO_COMPILE: "0"
+    commands:
+      - echo "Enabling Alpine community repository"
+      - sed -i 's/^#//' /etc/apk/repositories
+      - grep -q '/community' /etc/apk/repositories || sed -e 's/main$/community/' /etc/apk/repositories >> /etc/apk/repositories
+      - apk update
+
+      - echo "Installing build dependencies"
+      - apk add --no-cache build-base pkgconf guile guile-dev cairo-dev pango-dev librsvg-dev libxkbcommon-dev wayland-dev glib-dev wget tar ca-certificates
+
+      - echo "Building and installing guile-cairo"
+      - wget -q https://download.savannah.nongnu.org/releases/guile-cairo/guile-cairo-1.11.2.tar.gz
+      - tar -xzf guile-cairo-1.11.2.tar.gz
+      - cd guile-cairo-1.11.2 && ./configure --prefix=/usr && make -j$(nproc 2>/dev/null || echo 2) && make install && cd ..
+      - rm -rf guile-cairo-1.11.2*
+
+      - echo "Verifying guile-cairo"
+      - guile -c '(use-modules (cairo)) (display "Guile-Cairo initialized successfully\n")'
+
+      - echo "Compiling Gliver modules"
+      - make clean
+      - make -j$(nproc 2>/dev/null || echo 2)
+
+      - echo "Installing Gliver via make install"
+      - make install
+
+      - echo "Verifying installed binaries in PATH"
+      - which gliver
+      - which gliver-repl
+
+      - echo "Testing installed gliver binary"
+      - (cd /tmp && gliver --version)
+      - (cd /tmp && gliver --help)
+      - (cd /tmp && gliver-repl --help)
+
+      - echo "Verifying global module resolution in Guile"
+      - (cd /tmp && guile -c '(use-modules (gliver core) (gliver core surface) (gliver river) (gliver contrib ui gleui)) (display "Installed Gliver modules loaded successfully\n")')
+
+      - echo "Verifying installed system files and assets"
+      - test -x /usr/bin/gliver
+      - test -x /usr/bin/gliver-repl
+      - test -f /usr/share/wayland-sessions/gliver.desktop
+      - test -f /usr/share/gliver/examples/init.scm
+      - test -f /usr/share/gliver/protocols/river-window-management-v1.xml
+      - test -f /usr/share/guile/site/3.0/gliver/core.scm
+      - test -f /usr/share/guile/site/3.0/gliver/core/window.scm
+      - test -f /usr/lib/guile/3.0/site-ccache/gliver/core.go
+      - test -f /usr/lib/guile/3.0/site-ccache/gliver/core/window.go
