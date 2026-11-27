@@ -69,93 +69,14 @@
 			*window-border-color-focused*
 			*window-border-color-unfocused*
 			*window-border-color-urgent*
-			*palette-font*
-			*palette-font-size*
 			*palette-icon-color*
 			*palette-name-color*
 			*palette-value-color*
 			*palette-help-color*
 			*palette-doc-color*
-			*palette-prompt*
-			*palette-prompt-color*
-			*palette-input-bg-color*
-			*palette-input-border-color*
-			*palette-cursor-width*
-			*palette-cursor-color*
-			*palette-candidates-count-color*
-			*palette-no-candidates-count-color*
-			*palette-no-candidates-text-color*
-			*palette-case-sensitive?*
-			*palette-show-icons?*
-			*palette-show-sidebar?*
-			*palette-icon-size*
-			*palette-icon-right-spacing*
-			*palette-width*
-			*palette-candidates-count*
-			*palette-output*
-			*palette-icon-theme*
-			*palette-bg-color*
-			*palette-fg-color*
-			*palette-selected-fg-color*
-			*palette-selected-bg-color*
-			*palette-selected-radius*
-			*palette-anchor-margin*
-			*palette-urgent-color*
-			*palette-border-color*
-			*palette-border-width*
-			*palette-border-radius*
-			*palette-match-color*
-			*palette-repeat-rate*
-			*palette-repeat-delay*
-			*palette-location*
-			*palette-anchor*
 			*palette-variables-widths*
 			*palette-variables-searchable*
 			*palette-variables-visible*
-			*palette-key-select*
-			*palette-key-cancel*
-			*palette-key-next*
-			*palette-key-prev*
-			*palette-key-first*
-			*palette-key-last*
-			*palette-key-page-down*
-			*palette-key-page-up*
-			*palette-key-delete-word-backward*
-			*palette-key-delete-word-forward*
-			*palette-key-delete-char-backward*
-			*palette-key-delete-char-forward*
-			*palette-key-kill-line*
-			*palette-key-discard-line*
-			*palette-key-word-backward*
-			*palette-key-word-forward*
-			*palette-key-bol*
-			*palette-key-eol*
-			*palette-key-char-backward*
-			*palette-key-char-forward*
-			*statusbar-enabled*
-			*statusbar-position*
-			*statusbar-height*
-			*statusbar-margin-top*
-			*statusbar-margin-bottom*
-			*statusbar-margin-left*
-			*statusbar-margin-right*
-			*statusbar-padding-x*
-			*statusbar-padding-y*
-			*statusbar-spacing*
-			*statusbar-bg-color*
-			*statusbar-fg-color*
-			*statusbar-border-color*
-			*statusbar-border-width*
-			*statusbar-border-radius*
-			*statusbar-pill-radius*
-			*statusbar-pill-padding-x*
-			*statusbar-pill-padding-y*
-			*statusbar-font*
-			*statusbar-font-size*
-			*statusbar-modules-left*
-			*statusbar-modules-center*
-			*statusbar-modules-right*
-			*statusbar-click-enabled*
 			*xdg-config-home*
 			*xdg-state-home*
 			*xdg-data-home*
@@ -181,7 +102,7 @@
 			"Default wallpaper scaling mode: 'fill, 'fit, 'stretch, 'center, or 'tile.")
 (define-var *prefix-timeout* 1000
 			"Timeout in milliseconds for keybinding prefix sequences.")
-(define-var *message-timeout* 5
+(define-var *message-timeout* 8
 			"Timeout in seconds for notification messages.")
 
 ;;; theme options
@@ -278,11 +199,7 @@
 (define-var *window-border-color-urgent* "#00000000"
             "Border color for urgent windows.")
 
-;;; palette/launcher options
-(define-var *palette-font* #:inherit *theme-font*
-            "Font family string used inside the launcher palette.")
-(define-var *palette-font-size* #:inherit *theme-font-size*
-            "Font size in points for the launcher palette.")
+;;; palette/help options
 (define-var *palette-icon-color* #:inherit *theme-blue*
             "Color used for rendering candidate icons in the palette.")
 (define-var *palette-name-color* #:inherit *theme-text*
@@ -293,80 +210,6 @@
             "Color used for help text and keybinding hints.")
 (define-var *palette-doc-color* #:inherit *theme-green*
             "Color used for rendering variable documentation text.")
-(define-var *palette-prompt* "> "
-            "Prompt string displayed before the input field in the palette.")
-(define-var *palette-prompt-color* #:inherit *theme-fg-alt*
-            "Color used for rendering prompt text.")
-(define-var *palette-input-bg-color* #:inherit *theme-surface0*
-            "Color used for prompt text background.")
-(define-var *palette-input-border-color* #:inherit *theme-border-color*
-            "Color used for prompt text border.")
-(define-var *palette-cursor-width* 2.0
-            "Width of palette cursor.")
-(define-var *palette-cursor-color* #:inherit *theme-text*
-            "Color used for palette cursor.")
-(define-var *palette-candidates-count-color* #:inherit *theme-overlay2*
-            "Color used for palette candidates counter.")
-(define-var *palette-no-candidates-count-color* #:inherit *theme-red*
-            "Color used for palette candidates counter when empty.")
-(define-var *palette-no-candidates-text-color* #:inherit *theme-overlay2*
-            "Color used for palette candidates text when empty.")
-(define-var *palette-case-sensitive?* #f
-            "Whether string filtering in the palette is case sensitive.")
-(define-var *palette-show-icons?* #t
-            "Whether to display candidate icons in the palette list.")
-(define-var *palette-show-sidebar?* #f
-            "Whether to display sidebar mode indicator in the palette list.")
-(define-var *palette-icon-size* 32
-            "Size of icons displayed in the launcher (app icons).")
-(define-var *palette-icon-right-spacing* 10
-            "Spacing between icon and text in the launcher.")
-(define-var *palette-width* 90
-            "Width of the palette window as a percentage of monitor width.")
-(define-var *palette-candidates-count* 10
-            "Maximum number of visible candidate rows shown in the palette.")
-(define-var *palette-output* #f
-            "Name of the specific monitor/output to show the palette on, or #f for active.")
-(define-var *palette-icon-theme* #f
-            "Icon theme name used for palette candidates, or #f for system default.")
-(define-var *palette-bg-color* #:inherit *theme-bg-main*
-            "Background color of the palette window.")
-(define-var *palette-fg-color* #:inherit *theme-fg-main*
-            "Foreground text color of the palette window.")
-(define-var *palette-selected-fg-color* #:inherit *theme-fg-alt*
-            "Highlight color used for the currently selected candidate entry.")
-(define-var *palette-selected-bg-color* #:inherit *theme-surface1*
-            "Color used for background of the currently selected candidate entry.")
-(define-var *palette-selected-radius* 0
-            "Radius used for background of the currently selected candidate entry.")
-(define-var *palette-anchor-margin* 80
-            "Margin used in palette form anchor direction defined in *palette-location*.")
-(define-var *palette-urgent-color* #:inherit *theme-urgent-color*
-            "Color used for urgent or high-priority candidate rows.")
-(define-var *palette-border-color* #:inherit *theme-border-color*
-            "Border color around the palette window.")
-(define-var *palette-border-width* #:inherit *theme-border-width*
-            "Border width of the palette window in pixels.")
-(define-var *palette-border-radius* #:inherit *theme-border-radius*
-            "Corner border radius of the palette window in pixels.")
-(define-var *palette-match-color* #:inherit *theme-red*
-            "Color used to highlight query keywords in search results (defaults to red).")
-(define-var *palette-repeat-rate* 25
-            "Key repeat rate in characters per second.")
-(define-var *palette-repeat-delay* 600
-            "Delay in milliseconds before key repeat starts.")
-(define-var *palette-location* 8
-            "The integer value of the location of the palette
-following the same order in a keyboard numpad
-7 8 9
-4 5 6
-1 2 3")
-(define-var *palette-anchor* 8
-            "The integer value of the anchor of the palette
-following the same order in a keyboard numpad
-7 8 9
-4 5 6
-1 2 3")
 
 ;;; palette column configuration
 ;;; palette variables help
@@ -377,98 +220,6 @@ following the same order in a keyboard numpad
             "Boolean mask determining which columns in the variables inspector are searchable.")
 (define-var *palette-variables-visible* '(#t #t #t #f #t)
             "Boolean mask determining which columns are rendered in the variables inspector.")
-
-;;; palette keybindings
-(define-var *palette-key-select* '("Return" "KP_Enter" "C-m")
-            "Keybinding list to select candidate or confirm input.")
-(define-var *palette-key-cancel* '("Escape" "C-g" "C-c" "C-[")
-            "Keybinding list to dismiss the palette.")
-(define-var *palette-key-next* '("Down" "C-n" "C-j" "Tab")
-            "Keybinding list to select next candidate.")
-(define-var *palette-key-prev* '("Up" "C-p" "S-Tab" "ISO_Left_Tab")
-            "Keybinding list to select previous candidate.")
-(define-var *palette-key-first* '("M-<")
-            "Keybinding list to jump to the first candidate.")
-(define-var *palette-key-last* '("M->")
-            "Keybinding list to jump to the last candidate.")
-(define-var *palette-key-page-down* '("Page_Down" "C-v")
-            "Keybinding list to scroll down one page.")
-(define-var *palette-key-page-up* '("Page_Up" "M-v")
-            "Keybinding list to scroll up one page.")
-(define-var *palette-key-delete-word-backward* '("C-BackSpace" "M-BackSpace" "C-w")
-            "Keybinding list to delete word backward.")
-(define-var *palette-key-delete-word-forward* '("M-d")
-            "Keybinding list to delete word forward.")
-(define-var *palette-key-delete-char-backward* '("BackSpace" "C-h")
-            "Keybinding list to delete character backward.")
-(define-var *palette-key-delete-char-forward* '("Delete" "C-d")
-            "Keybinding list to delete character forward.")
-(define-var *palette-key-kill-line* '("C-k")
-            "Keybinding list to kill text to end of line.")
-(define-var *palette-key-discard-line* '("C-u")
-            "Keybinding list to discard text to beginning of line.")
-(define-var *palette-key-word-backward* '("M-b")
-            "Keybinding list to move cursor backward by word.")
-(define-var *palette-key-word-forward* '("M-f")
-            "Keybinding list to move cursor forward by word.")
-(define-var *palette-key-bol* '("Home" "C-a")
-            "Keybinding list to move cursor to beginning of line.")
-(define-var *palette-key-eol* '("End" "C-e")
-            "Keybinding list to move cursor to end of line.")
-(define-var *palette-key-char-backward* '("Left" "C-b")
-            "Keybinding list to move cursor backward by character.")
-(define-var *palette-key-char-forward* '("Right" "C-f")
-            "Keybinding list to move cursor forward by character.")
-
-;;; statusbar options
-(define-var *statusbar-enabled* #f
-            "Whether the statusbar is currently enabled.")
-(define-var *statusbar-position* 'top
-            "Position of the statusbar: 'top or 'bottom.")
-(define-var *statusbar-height* 32
-            "Height of the statusbar in pixels.")
-(define-var *statusbar-margin-top* 4
-            "Top margin of the statusbar.")
-(define-var *statusbar-margin-bottom* 0
-            "Bottom margin of the statusbar.")
-(define-var *statusbar-margin-left* 8
-            "Left margin of the statusbar.")
-(define-var *statusbar-margin-right* 8
-            "Right margin of the statusbar.")
-(define-var *statusbar-padding-x* 8
-            "Horizontal inner padding of the statusbar.")
-(define-var *statusbar-padding-y* 2
-            "Vertical inner padding of the statusbar.")
-(define-var *statusbar-spacing* 6
-            "Spacing in pixels between module capsules.")
-(define-var *statusbar-bg-color* #:inherit *theme-bg-main*
-            "Background color of the statusbar (hex string, supports RGBA).")
-(define-var *statusbar-fg-color* #:inherit *theme-fg-main*
-            "Default foreground text color of the statusbar.")
-(define-var *statusbar-border-color* #:inherit *theme-fg-alt*
-            "Border color of the statusbar.")
-(define-var *statusbar-border-width* 0
-            "Border width of the statusbar in pixels (0 for no border).")
-(define-var *statusbar-border-radius* 10
-            "Corner border radius of the statusbar (0 for rectangular bar, >0 for floating island).")
-(define-var *statusbar-pill-radius* 6
-            "Default corner border radius for module capsules.")
-(define-var *statusbar-pill-padding-x* 10
-            "Default horizontal padding inside module capsules.")
-(define-var *statusbar-pill-padding-y* 3
-            "Default vertical padding inside module capsules.")
-(define-var *statusbar-font* #:inherit *theme-font*
-            "Font family string used inside the statusbar.")
-(define-var *statusbar-font-size* 12
-            "Font size in points for statusbar text.")
-(define-var *statusbar-modules-left* '(workspaces window)
-            "List of modules to render on the left side of the statusbar.")
-(define-var *statusbar-modules-center* '(date weather)
-            "List of modules to render at the center of the statusbar.")
-(define-var *statusbar-modules-right* '(cpu ram battery)
-            "List of modules to render on the right side of the statusbar.")
-(define-var *statusbar-click-enabled* #t
-            "Whether pointer click and scroll interaction is enabled on the statusbar.")
 
 ;;; XDG directories
 (define-var *xdg-config-home*

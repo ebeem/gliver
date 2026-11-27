@@ -190,9 +190,9 @@ Parameters: (WINDOW)
 		 (dec-above (window-wl-decoration-above-proxy window))
 		 (dec-below (window-wl-decoration-below-proxy window)))
     (%manager-windows-set! *manager* remaining-windows)
-	(%window-container-remove! window)
-	;; marking window as destroyed to tell other functions not to use it
+	;; mark window as destroyed before container removal so refocus hooks ignore it
 	(%window-destroyed-set! window #t)
+	(%window-container-remove! window)
 	(when (valid-pointer? node)
 	  (wm-node-destroy! node)
 	  (%window-wl-node-proxy-set! window #f))
@@ -299,9 +299,10 @@ Parameters: (WINDOW [#:seat #f] [#:focus-parent #t] [#:force #f])
           (container-focus! container #:focus-child #f)))
       ;; place window at top so it becomes visible above other windows
       (window-place-top! window)
-      ;; unfocus previous window if switching to a different one
+      ;; unfocus previous window if switching to a different live one
       (when (and (window? current)
-				 (not (eq? current window)))
+                 (not (window-destroyed? current))
+                 (not (eq? current window)))
         (gliver-hook-run! *window-unfocused-hook* current))
 	  ;; make seat(s) focus the window so input is forwarded to it
       (if (seat? seat)

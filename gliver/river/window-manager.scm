@@ -24,11 +24,13 @@
   #:use-module (gliver river wm-shell-surface-manager)
   #:use-module (gliver wayland client)
   #:use-module (gliver wayland gen river-window-management-v1)
+  #:re-export (
+               *wm-shell-surfaces*
+               wm-shell-surface-find-by-surface
+               )
   #:export (
             *wm-manage-queue*
             *wm-render-queue*
-            *wm-shell-surfaces*
-            wm-shell-surface-find-by-surface
             *in-manage-sequence*
             *in-render-sequence*
             window-manager-on-globals-bind
@@ -59,21 +61,6 @@
 ;; make sure to initialize and destroy these variables when needed
 (define *wm-manage-queue* '())
 (define *wm-render-queue* '())
-
-(define-var *wm-shell-surfaces* (make-hash-table)
-  "Hash-map of river_shell_surface_v1 proxy -> wl_surface proxy.")
-
-(define (wm-shell-surface-find-by-surface proxy-surface)
-  "Get the river_shell_surface_v1 proxy associated with PROXY-SURFACE.
-This is a reverse lookup for *wm-shell-surfaces*.
-Parameters: (PROXY-SURFACE)
-  - PROXY-SURFACE: Pointer to wl_surface proxy.
-Returns: Pointer to river_shell_surface_v1 proxy or #f."
-  (and (valid-pointer? proxy-surface)
-       (hash-fold (lambda (shell-surf surf acc)
-                    (if (equal? surf proxy-surface) shell-surf acc))
-                  #f
-                  *wm-shell-surfaces*)))
 
 (define *in-manage-sequence* #f)
 (define *in-render-sequence* #f)
@@ -354,23 +341,31 @@ Parameters: (DATA PROXY-MANAGER)
 
 (define-syntax with-manage-sequence
   (syntax-rules ()
-    ((_ expr1 expr2 ...)
+    ((_ #:dirty? dirty? expr1 expr2 ...)
      (if *in-manage-sequence*
          ;; if #t: execute immediately
          (begin expr1 expr2 ...)
          ;; if #f: wrap in a lambda and append to the queue
          (let ((task (lambda () expr1 expr2 ...)))
-           (set! *wm-manage-queue* (append *wm-manage-queue* (list task))))))))
+           (set! *wm-manage-queue* (append *wm-manage-queue* (list task)))
+           (when dirty?
+             (wm-manager-manage-dirty (manager-wl-proxy *manager*))))))
+    ((_ expr1 expr2 ...)
+     (with-manage-sequence #:dirty? #f expr1 expr2 ...))))
 
 (define-syntax with-render-sequence
   (syntax-rules ()
-    ((_ expr1 expr2 ...)
+    ((_ #:dirty? dirty? expr1 expr2 ...)
      (if *in-render-sequence*
          ;; if #t: execute immediately
          (begin expr1 expr2 ...)
          ;; if #f: wrap in a lambda and append to the queue
          (let ((task (lambda () expr1 expr2 ...)))
-           (set! *wm-render-queue* (append *wm-render-queue* (list task))))))))
+           (set! *wm-render-queue* (append *wm-render-queue* (list task)))
+           (when (and dirty? (not *in-manage-sequence*))
+             (wm-manager-manage-dirty (manager-wl-proxy *manager*))))))
+    ((_ expr1 expr2 ...)
+     (with-render-sequence #:dirty? #f expr1 expr2 ...))))
 
 ;; handle river initialization steps
 (gliver-hook-add! *gliver-globals-bind-hook* 'window-manager-on-globals-bind)

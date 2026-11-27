@@ -3,139 +3,116 @@
 ;;; Copyright (C) 2026 Gliver Contributors
 ;;; SPDX-License-Identifier: GPL-3.0-or-later
 ;;;
+;;; This module manages declarative gleui-based tab indicator bars rendered on
+;;; top or bottom edges of gliver containers.
+;;; It handles:
+;;;  - Updating container usable area for visible indicator bars
+;;;  - Rendering per-window tabs with active, unfocused, inactive styling
+;;;  - Handling pointer clicks and wheel scroll events
+;;;
 ;;; Usage:
 ;;;   (use-modules (gliver contrib ui container container-tab-indicator))
 ;;;   (container-tab-indicator-enable!)
-;;; TODO: should have a list of indicators available in a list
-;;; any time an indicator is needed, it's popped from that list
-;;; or created if needed, this way it's more memory efficient
 
 (define-module (gliver contrib ui container container-tab-indicator)
-  #:use-module (cairo)
-  #:use-module (rnrs bytevectors)
   #:use-module (ice-9 format)
-  #:use-module (ice-9 match)
   #:use-module (srfi srfi-1)
   #:use-module (srfi srfi-2)
   #:use-module (srfi srfi-9)
-  #:use-module (srfi srfi-11)
   #:use-module (system foreign)
-  #:use-module (gliver deps libc)
-  #:use-module (gliver deps color)
-  #:use-module (gliver deps pango)
   #:use-module (gliver core)
-  #:use-module (gliver wayland client)
   #:use-module (gliver wayland gen wayland)
   #:use-module (gliver river connector)
   #:use-module (gliver river window-manager)
   #:use-module (gliver river wm-shell-surface-manager)
   #:use-module (gliver river wm-node-manager)
+  #:use-module (gliver contrib ui gleui base)
+  #:use-module (gliver contrib ui gleui widgets)
   #:declarative? #f
   #:export (
-			*%container-tab-indicator-enabled*
-			*container-tab-indicator-height*
-			*container-tab-indicator-show-single-window?*
-			*container-tab-indicator-show-title?*
-			*container-tab-indicator-active-bg-color*
-			*container-tab-indicator-active-text-color*
-			*container-tab-indicator-inactive-bg-color*
-			*container-tab-indicator-inactive-text-color*
-			*container-tab-indicator-unfocused-active-bg-color*
-			*container-tab-indicator-unfocused-active-text-color*
-			*container-tab-indicator-urgent-bg-color*
-			*container-tab-indicator-urgent-text-color*
-			*container-tab-indicator-border-color*
-			*container-tab-indicator-font*
-			*container-tab-indicator-font-size*
-			*container-tab-indicator-position*
-			*container-tab-indicator-gap*
-			*container-tab-indicator-radius*
-			*container-tab-indicator-border-width*
-			*container-tab-indicator-padding-x*
-			*container-tab-indicator-clickable?*
-			*container-tab-indicator-scrollable?*
-			*container-tab-indicator-scroll-direction*
-			*container-tab-indicator-last-pointer-x*
-			*container-tab-indicator-last-pointer-y*
-			valid-pointer?
-			*container-tab-indicator-seat-proxies*
-			*container-tab-indicator-pointer-surface*
-			container-tab-indicator-state?
-			make-container-tab-indicator-state
-			*container-tab-indicator-table*
-			container-tab-indicator-state-get
-			container-tab-indicator-state-get-create!
-			container-tab-indicator-wl-surface
-			container-tab-indicator-wl-shell-surface
-			container-tab-indicator-wl-node
-			container-tab-indicator-wl-buffer
-			container-tab-indicator-find-by-shell-surface
-			container-tab-indicator-find-by-surface
-			container-tab-indicator-shm-buffer-create
-			container-tab-indicator-buffer-create
-			apply-hex-color
-			window-title-text
-			tab-colors
-			render-tab-background
-			render-tab-border
-			render-tab-title
-			render-single-tab
-			container-tab-indicator-update-input-region!
-			container-indicator-signature
-			container-tab-indicator-init!
-			container-tab-indicator-should-show?
-			container-tab-indicator-update-usable-area!
-			container-tab-indicator-cleanup!
-			container-tab-indicator-hide!
-			container-tab-indicator-render!
-			container-tab-indicators-update-all!
-			container-tab-indicator-on-container-created
-			container-tab-indicator-on-container-destroy
-			container-tab-indicator-on-container-focused
-			container-tab-indicator-on-container-unfocused
-			container-tab-indicator-on-container-resize
-			container-tab-indicator-on-workspace-switch
-			container-tab-indicator-on-window-focused
-			container-tab-indicator-on-window-unfocused
-			container-tab-indicator-on-window-title-changed
-			container-tab-indicator-on-window-app-id-changed
-			container-tab-indicator-on-window-urgent
-			container-tab-indicator-on-window-container-added
-			container-tab-indicator-on-window-container-removed
-			container-tab-indicator-on-window-container-moved
-			container-tab-indicator-on-window-destroyed
-			container-tab-indicator-on-pointer-position
-			container-tab-indicator-on-shell-interaction
-			container-tab-indicator-find-at-pointer
-			container-tab-indicator-switch-window!
-			container-tab-indicator-on-scroll
-			container-tab-indicator-handle-pointer-enter
-			container-tab-indicator-handle-pointer-leave
-			container-tab-indicator-handle-pointer-motion
-			container-tab-indicator-handle-pointer-button
-			container-tab-indicator-handle-pointer-axis
-			container-tab-indicator-handle-pointer-frame
-			container-tab-indicator-handle-pointer-axis-source
-			container-tab-indicator-handle-pointer-axis-stop
-			container-tab-indicator-handle-pointer-axis-discrete
-			container-tab-indicator-handle-pointer-axis-value120
-			container-tab-indicator-handle-pointer-axis-relative-direction
-			container-tab-indicator-seat-setup!
-			container-tab-indicator-seat-cleanup!
-			container-tab-indicator-on-seat-object-id-changed
-			container-tab-indicator-on-globals-unbind
-			container-tab-indicator-on-listeners-attach
-			container-tab-indicator-on-window-fullscreen-entered
-			container-tab-indicator-on-window-fullscreen-exited
-			container-tab-indicator-on-output-removed
-			container-tab-indicator-enable!
-			container-tab-indicator-disable!
-			container-tab-indicator-enabled?
+            *%container-tab-indicator-enabled*
+            *container-tab-indicator-height*
+            *container-tab-indicator-show-single-window?*
+            *container-tab-indicator-show-title?*
+            *container-tab-indicator-active-bg-color*
+            *container-tab-indicator-active-text-color*
+            *container-tab-indicator-inactive-bg-color*
+            *container-tab-indicator-inactive-text-color*
+            *container-tab-indicator-unfocused-active-bg-color*
+            *container-tab-indicator-unfocused-active-text-color*
+            *container-tab-indicator-urgent-bg-color*
+            *container-tab-indicator-urgent-text-color*
+            *container-tab-indicator-border-color*
+            *container-tab-indicator-font*
+            *container-tab-indicator-font-size*
+            *container-tab-indicator-position*
+            *container-tab-indicator-gap*
+            *container-tab-indicator-radius*
+            *container-tab-indicator-border-width*
+            *container-tab-indicator-padding-x*
+            *container-tab-indicator-clickable?*
+            *container-tab-indicator-scrollable?*
+            *container-tab-indicator-scroll-direction*
+            *container-tab-indicator-last-pointer-x*
+            *container-tab-indicator-last-pointer-y*
+            <container-tab-indicator-state>
+            make-container-tab-indicator-state
+            container-tab-indicator-state?
+            *container-tab-indicator-table*
+            container-tab-indicator-state-get
+            container-tab-indicator-state-get-create!
+            container-tab-indicator-wl-surface
+            container-tab-indicator-wl-shell-surface
+            container-tab-indicator-wl-node
+            container-tab-indicator-wl-buffer
+            container-tab-indicator-find-by-shell-surface
+            container-tab-indicator-find-by-surface
+            container-tab-indicator-build-widget
+            container-tab-indicator-update-input-region!
+            container-indicator-signature
+            container-tab-indicator-seat-setup!
+            container-tab-indicator-init!
+            container-tab-indicator-should-show?
+            container-tab-indicator-update-usable-area!
+            container-tab-indicator-cleanup!
+            container-tab-indicator-hide!
+            container-tab-indicator-render!
+            container-tab-indicators-update-all!
+            container-tab-indicator-on-container-created
+            container-tab-indicator-on-container-destroy
+            container-tab-indicator-on-container-focused
+            container-tab-indicator-on-container-unfocused
+            container-tab-indicator-on-container-resize
+            container-tab-indicator-on-workspace-switch
+            container-tab-indicator-on-output-removed
+            container-tab-indicator-on-window-focused
+            container-tab-indicator-on-window-unfocused
+            container-tab-indicator-on-window-title-changed
+            container-tab-indicator-on-window-app-id-changed
+            container-tab-indicator-on-window-urgent
+            container-tab-indicator-on-window-container-added
+            container-tab-indicator-on-window-container-removed
+            container-tab-indicator-on-window-container-moved
+            container-tab-indicator-on-window-destroyed
+            container-tab-indicator-on-pointer-position
+            container-tab-indicator-on-shell-interaction
+            container-tab-indicator-switch-window!
+            container-tab-indicator-on-scroll
+            container-tab-indicator-on-seat-object-id-changed
+            container-tab-indicator-on-globals-unbind
+            container-tab-indicator-on-handshake-complete
+            container-tab-indicator-on-listeners-attach
+            container-tab-indicator-on-window-fullscreen-entered
+            container-tab-indicator-on-window-fullscreen-exited
+            container-tab-indicator-on-surface-scale-changed
+            *container-tab-indicator-hooks*
+            container-tab-indicator-enable!
+            container-tab-indicator-disable!
 ))
 
+;;; configuration variables
 (define-var *%container-tab-indicator-enabled* #f
-  "Internal state indicating whether container window indicators are enabled.")
-
+            "Internal state indicating whether container window indicator is enabled.")
 (define-var *container-tab-indicator-height* 22
             "Height of the container window tab indicator in pixels.")
 (define-var *container-tab-indicator-show-single-window?* #t
@@ -143,26 +120,26 @@
 (define-var *container-tab-indicator-show-title?* #t
             "Whether to display the title of the window inside each tab.")
 
-(define-var *container-tab-indicator-active-bg-color* *theme-border-color*
-            "Border color for focused containers.")
-(define-var *container-tab-indicator-active-text-color* *theme-base*
+(define-var *container-tab-indicator-active-bg-color* #:inherit *theme-border-color*
+            "Background color for the active tab in focused containers.")
+(define-var *container-tab-indicator-active-text-color* #:inherit *theme-base*
             "Text color for the active window's tab title.")
-(define-var *container-tab-indicator-inactive-bg-color* *theme-mantle*
-            "Text color for the active tab title in an unfocused container.")
-(define-var *container-tab-indicator-inactive-text-color* *theme-text*
+(define-var *container-tab-indicator-inactive-bg-color* #:inherit *theme-mantle*
+            "Background color for inactive window tabs.")
+(define-var *container-tab-indicator-inactive-text-color* #:inherit *theme-text*
             "Text color for inactive windows' tab titles.")
-(define-var *container-tab-indicator-unfocused-active-bg-color* *theme-mantle*
+(define-var *container-tab-indicator-unfocused-active-bg-color* #:inherit *theme-mantle*
+            "Background color for the active tab in an unfocused container.")
+(define-var *container-tab-indicator-unfocused-active-text-color* #:inherit *theme-text*
             "Text color for the active tab title in an unfocused container.")
-(define-var *container-tab-indicator-unfocused-active-text-color* *theme-text*
-            "Text color for the active tab title in an unfocused container.")
-(define-var *container-tab-indicator-urgent-bg-color* *theme-urgent-color*
+(define-var *container-tab-indicator-urgent-bg-color* #:inherit *theme-urgent-color*
             "Background color for tabs representing urgent windows.")
-(define-var *container-tab-indicator-urgent-text-color* *theme-crust*
+(define-var *container-tab-indicator-urgent-text-color* #:inherit *theme-crust*
             "Text color for urgent tab titles.")
-(define-var *container-tab-indicator-border-color* *theme-border-color*
+(define-var *container-tab-indicator-border-color* #:inherit *theme-border-color*
             "Border stroke color for each tab.")
 
-(define-var *container-tab-indicator-font* *theme-font*
+(define-var *container-tab-indicator-font* #:inherit *theme-font*
             "Font family string used for tab title labels.")
 (define-var *container-tab-indicator-font-size* 12
             "Font size in points for tab title labels.")
@@ -181,877 +158,972 @@
 (define-var *container-tab-indicator-scrollable?* #t
             "Whether scrolling on the tab indicator switches windows.")
 (define-var *container-tab-indicator-scroll-direction* 'up-prev
-            "Scroll direction for switching windows: 'up-prev (scroll up goes to previous window, down to next) or 'up-next (scroll up goes to next window, down to previous).")
+            "Scroll direction for switching windows: 'up-prev or 'up-next.")
 
-(define *container-tab-indicator-last-pointer-x* #f)
-(define *container-tab-indicator-last-pointer-y* #f)
+(define-var *container-tab-indicator-last-pointer-x* #f
+            "Last tracked compositor pointer X coordinate for WM shell click hit-testing.")
+(define-var *container-tab-indicator-last-pointer-y* #f
+            "Last tracked compositor pointer Y coordinate for WM shell click hit-testing.")
 
-(define (valid-pointer? p)
-  "Ensure P is a non-null pointer."
-  (and (pointer? p) (not (null-pointer? p))))
-
-(define *container-tab-indicator-seat-proxies* '())
-(define *container-tab-indicator-pointer-surface* %null-pointer)
-
-;;; indicator state for each container
+;; per-container tab indicator state record
+;;  - wl-surface: pointer to wl_surface or #f, surface for the indicator bar
+;;  - wl-shell-surface: pointer to river_shell_surface_v1 or #f, shell surface of surface
+;;  - wl-node: pointer to river_node_v1 or #f, scene node for order placement
+;;  - wl-buffer: pointer to wl_buffer or #f, active Wayland buffer currently committed
+;;  - shm-slots: pair (slot . #f) of <gleui-shm-slot> record or #f
+;;  - shm-active-idx: integer (0 or 1) currently displayed SHM slot index
+;;  - hit-boxes: list of <gleui-hit-box> records
+;;  - width: integer cached width in pixels
+;;  - height: integer cached height in pixels
+;;  - signature: list or #f, structural snapshot used to skip redundant SHM redraws
 (define-record-type <container-tab-indicator-state>
-  (make-container-tab-indicator-state wl-surface wl-shell-surface wl-node wl-buffer width height signature)
+  (make-container-tab-indicator-state wl-surface wl-shell-surface wl-node wl-buffer
+                                      shm-slots shm-active-idx hit-boxes width height signature)
   container-tab-indicator-state?
   (wl-surface       %cwi-wl-surface       %cwi-wl-surface-set!)
   (wl-shell-surface %cwi-wl-shell-surface %cwi-wl-shell-surface-set!)
   (wl-node          %cwi-wl-node          %cwi-wl-node-set!)
   (wl-buffer        %cwi-wl-buffer        %cwi-wl-buffer-set!)
+  (shm-slots        %cwi-shm-slots        %cwi-shm-slots-set!)
+  (shm-active-idx   %cwi-shm-active-idx   %cwi-shm-active-idx-set!)
+  (hit-boxes        %cwi-hit-boxes        %cwi-hit-boxes-set!)
   (width            %cwi-width            %cwi-width-set!)
   (height           %cwi-height           %cwi-height-set!)
   (signature        %cwi-signature        %cwi-signature-set!))
 
-;; hash-table to map each container to its window indicator state
-(define *container-tab-indicator-table* (make-hash-table))
+(define-var *container-tab-indicator-table* (make-hash-table)
+            "Hash table mapping <container> records to <container-tab-indicator-state>.")
 
+;; the below functions are safe getters to container tab indicator state properties
 (define (container-tab-indicator-state-get container)
-  "Get the indicator state associated with CONTAINER."
+  "Look up the `<container-tab-indicator-state>' record bound to CONTAINER.
+Parameters: (CONTAINER)
+  - CONTAINER: <container> record to inspect.
+Returns `<container-tab-indicator-state>' record, or #f if none exists."
   (and (container? container)
        (hashq-ref *container-tab-indicator-table* container)))
 
 (define (container-tab-indicator-state-get-create! container)
-  "Get the indicator state associated with CONTAINER.
-State will be created if it doesn't exist."
-  (or (container-tab-indicator-state-get container)
-      (let ((state (make-container-tab-indicator-state #f #f #f #f 0 0 #f)))
-        (hashq-set! *container-tab-indicator-table* container state)
-        state)))
+  "Return the `<container-tab-indicator-state>' for CONTAINER, allocate new if unavailable.
+Parameters: (CONTAINER)
+  - CONTAINER: <container> record owning the tab indicator state.
+Returns `<container-tab-indicator-state>' record, or #f if CONTAINER is not a container."
+  (and (container? container)
+       (or (container-tab-indicator-state-get container)
+           (let ((state (make-container-tab-indicator-state #f #f #f #f #f 0 '() 0 0 #f)))
+             (hashq-set! *container-tab-indicator-table* container state)
+             state))))
 
 (define (container-tab-indicator-wl-surface container)
-  "Get Wayland surface for CONTAINER's indicator."
+  "Return the Wayland wl_surface foreign pointer for CONTAINER's tab indicator.
+Parameters: (CONTAINER)
+  - CONTAINER: <container> record.
+Returns wl_surface foreign pointer, or #f if uninitialized."
   (and-let* ((state (container-tab-indicator-state-get container)))
     (%cwi-wl-surface state)))
 
 (define (container-tab-indicator-wl-shell-surface container)
-  "Get Wayland shell surface for CONTAINER's indicator."
+  "Return the shell surface foreign pointer for CONTAINER's tab indicator.
+Parameters: (CONTAINER)
+  - CONTAINER: <container> record.
+Returns river_shell_surface_v1 foreign pointer, or #f if uninitialized."
   (and-let* ((state (container-tab-indicator-state-get container)))
     (%cwi-wl-shell-surface state)))
 
 (define (container-tab-indicator-wl-node container)
-  "Get Wayland node proxy for CONTAINER's indicator."
+  "Return the river scene node foreign pointer for CONTAINER's tab indicator.
+Parameters: (CONTAINER)
+  - CONTAINER: <container> record.
+Returns river_node_v1 foreign pointer, or #f if uninitialized."
   (and-let* ((state (container-tab-indicator-state-get container)))
     (%cwi-wl-node state)))
 
 (define (container-tab-indicator-wl-buffer container)
-  "Get Wayland buffer for CONTAINER's indicator."
+  "Return the active Wayland wl_buffer foreign pointer for CONTAINER's tab indicator.
+Parameters: (CONTAINER)
+  - CONTAINER: <container> record.
+Returns wl_buffer foreign pointer, or #f if none is committed."
   (and-let* ((state (container-tab-indicator-state-get container)))
     (%cwi-wl-buffer state)))
 
+(define (%find-by-state-pointer ptr getter)
+  "Search `*container-tab-indicator-table*' for the container whose
+state GETTER field matches PTR.
+Parameters: (PTR GETTER)
+  - PTR: Pointer to Wayland foreign object to match by address.
+  - GETTER: Procedure field accessor returning a foreign pointer from state.
+Returns matching `<container>' record, or #f if not found."
+  (and (valid-pointer? ptr)
+       (let ((target-address (pointer-address ptr))
+             (matched        #f))
+         (hash-for-each
+          (lambda (container state)
+            (let ((candidate-ptr (getter state)))
+              (when (and (valid-pointer? candidate-ptr)
+                         (= (pointer-address candidate-ptr) target-address))
+                (set! matched container))))
+          *container-tab-indicator-table*)
+         matched)))
+
 (define (container-tab-indicator-find-by-shell-surface shell-surf)
-  "Find the container associated with indicator SHELL-SURF pointer."
-  (if (or (not (pointer? shell-surf)) (null-pointer? shell-surf))
-      #f
-      (let ((addr (pointer-address shell-surf))
-            (found #f))
-        (hash-for-each
-         (lambda (c state)
-           (let ((surf (%cwi-wl-shell-surface state)))
-             (when (and (pointer? surf)
-                        (not (null-pointer? surf))
-                        (= (pointer-address surf) addr))
-               (set! found c))))
-         *container-tab-indicator-table*)
-        found)))
+  "Find the container whose tab indicator owns shell surface SHELL-SURF.
+Parameters: (SHELL-SURF)
+  - SHELL-SURF: Pointer to river_shell_surface_v1 proxy.
+Returns matching `<container>' record, or #f if not found."
+  (%find-by-state-pointer shell-surf %cwi-wl-shell-surface))
 
 (define (container-tab-indicator-find-by-surface surface)
-  "Find the container associated with indicator SURFACE pointer."
-  (if (not (valid-pointer? surface))
-      #f
-      (let ((addr (pointer-address surface))
-            (found #f))
-        (hash-for-each
-         (lambda (c state)
-           (let ((surf (%cwi-wl-surface state)))
-             (when (and (valid-pointer? surf)
-                        (= (pointer-address surf) addr))
-               (set! found c))))
-         *container-tab-indicator-table*)
-        found)))
+  "Find the container whose tab indicator owns wl_surface SURFACE.
+Parameters: (SURFACE)
+  - SURFACE: Pointer to Wayland wl_surface.
+Returns matching `<container>' record, or #f if not found."
+  (%find-by-state-pointer surface %cwi-wl-surface))
 
-(define (container-tab-indicator-shm-buffer-create width height fill-proc!)
-  "Allocate a shared memory buffer of size WIDTHxHEIGHT and fill it with FILL-PROC!.
-Returns a Wayland buffer pointer."
-  (if (or (<= width 0) (<= height 0) (not (pointer? *wl-shm*)) (null-pointer? *wl-shm*))
-      %null-pointer
-	  ;; same flow followed in wallpaper-manager
-	  ;; maybe this should be common? an abstract library in
-	  ;; deps will be great for such use cases
-      (let* ((stride (* width 4))
-             (size (* stride height))
-             (fd (memfd-create "gliver-window-indicator-shm" *mfd-cloexec*)))
-        (if (< fd 0)
-            (begin
-              (log-error "Failed to create memfd for container window indicator")
-              %null-pointer)
-            (begin
-              (ftruncate fd size)
-              (let ((ptr (mmap %null-pointer size *prot-read-write* *map-shared* fd 0)))
-                (if (null-pointer? ptr)
-                    (begin
-                      (close-fd fd)
-                      (log-error "Failed to mmap container window indicator buffer")
-                      %null-pointer)
-                    (begin
-                      (let ((bv (pointer->bytevector ptr size)))
-                        (catch #t
-                          (lambda () (fill-proc! ptr bv stride size width height))
-                          (lambda (key . args)
-                            (log-error "Error drawing container indicator with Cairo: ~a ~a" key args))))
-                      (munmap ptr size)
-                      (let* ((pool (wl-shm-create-pool *wl-shm* fd size))
-                             (buffer (wl-shm-pool-create-buffer pool 0 width height stride WL_SHM_FORMAT_ARGB8888)))
-                        (wl-shm-pool-destroy pool)
-                        (close-fd fd)
-                        buffer)))))))))
+;;; declarative gleui tab indicator widget
+(define (%window-title-text window)
+  "Return the non-empty title string for WINDOW, falling back to a formatted window ID.
+Parameters: (WINDOW)
+  - WINDOW: <window> record to format.
+Returns display title string."
+  (let ((title (window-title window)))
+    (if (and (string? title) (not (string-null? title)))
+        title
+        (format #f "Window ~a" (window-id window)))))
 
-(define (%draw-rect-shape cr x y w h r)
-  "Draw rectangle path with radius R (for rounded rectangles)."
-  (if (and (number? r) (> r 0.0))
-      (let* ((rx (min (exact->inexact r) (/ w 2.0)))
-             (ry (min (exact->inexact r) (/ h 2.0)))
-             (degrees (/ (acos -1) 180.0)))
-        (cairo-new-sub-path cr)
-        (cairo-arc cr (+ x w (- rx)) (+ y ry) rx (* -90.0 degrees) 0.0)
-        (cairo-arc cr (+ x w (- rx)) (+ y h (- ry)) rx 0.0 (* 90.0 degrees))
-        (cairo-arc cr (+ x rx) (+ y h (- ry)) rx (* 90.0 degrees) (* 180.0 degrees))
-        (cairo-arc cr (+ x rx) (+ y ry) rx (* 180.0 degrees) (* 270.0 degrees))
-        (cairo-close-path cr))
-      (cairo-rectangle cr x y w h)))
+(define (%tab-colors container window active-window)
+  "Resolve tab background and foreground hex colors for WINDOW in CONTAINER.
+Parameters: (CONTAINER WINDOW ACTIVE-WINDOW)
+  - CONTAINER: <container> record parent of WINDOW.
+  - WINDOW: <window> record represented by the tab.
+  - ACTIVE-WINDOW: <window> record or #f currently active in CONTAINER.
+Returns two values: BG-COLOR and FG-COLOR hex strings."
+  (let ((container-focused-flag? (container-focused? container))
+        (active?                 (eq? window active-window))
+        (urgent?                 (and (window? window)
+                                      (window-urgent? window))))
+    (cond
+     (urgent?
+      (values *container-tab-indicator-urgent-bg-color*
+              *container-tab-indicator-urgent-text-color*))
+     (active?
+      (if container-focused-flag?
+          (values *container-tab-indicator-active-bg-color*
+                  *container-tab-indicator-active-text-color*)
+          ;; container active on other output, so not really focused
+          (values *container-tab-indicator-unfocused-active-bg-color*
+                  *container-tab-indicator-unfocused-active-text-color*)))
+     (else
+      (values *container-tab-indicator-inactive-bg-color*
+              *container-tab-indicator-inactive-text-color*)))))
 
-(define (container-tab-indicator-buffer-create container width height windows active-window)
-  "Create and return a wl_buffer containing the rendered container tab indicator."
-  (container-tab-indicator-shm-buffer-create
-   width height
+(define (%build-tab-widget container window active-window)
+  "Build the declarative widget for a single WINDOW tab in CONTAINER.
+Parameters: (CONTAINER WINDOW ACTIVE-WINDOW)
+  - CONTAINER: <container> record owning the tab indicator.
+  - WINDOW: <window> record represented by the tab.
+  - ACTIVE-WINDOW: <window> record or #f currently active in CONTAINER.
+Returns `<gleui-widget>' expanded node."
+  (call-with-values (lambda () (%tab-colors container window active-window))
+    (lambda (bg-color fg-color)
+      ;; if show-title is disabled, gleui will receive #f as child
+      ;; it will convert it into an empty widget
+      (let ((label-widget (and *container-tab-indicator-show-title?*
+                               (gleui-w-text (%window-title-text window)
+                                             #:font *container-tab-indicator-font*
+                                             #:font-size *container-tab-indicator-font-size*
+                                             #:color fg-color
+                                             #:ellipsize 'end
+                                             #:text-align 'center
+                                             #:markup? #f))))
+        (gleui-w-expanded
+         (gleui-w-clickable
+          (gleui-w-box label-widget
+                       #:expand-x? #t
+                       #:expand-y? #t
+                       #:padding-x *container-tab-indicator-padding-x*
+                       #:radius *container-tab-indicator-radius*
+                       #:bg-color bg-color
+                       #:border-color *container-tab-indicator-border-color*
+                       #:border-width *container-tab-indicator-border-width*
+                       #:inset-border? #f
+                       #:align 'center)
+          #:data window
+          #:on-scroll (lambda (_axis delta _data)
+                        (container-tab-indicator-on-scroll container delta))))))))
 
-   ;; the fill function
-   (lambda (ptr bv stride size w h)
-     (let* ((dst-surface (cairo-image-surface-create-for-data bv 'argb32 w h stride))
-            (cr (cairo-create dst-surface)))
+(define (container-tab-indicator-build-widget container width height windows active-window)
+  "Build the declarative tab widget for WINDOWS in CONTAINER.
+Parameters: (CONTAINER WIDTH HEIGHT WINDOWS ACTIVE-WINDOW)
+  - CONTAINER: <container> record owning the tab indicator.
+  - WIDTH: Integer strip width in pixels.
+  - HEIGHT: Integer strip height in pixels.
+  - WINDOWS: List of `<window>' records inside CONTAINER in display order.
+  - ACTIVE-WINDOW: <window> record or #f currently active.
+Returns `<gleui-widget>' box node."
+  (let* ((tab-gap     (max 0 (inexact->exact (round *container-tab-indicator-gap*))))
+         (tab-widgets (map (lambda (window)
+                             (%build-tab-widget container window active-window))
+                           windows)))
+    (gleui-w-box
+     ;; add all window tab widgets in a single row
+     (gleui-w-row tab-widgets #:gap tab-gap #:cross-align 'center)
+     #:width width
+     #:height height)))
 
-       (define (apply-hex-color color-str)
-         (and (string? color-str)
-              (hex-color? color-str)
-              (let ((rgba (parse-hex-color-rgba color-str)))
-                (and rgba (apply (lambda (r g b a) (cairo-set-source-rgba cr r g b a)) rgba)))))
-
-       (define (window-title-text win)
-         (or (and (string? (window-title win))
-                  (not (string-null? (window-title win)))
-                  (window-title win))
-			 (format #f "Window ~a" (window-id win))))
-
-       (define (tab-colors win)
-         (let ((con-focused? (container-focused? container))
-               (active?      (eq? win active-window))
-               (urgent?      (and (window? win) (window-urgent? win))))
-           (cond
-            (urgent?
-             (values *container-tab-indicator-urgent-bg-color*
-                     *container-tab-indicator-urgent-text-color*))
-            (active?
-			 (if con-focused?
-				 (values *container-tab-indicator-active-bg-color*
-						 *container-tab-indicator-active-text-color*)
-				 (values *container-tab-indicator-unfocused-active-bg-color*
-						 *container-tab-indicator-unfocused-active-text-color*)))
-            (else
-             (values *container-tab-indicator-inactive-bg-color*
-                     *container-tab-indicator-inactive-text-color*)))))
-
-       (define (render-tab-background x y w h r bg-color)
-         (when (apply-hex-color bg-color)
-           (%draw-rect-shape cr x y w h r)
-           (cairo-fill cr)))
-
-       (define (render-tab-border x y w h r)
-         (let ((bw *container-tab-indicator-border-width*)
-               (bc *container-tab-indicator-border-color*))
-           (when (and (number? bw) (> bw 0) (apply-hex-color bc))
-             (cairo-set-line-width cr bw)
-             (%draw-rect-shape cr x y w h r)
-             (cairo-stroke cr))))
-
-       (define (render-tab-title win x y w h fg-color)
-         (let ((pad-x *container-tab-indicator-padding-x*)
-               (title (window-title-text win)))
-           (when (and *container-tab-indicator-show-title?*
-                      (> w (* 2 pad-x))
-                      (apply-hex-color fg-color))
-             (catch #t
-               (lambda ()
-                 (call-with-values
-                     (lambda ()
-                       (pango-measure-text cr title
-                                           #:font *container-tab-indicator-font*
-                                           #:font-size *container-tab-indicator-font-size*
-                                           #:markup? #f))
-                   (lambda (_tw th)
-                     (pango-draw-text cr (pango-escape-markup title)
-                                      #:x (+ x pad-x)
-                                      #:y (max 0.0 (/ (- h th) 2.0))
-                                      #:font *container-tab-indicator-font*
-                                      #:font-size *container-tab-indicator-font-size*
-                                      #:width (- w (* 2 pad-x))
-                                      #:ellipsize 'end
-                                      #:align 'center
-                                      #:markup? #t))))
-               (lambda (k . a)
-                 (log-debug "Indicator: error rendering title: ~a ~a" k a))))))
-
-       (define (render-single-tab win idx x w)
-         (let ((r (min (exact->inexact *container-tab-indicator-radius*)
-                       (/ w 2.0)
-                       (/ h 2.0))))
-           (call-with-values
-               (lambda () (tab-colors win))
-             (lambda (bg-color fg-color)
-               (render-tab-background x 0 w h r bg-color)
-               (render-tab-border     x 0 w h r)
-               (render-tab-title      win x 0 w h fg-color)))))
-
-       ;; clear surface
-       (cairo-set-operator cr 'clear)
-       (cairo-paint cr)
-       (cairo-set-operator cr 'over)
-
-       (let* ((n          (length windows))
-              (gap        (max 0 (inexact->exact (round *container-tab-indicator-gap*))))
-              (total-gaps (if (> n 1) (* (1- n) gap) 0))
-              (avail-w    (max 0 (- w total-gaps)))
-              (base-w     (if (> n 0) (quotient avail-w n) 0))
-              (rem-px     (if (> n 0) (remainder avail-w n) 0)))
-
-		 ;; loop each window, give it equally distributed width and render it
-         (let loop ((wins windows) (idx 0) (curr-x 0))
-           (when (pair? wins)
-             (let ((tab-w (+ base-w (if (< idx rem-px) 1 0))))
-               (render-single-tab (car wins) idx curr-x tab-w)
-               (loop (cdr wins) (1+ idx) (+ curr-x tab-w gap))))))
-
-       ;; flush and cleanup
-       (cairo-surface-flush dst-surface)
-       (cairo-destroy cr)
-       (cairo-surface-destroy dst-surface)))))
-
-(define (container-tab-indicator-update-input-region! surface w h)
-  "Set the input region of the indicator surface to cover the entire indicator.
-Needed to enable input behavior."
-  (when (and surface
-             (pointer? surface)
-             (not (null-pointer? surface))
-             (> w 0) (> h 0))
+;;; usable area management
+(define (container-tab-indicator-update-input-region! surface width height)
+  "Set the Wayland input region of indicator SURFACE.
+Parameters: (SURFACE WIDTH HEIGHT)
+  - SURFACE: Pointer to Wayland wl_surface.
+  - WIDTH: Integer indicator strip width in pixels.
+  - HEIGHT: Integer indicator strip height in pixels."
+  (when (and (valid-pointer? surface)
+             (> width 0)
+             (> height 0))
     (let ((region (wl-compositor-create-region *wl-compositor*)))
-      (wl-region-add region 0 0 w h)
+      (wl-region-add region 0 0 width height)
       (wl-surface-set-input-region surface region)
       (wl-region-destroy region))))
 
-(define (container-indicator-signature container)
-  "Generate a visual state signature for CONTAINER's indicator to check reusability.
-Used to skip redrawing when not necessary."
-  (let* ((windows (container-windows container))
-         (active-win (or (container-window-current container)
-                         (and (pair? windows) (car windows))))
-         (focused? (container-focused? container)))
-    (list (container-width container)
+(define* (container-indicator-signature container #:optional (scale 1.0))
+  "Build a snapshot list for CONTAINER to detect unchanged frames.
+We can later compare signature and avoid unnecessary re-renders.
+Parameters: (CONTAINER [SCALE 1.0])
+  - CONTAINER: <container> record being rendered.
+  - SCALE: Float optional fractional surface scale factor.
+Returns list capturing visual configuration, geometry, focus, and tab titles."
+  (let* ((windows       (container-windows container))
+         (active-window (or (container-window-current container)
+                            (and (pair? windows) (car windows)))))
+    (list scale
+          (container-width container)
           *container-tab-indicator-height*
-          focused?
+          (container-focused? container)
           *container-tab-indicator-urgent-bg-color*
-		  *container-tab-indicator-active-text-color*
-		  *container-tab-indicator-inactive-text-color*
-		  *container-tab-indicator-unfocused-active-text-color*
-		  *container-tab-indicator-urgent-text-color*
-		  *container-tab-indicator-border-color*
-		  *container-tab-indicator-active-bg-color*
-		  *container-tab-indicator-inactive-bg-color*
+          *container-tab-indicator-active-text-color*
+          *container-tab-indicator-inactive-text-color*
+          *container-tab-indicator-unfocused-active-text-color*
+          *container-tab-indicator-urgent-text-color*
+          *container-tab-indicator-border-color*
+          *container-tab-indicator-active-bg-color*
+          *container-tab-indicator-inactive-bg-color*
+          *container-tab-indicator-unfocused-active-bg-color*
           *container-tab-indicator-show-title?*
           *container-tab-indicator-show-single-window?*
           *container-tab-indicator-gap*
           *container-tab-indicator-radius*
           *container-tab-indicator-border-width*
+          *container-tab-indicator-padding-x*
           *container-tab-indicator-font*
           *container-tab-indicator-font-size*
-          (map (lambda (w)
-                 (list (window-id w)
-                       (eq? w active-win)
-                       (window-urgent? w)
-                       (window-title w)
-                       (window-app-id w)))
+          (map (lambda (window)
+                 (list (window-id window)
+                       (eq? window active-window)
+                       (window-urgent? window)
+                       (window-title window)
+                       (window-app-id window)))
                windows))))
 
+(define (container-tab-indicator-seat-setup!)
+  "Ensure shared Wayland pointer listeners are bound when tab indicators are enabled.
+Parameters: None."
+  (when *%container-tab-indicator-enabled*
+    (gleui-pointer-setup!)))
+
+(define (%container-tab-indicator-live? container)
+  "Check whether CONTAINER is still attached to an active workspace.
+Parameters: (CONTAINER)
+  - CONTAINER: <container> record candidate.
+Returns #t if CONTAINER is live, #f if destroyed or detached."
+  (and-let* (((container? container))
+             (workspace (container-workspace container))
+             ((workspace? workspace))
+             ((memq container (workspace-containers workspace))))
+    (let ((output (workspace-output workspace)))
+      (or (not (output? output))
+          (and (memq workspace (output-workspaces output)) #t)))))
+
 (define (container-tab-indicator-init! container)
-  "Initialize Wayland surface, shell surface, and node for container tab indicator."
-  (when (container? container)
-    (let ((state (container-tab-indicator-state-get-create! container)))
-	  ;; initialize only of no wayland surface is created an mapped
-      (unless (%cwi-wl-surface state)
-        (let* ((surface (wl-compositor-create-surface *wl-compositor*))
-               (shell-surf (wm-manager-shell-surface-get (manager-wl-proxy *manager*) surface))
-               (node (wm-shell-surface-node-get! shell-surf)))
-          (%cwi-wl-surface-set! state surface)
-          (%cwi-wl-shell-surface-set! state shell-surf)
-          (%cwi-wl-node-set! state node)
-          (log-debug "Initialized indicator surface for container ~a" (container-id container)))))))
+  "Allocate the Wayland surface, shell surface, and scene node for CONTAINER's indicator.
+Parameters: (CONTAINER)
+  - CONTAINER: <container> record to initialize."
+  (when (and *%container-tab-indicator-enabled*
+             (%container-tab-indicator-live? container)
+             (valid-pointer? *wl-compositor*)
+             (valid-pointer? (manager-wl-proxy *manager*)))
+    ;; skip if shell surface is already configured
+    (unless (valid-pointer? (container-tab-indicator-wl-surface container))
+      ;; ugly, but we can't do and-let here because we have to cleanup
+      ;; all created objects in case of a failure
+      (let* ((manager    (manager-wl-proxy *manager*))
+             (surface    (wl-compositor-create-surface *wl-compositor*))
+             (shell-surf (and (valid-pointer? surface)
+                              (wm-manager-shell-surface-get manager surface)))
+             (node       (and (valid-pointer? shell-surf)
+                              (wm-shell-surface-node-get! shell-surf)))
+             (output     (or (and=> (container-workspace container) workspace-output)
+                             (output-current))))
+        (if (and (valid-pointer? surface)
+                 (valid-pointer? shell-surf)
+                 (valid-pointer? node))
+            ;; we should only create the indicator if all surfaces are allocated
+            (let ((state (container-tab-indicator-state-get-create! container)))
+              (surface-scale-create surface output)
+              (%cwi-wl-surface-set! state surface)
+              (%cwi-wl-shell-surface-set! state shell-surf)
+              (%cwi-wl-node-set! state node)
+              ;; expose tab hit-boxes to pointer dispatch for scroll/click tracking
+              (gleui-pointer-register-surface!
+               surface
+               (lambda ()
+                 (if *%container-tab-indicator-enabled*
+                     (%cwi-hit-boxes state)
+                     '())))
+              (log-debug "container-tab-indicator: initialized indicator surface for container ~a"
+                         (container-id container)))
+            ;; if something goes wrong, cleanup all objects created
+            (begin
+              (when (valid-pointer? node)
+                (wm-node-destroy! node))
+              (when (valid-pointer? shell-surf)
+                (wm-shell-surface-destroy! shell-surf))
+              (when (valid-pointer? surface)
+                (wl-surface-destroy surface))))))))
 
 (define (container-tab-indicator-should-show? container)
-  "Return #t if the container tab indicator should be visible for CONTAINER.
-Impacted by show-single-window config parameter as well as fullscreen mode."
+  "Check whether the tab indicator bar should be visible on CONTAINER.
+This depends on a configuration variable which hides it if only one
+window exist in the container, in addition to the fullscreen mode.
+Parameters: (CONTAINER)
+  - CONTAINER: <container> record to test.
+Returns #t if indicator should render, #f if hidden or fullscreened."
   (and *%container-tab-indicator-enabled*
        (container? container)
-       (let* ((windows (container-windows container))
-              (n (length windows))
+       (let* ((windows         (container-windows container))
+              (window-count    (length windows))
               (has-fullscreen? (any window-fullscreen? windows)))
          (and (not has-fullscreen?)
-              (> n 0)
-              (or (> n 1)
+              (> window-count 0)
+              (or (> window-count 1)
                   *container-tab-indicator-show-single-window?*)))))
 
 (define (container-tab-indicator-update-usable-area! container)
-  "Update CONTAINER's usable area based on indicator configuration and state,
-and resize/reposition its windows if the usable area changed.
-Needed because the indicator will cover some area of windows in the container."
+  "Reserve CONTAINER's usable area for its indicator strip.
+This is important because otherwise windows content will show up
+behind the tab indicator.
+Parameters: (CONTAINER)
+  - CONTAINER: <container> record whose usable area is updated."
   (when (container? container)
-    (let* ((cx (container-x container))
-           (cy (container-y container))
-           (cw (container-width container))
-           (ch (container-height container))
-           (show? (container-tab-indicator-should-show? container))
-           (h (if show?
-                  (min ch (max 0 *container-tab-indicator-height*))
-                  0))
-           (pos *container-tab-indicator-position*)
-           (target-ux cx)
-           (target-uy (if (and show? (eq? pos 'top))
-                          (+ cy h)
-                          cy))
-           (target-uw cw)
-           (target-uh (if show?
-                          (max 0 (- ch h))
-                          ch))
-           (cur-ux (container-usable-x container))
-           (cur-uy (container-usable-y container))
-           (cur-uw (container-usable-width container))
-           (cur-uh (container-usable-height container)))
-      (unless (and (= cur-ux target-ux)
-                   (= cur-uy target-uy)
-                   (= cur-uw target-uw)
-                   (= cur-uh target-uh))
-        (container-usable-area-set! container target-ux target-uy target-uw target-uh)
+    (let* ((outer-x       (container-x container))
+           (outer-y       (container-y container))
+           (outer-width   (container-width container))
+           (outer-height  (container-height container))
+           (show?         (container-tab-indicator-should-show? container))
+           (strip-height  (if show?
+                              (min outer-height (max 0 *container-tab-indicator-height*))
+                              0))
+           ;; shift usable-y down only when bar is at top, bottom shrink height
+           (usable-y      (if (and show? (eq? *container-tab-indicator-position* 'top))
+                              (+ outer-y strip-height)
+                              outer-y))
+           (usable-height (if show?
+                              (max 0 (- outer-height strip-height))
+                              outer-height)))
+      (unless (and (= (container-usable-x container) outer-x)
+                   (= (container-usable-y container) usable-y)
+                   (= (container-usable-width container) outer-width)
+                   (= (container-usable-height container) usable-height))
+        (container-usable-area-set! container outer-x usable-y outer-width usable-height)
         (container-usable-area-update-windows! container)))))
 
 (define (container-tab-indicator-cleanup! container)
-  "Clean up Wayland surface, shell surface, node, and buffer for container indicator."
+  "Destroy the Wayland surface, shell surface, and node for CONTAINER's indicator.
+Parameters: (CONTAINER)
+  - CONTAINER: <container> record whose indicator resources are cleaned up."
   (when (container? container)
     (container-tab-indicator-update-usable-area! container)
-    (let ((state (container-tab-indicator-state-get container)))
-      (when state
-        (let ((surface (%cwi-wl-surface state))
-              (shell-surf (%cwi-wl-shell-surface state))
-              (node (%cwi-wl-node state))
-              (buffer (%cwi-wl-buffer state)))
-          (hashq-remove! *container-tab-indicator-table* container)
-          (%cwi-wl-node-set! state %null-pointer)
-          (%cwi-wl-shell-surface-set! state %null-pointer)
-          (%cwi-wl-surface-set! state %null-pointer)
-          (%cwi-wl-buffer-set! state %null-pointer)
-          (when (valid-pointer? node)
-            (wm-node-destroy! node))
-          (when (valid-pointer? shell-surf)
-            (wm-shell-surface-destroy! shell-surf))
-          (when (valid-pointer? surface)
-            (wl-surface-destroy surface))
-          (when (valid-pointer? buffer)
-            (wl-buffer-destroy buffer)))))))
+    (and-let* ((state (container-tab-indicator-state-get container)))
+      (let ((surface    (%cwi-wl-surface state))
+            (shell-surf (%cwi-wl-shell-surface state))
+            (node       (%cwi-wl-node state)))
+        (hashq-remove! *container-tab-indicator-table* container)
+        (gleui-pointer-unregister-surface! surface)
+        (%cwi-wl-node-set! state #f)
+        (%cwi-wl-shell-surface-set! state #f)
+        (%cwi-wl-surface-set! state #f)
+        (%cwi-wl-buffer-set! state #f)
+        (%cwi-hit-boxes-set! state '())
+        (gleui-shm-slots-destroy! (%cwi-shm-slots state))
+        (%cwi-shm-slots-set! state #f)
+        (when (valid-pointer? node)
+          (wm-node-destroy! node))
+        (when (valid-pointer? shell-surf)
+          (wm-shell-surface-destroy! shell-surf))
+        (when (valid-pointer? surface)
+          (surface-scale-destroy surface)
+          (wl-surface-destroy surface))))))
 
 (define (container-tab-indicator-hide! container)
-  "Hide container window indicator by moving its node offscreen and synchronizing usable area."
-  (when (container? container)
+  "Hide CONTAINER's tab indicator node.
+Parameters: (CONTAINER)
+  - CONTAINER: <container> record to hide."
+  (when (and *%container-tab-indicator-enabled*
+             (%container-tab-indicator-live? container))
     (container-tab-indicator-update-usable-area! container)
-    (let ((state (container-tab-indicator-state-get container)))
-      (when state
-        (let ((node (%cwi-wl-node state)))
-          (when (and node (pointer? node) (not (null-pointer? node)))
-			;; NOTE: maybe better for hiding is to make transparent if easier
-			;; I don't know if updating position approach has any drawbacks
-			;; it's currently working fine for all other components
-            (with-render-sequence
-             (wm-node-position-set! node -10000 -10000))
+    (when (container-tab-indicator-state-get container)
+      (with-render-sequence
+       #:dirty? #t
+       (when (and *%container-tab-indicator-enabled*
+                  (%container-tab-indicator-live? container))
+         (and-let* ((cur-state (container-tab-indicator-state-get container)))
+           (let ((node       (%cwi-wl-node cur-state))
+                 (surface    (%cwi-wl-surface cur-state))
+                 (shell-surf (%cwi-wl-shell-surface cur-state)))
+             (when (valid-pointer? node)
+               ;; TODO: there must be a better approach, currently
+               ;;       all hidden indicators go to far away coordinates
+               (wm-node-position-set! node -10000 -10000))
+             (when (and (valid-pointer? surface)
+                        (valid-pointer? shell-surf))
+               (wm-shell-surface-sync-next-commit! shell-surf)
+               (wl-surface-attach surface %null-pointer 0 0)
+               (wl-surface-commit surface))
+             (%cwi-wl-buffer-set! cur-state #f)
+             (%cwi-hit-boxes-set! cur-state '())
+             (gleui-shm-slots-destroy! (%cwi-shm-slots cur-state))
+             (%cwi-shm-slots-set! cur-state #f))))))))
 
-			;; mark dirty if needed as this may be called outside of river sequence
-            (when (and (not *in-manage-sequence*)
-                       (not *in-render-sequence*))
-              (wm-manager-manage-dirty (manager-wl-proxy *manager*)))))))))
+(define (%container-tab-indicator-visible-rect container)
+  "Compute the clipped (x y w h clipped?) of CONTAINER's tab indicator
+within output usable bounds, or #f if completely offscreen.
+NOTE: the purpose is to clip indicator so it doesn't expand into another output
+      or statusbar since they are logically close to each other and that could happen.
+Parameters: (CONTAINER)
+  - CONTAINER: <container> record whose indicator bounds are checked.
+Returns list (x y w h clipped?) or #f when completely outside the output."
+  (let* ((raw-width  (container-width container))
+         (raw-height (min (container-height container)
+                          (max 0 (inexact->exact (round *container-tab-indicator-height*)))))
+         (raw-left   (container-x container))
+         (raw-top    (if (eq? *container-tab-indicator-position* 'bottom)
+                         (+ (container-y container) (- (container-height container) raw-height))
+                         (container-y container)))
+         (raw-right  (+ raw-left raw-width))
+         (raw-bottom (+ raw-top raw-height))
+         (output     (and=> (container-workspace container) workspace-output)))
+    (if (not (output? output))
+        ;; fallback when container workspace has no output attached (shouldn't happen)
+        (and (> raw-width 0) (> raw-height 0)
+             (list raw-left raw-top raw-width raw-height #f))
+        (let* ((usable-left   (output-usable-x output))
+               (usable-top    (output-usable-y output))
+               (usable-right  (+ usable-left (output-usable-width output)))
+               (usable-bottom (+ usable-top (output-usable-height output)))
+               ;; intersect the unclipped indicator with the output's usable area
+               (vis-left      (max raw-left usable-left))
+               (vis-top       (max raw-top usable-top))
+               (vis-right     (min raw-right usable-right))
+               (vis-bottom    (min raw-bottom usable-bottom))
+               (vis-width     (- vis-right vis-left))
+               (vis-height    (- vis-bottom vis-top)))
+          (and (> vis-width 0)
+               (> vis-height 0)
+               (let ((clipped? (or (> vis-left raw-left)
+                                   (> vis-top raw-top)
+                                   (< vis-right raw-right)
+                                   (< vis-bottom raw-bottom))))
+                 (list vis-left vis-top vis-width vis-height clipped?)))))))
 
 (define* (container-tab-indicator-render! container #:key (force #f))
-  "Render the container tab indicator for CONTAINER and commit."
-  (when (container? container)
-    ;; synchronize container usable area
+  "Render and commit the tab indicator for CONTAINER.
+Parameters: (CONTAINER [#:FORCE #f])
+  - CONTAINER: <container> record to update.
+  - FORCE: Boolean flag to force redraw SHM buffers even if cached."
+  (when (and *%container-tab-indicator-enabled*
+             (%container-tab-indicator-live? container))
+    ;; usable area must be updated regardless of workspace visibility
     (container-tab-indicator-update-usable-area! container)
-    (let ((should-show? (container-tab-indicator-should-show? container)))
-      (if (not should-show?)
+    (let ((rect (%container-tab-indicator-visible-rect container)))
+      ;; we render to both hide and show the indicator, hide if
+      ;; fullscreen mode, or outside output bounds
+      (if (or (not (container-tab-indicator-should-show? container))
+              (not rect))
           (container-tab-indicator-hide! container)
-          (when (and *%container-tab-indicator-enabled*
-                     (workspace-visible? (container-workspace container)))
+          ;; otherwise, show it when workspace is visible
+          (when (workspace-visible? (container-workspace container))
             (with-render-sequence
-             (unless (container-tab-indicator-wl-surface container)
-               (container-tab-indicator-init! container))
-             (let* ((state (container-tab-indicator-state-get-create! container))
-                    (surface (%cwi-wl-surface state))
-                    (shell-surf (%cwi-wl-shell-surface state))
-                    (node (%cwi-wl-node state))
-                    (windows (container-windows container))
-                    (w (container-width container))
-                    (h (min (container-height container) (max 0 (inexact->exact (round *container-tab-indicator-height*)))))
-                    (x (container-x container))
-                    (y (if (eq? *container-tab-indicator-position* 'bottom)
-                           (+ (container-y container) (- (container-height container) h))
-                           (container-y container)))
-                    (active-win (or (container-window-current container)
-                                    (and (pair? windows) (car windows))))
-                    (sig (container-indicator-signature container))
-                    (prev-sig (%cwi-signature state))
-                    (curr-buf (%cwi-wl-buffer state))
-                    (reusable? (and (not force)
-                                    curr-buf
-                                    (pointer? curr-buf)
-                                    (not (null-pointer? curr-buf))
-                                    (= (%cwi-width state) w)
-                                    (= (%cwi-height state) h)
-                                    (equal? prev-sig sig))))
-               (when (and surface (pointer? surface) (not (null-pointer? surface))
-                          shell-surf (pointer? shell-surf) (not (null-pointer? shell-surf))
-                          node (pointer? node) (not (null-pointer? node))
-                          (> w 0) (> h 0))
-                 (wm-node-position-set! node x y)
-                 (wm-node-place-top! node)
-                 (container-tab-indicator-update-input-region! surface w h)
-                 (if reusable?
-                     (begin
-                       (wm-shell-surface-sync-next-commit! shell-surf)
-                       (wl-surface-commit surface))
-                     (let ((new-buffer (container-tab-indicator-buffer-create container w h windows active-win))
-                           (old-buffer curr-buf))
-                       (when (and (pointer? new-buffer) (not (null-pointer? new-buffer)))
-                         (%cwi-wl-buffer-set! state new-buffer)
-                         (%cwi-width-set! state w)
-                         (%cwi-height-set! state h)
-                         (%cwi-signature-set! state sig)
-                         (wm-shell-surface-sync-next-commit! shell-surf)
-                         (wl-surface-attach surface new-buffer 0 0)
-                         (wl-surface-damage surface 0 0 w h)
-                         (wl-surface-commit surface)
-                         (when (and old-buffer (pointer? old-buffer) (not (null-pointer? old-buffer))
-                                    (not (equal? old-buffer new-buffer)))
-                           (catch #t (lambda () (wl-buffer-destroy old-buffer)) (lambda _ #f))))))))))))
+             #:dirty? #t
+             ;; with-render-sequence may defer until river's render callback, so
+             ;; re-validate visibility and recompute clipped geometry
+             (and-let* ((*%container-tab-indicator-enabled*)
+                        ((%container-tab-indicator-live? container))
+                        ((container-tab-indicator-should-show? container))
+                        (workspace (container-workspace container))
+                        ((workspace-visible? workspace))
+                        (cur-rect (%container-tab-indicator-visible-rect container)))
 
-	;; mark dirty if needed as this may be called outside of river sequence
-    (when (not *in-manage-sequence*)
-      (wm-manager-manage-dirty (manager-wl-proxy *manager*)))))
+               ;; initialize indicator surface if it's not already
+               (unless (valid-pointer? (container-tab-indicator-wl-surface container))
+                 (container-tab-indicator-init! container))
+               (and-let* ((state      (container-tab-indicator-state-get container))
+                          (surface    (%cwi-wl-surface state))
+                          (shell-surf (%cwi-wl-shell-surface state))
+                          (node       (%cwi-wl-node state))
+                          ((valid-pointer? surface))
+                          ((valid-pointer? shell-surf))
+                          ((valid-pointer? node)))
+
+                 (let* ((windows        (container-windows container))
+                        (x              (list-ref cur-rect 0))
+                        (y              (list-ref cur-rect 1))
+                        (width          (list-ref cur-rect 2))
+                        (height         (list-ref cur-rect 3))
+                        (clipped?       (list-ref cur-rect 4))
+                        (active-window  (or (container-window-current container)
+                                            (and (pair? windows) (car windows))))
+                        (scale          (surface-scale surface 1.0))
+                        (signature      (container-indicator-signature container scale))
+                        (current-buffer (%cwi-wl-buffer state))
+                        ;; skip redraw when dimensions and visual signature match
+                        ;; clipped strips bypass reuse since visible tab geometry may differ
+                        (reusable?      (and (not force)
+                                             (not clipped?)
+                                             (valid-pointer? current-buffer)
+                                             (= (%cwi-width state) width)
+                                             (= (%cwi-height state) height)
+                                             (equal? (%cwi-signature state) signature))))
+
+                   (when (and (> width 0) (> height 0))
+                     ;; keep indicator node above container windows and mark it clickable
+                     (wm-node-position-set! node x y)
+                     (wm-node-place-top! node)
+                     (container-tab-indicator-update-input-region! surface width height)
+                     (if reusable?
+                         ;; skip building new widget if reusable, just commit
+                         (begin
+                           (wm-shell-surface-sync-next-commit! shell-surf)
+                           (gleui-layer-surface-buffer-commit! surface current-buffer width height))
+                         ;; otherwise, build a new tab bar widget
+                         (let ((widget (container-tab-indicator-build-widget
+                                        container width height windows active-window)))
+                           (call-with-values
+                               (lambda ()
+                                 ;; transient SHM unmaps CPU memory right after commit since tabs rarely change
+                                 (gleui-widget-render-commit!
+                                  surface (%cwi-shm-slots state) (%cwi-shm-active-idx state)
+                                  width height widget
+                                  #:persistent? #f
+                                  #:shm-name (format #f "gliver-container-tab-~a-shm"
+                                                     (container-id container))
+                                  #:pre-commit (lambda ()
+                                                 (wm-shell-surface-sync-next-commit! shell-surf))))
+                             (lambda (updated-slots next-slot-index wl-buffer hit-boxes)
+                               (%cwi-shm-slots-set! state updated-slots)
+                               (%cwi-shm-active-idx-set! state next-slot-index)
+                               (%cwi-hit-boxes-set! state hit-boxes)
+                               (when (valid-pointer? wl-buffer)
+                                 (%cwi-wl-buffer-set! state wl-buffer)
+                                 (%cwi-width-set! state width)
+                                 (%cwi-height-set! state height)
+                                 (%cwi-signature-set! state signature))))))))))))))))
 
 (define (container-tab-indicators-update-all!)
-  "Update indicators and usable area for all containers across all active outputs."
-  (for-each
-   (lambda (output)
-     (for-each
-      (lambda (ws)
-        (for-each container-tab-indicator-render! (workspace-containers ws)))
-      (output-workspaces output)))
-   (manager-outputs *manager*)))
+  "Initialize and re-render tab indicators for all containers on all outputs.
+Parameters: None."
+  (when (and *%container-tab-indicator-enabled*
+             (valid-pointer? (manager-wl-proxy *manager*)))
+    (for-each
+     (lambda (output)
+       (for-each
+        (lambda (workspace)
+          (for-each
+           (lambda (container)
+             (unless (valid-pointer? (container-tab-indicator-wl-surface container))
+               (container-tab-indicator-init! container))
+             (container-tab-indicator-render! container))
+           (workspace-containers workspace)))
+        (output-workspaces output)))
+     (manager-outputs *manager*))))
 
+;; event hooks
 (define (container-tab-indicator-on-container-created container)
-  "Handle container creation, initialize and render indicator."
-  (container-tab-indicator-render! container))
+  "Invoked when CONTAINER is created.
+Initialize and render the tab indicator for CONTAINER.
+Parameters: (CONTAINER)
+  - CONTAINER: <container> record newly created."
+  (when (container? container)
+    (container-tab-indicator-init! container)
+    (container-tab-indicator-render! container)))
 
 (define (container-tab-indicator-on-container-destroy container workspace)
-  "Handle container destruction, cleanup resources."
-  (container-tab-indicator-cleanup! container))
+  "Invoked when CONTAINER on WORKSPACE is destroyed.
+Clean up tab indicator resources allocated for CONTAINER.
+Parameters: (CONTAINER WORKSPACE)
+  - CONTAINER: <container> record being destroyed.
+  - WORKSPACE: <workspace> record that owned CONTAINER (unused)."
+  (when (container? container)
+    (container-tab-indicator-cleanup! container)))
 
 (define (container-tab-indicator-on-container-focused container)
-  "Handle container focus, re-render focused indicator and update other containers."
-  (container-tab-indicator-render! container)
-  (for-each
-   (lambda (output)
-     (let ((ws (output-workspace-current output)))
-       (when ws
+  "Invoked when CONTAINER is focused.
+Re-render CONTAINER's indicator and refresh indicators on active workspaces.
+Parameters: (CONTAINER)
+  - CONTAINER: <container> record newly focused."
+  (when (container? container)
+    (container-tab-indicator-render! container)
+    ;; refresh sibling containers so previously active container drops focused styling
+    (for-each
+     (lambda (output)
+       (and-let* ((workspace (output-workspace-current output)))
          (for-each
-          (lambda (c)
-            (when (and (container? c)
-                       (not (eq? c container)))
-              (container-tab-indicator-render! c)))
-          (workspace-containers ws)))))
-   (manager-outputs *manager*)))
+          (lambda (other-container)
+            (when (and (container? other-container)
+                       (not (eq? other-container container)))
+              (container-tab-indicator-render! other-container)))
+          (workspace-containers workspace))))
+     (manager-outputs *manager*))))
 
 (define (container-tab-indicator-on-container-unfocused container)
-  "Handle container unfocus, update indicator colors."
-  (container-tab-indicator-render! container))
+  "Invoked when CONTAINER loses focus.
+Re-render CONTAINER's tab indicator so it reflects unfocused colors.
+Parameters: (CONTAINER)
+  - CONTAINER: <container> record that lost focus."
+  (when (container? container)
+    (container-tab-indicator-render! container)))
 
 (define (container-tab-indicator-on-container-resize container)
-  "Handle container resize, reposition and re-render indicator."
-  (container-tab-indicator-render! container))
+  "Invoked when CONTAINER geometry or position changes.
+Reposition and re-render CONTAINER's tab indicator to match its updated bounds.
+Parameters: (CONTAINER)
+  - CONTAINER: <container> record resized or moved."
+  (when (container? container)
+    (container-tab-indicator-render! container)))
 
 (define (container-tab-indicator-on-workspace-switch workspace prev-workspace)
-  "Handle workspace switch, hide previous workspace indicators and render current ones."
-  (when (and prev-workspace (not (eq? prev-workspace workspace)))
+  "Invoked when active workspace changes.
+Hide tab indicators on PREV-WORKSPACE and render indicators on active WORKSPACE.
+Parameters: (WORKSPACE PREV-WORKSPACE)
+  - WORKSPACE: <workspace> record newly active, or #f.
+  - PREV-WORKSPACE: <workspace> record previously active, or #f."
+  (when (and (workspace? prev-workspace)
+             (not (eq? prev-workspace workspace)))
     (for-each container-tab-indicator-hide! (workspace-containers prev-workspace)))
-  (when workspace
+  (when (workspace? workspace)
     (for-each container-tab-indicator-render! (workspace-containers workspace))))
 
 (define (container-tab-indicator-on-output-removed output)
-  "Invoked when OUTPUT is removed, hide tab indicators
-for all workspaces on OUTPUT.
+  "Invoked when an OUTPUT is removed.
+Hide tab indicator nodes on every workspace belonging to removed OUTPUT.
+We shouldn't destroy as the workspace is still available and OUTPUT may be
+added again or another output take over.
 Parameters: (OUTPUT)
   - OUTPUT: <output> record being removed."
-  (when (and output (output? output))
+  (when (output? output)
     (for-each
-     (lambda (ws)
-       (for-each container-tab-indicator-hide! (workspace-containers ws)))
+     (lambda (workspace)
+       (for-each container-tab-indicator-hide! (workspace-containers workspace)))
      (output-workspaces output))))
 
 (define (container-tab-indicator-on-window-focused window)
-  "Handle window focused event, update container indicator and keep indicator on top."
-  (when (window? window)
-    (let ((container (window-container window)))
-      (when (container? container)
-        (container-tab-indicator-render! container)
-        ;; ensure indicator node stays on top of the newly focused window
-        (let ((node (container-tab-indicator-wl-node container)))
-          (when (and node (pointer? node) (not (null-pointer? node)))
-            (with-render-sequence
-             (wm-node-place-top! node))))))))
+  "Invoked when WINDOW gains focus.
+Update its parent container indicator and ensure the indicator node stays on top.
+Parameters: (WINDOW)
+  - WINDOW: <window> record that gained focus."
+  (and-let* (((window? window))
+             (container (window-container window))
+             ((container? container)))
+    (container-tab-indicator-render! container)
+    (and-let* ((node (container-tab-indicator-wl-node container))
+               ((valid-pointer? node)))
+      (with-render-sequence
+       #:dirty? #t
+       (wm-node-place-top! node)))))
+
+(define (%render-window-container window)
+  "Re-render the tab indicator of WINDOW's parent container when present.
+Parameters: (WINDOW)
+  - WINDOW: <window> record whose container indicator should be updated."
+  (and-let* (((window? window))
+             (container (window-container window))
+             ((container? container)))
+    (container-tab-indicator-render! container)))
 
 (define (container-tab-indicator-on-window-unfocused window)
-  "Handle window unfocused event."
-  (when (window? window)
-    (let ((container (window-container window)))
-      (when container
-        (container-tab-indicator-render! container)))))
+  "Invoked when WINDOW loses focus.
+Parameters: (WINDOW)
+  - WINDOW: <window> record that lost focus."
+  (%render-window-container window))
 
 (define (container-tab-indicator-on-window-title-changed window title)
-  "Handle window title update, re-render container indicator."
-  (when (window? window)
-    (let ((container (window-container window)))
-      (when container
-        (container-tab-indicator-render! container)))))
+  "Invoked when WINDOW title changes.
+Re-render its parent container's tab indicator.
+Parameters: (WINDOW TITLE)
+  - WINDOW: <window> record whose title changed.
+  - TITLE: String new window title (unused)."
+  (%render-window-container window))
 
 (define (container-tab-indicator-on-window-app-id-changed window app-id)
-  "Handle window app-id update, re-render container indicator."
-  (when (window? window)
-    (let ((container (window-container window)))
-      (when container
-        (container-tab-indicator-render! container)))))
+  "Invoked when WINDOW application ID changes.
+Re-render its parent container's tab indicator.
+Parameters: (WINDOW APP-ID)
+  - WINDOW: <window> record whose app-id changed.
+  - APP-ID: String new application ID (unused)."
+  (%render-window-container window))
 
 (define (container-tab-indicator-on-window-urgent window)
-  "Handle window urgency change, re-render container indicator."
-  (when (window? window)
-    (let ((container (window-container window)))
-      (when container
-        (container-tab-indicator-render! container)))))
+  "Invoked when WINDOW urgency state changes.
+Re-render its parent container's tab indicator.
+Parameters: (WINDOW)
+  - WINDOW: <window> record whose urgent state changed."
+  (%render-window-container window))
 
 (define (container-tab-indicator-on-window-container-added window container)
-  "Handle window added to container, re-render container indicator."
+  "Invoked when WINDOW is added to CONTAINER.
+Re-render CONTAINER's tab indicator to include the new tab.
+Parameters: (WINDOW CONTAINER)
+  - WINDOW: <window> record added (unused).
+  - CONTAINER: <container> record that gained WINDOW."
   (when (container? container)
     (container-tab-indicator-render! container)))
 
 (define (container-tab-indicator-on-window-container-removed window container)
-  "Handle window removed from container, re-render container indicator."
+  "Invoked when WINDOW is removed from CONTAINER.
+Re-render CONTAINER's tab indicator to drop or hide the removed tab.
+Parameters: (WINDOW CONTAINER)
+  - WINDOW: <window> record removed (unused).
+  - CONTAINER: <container> record that lost WINDOW."
   (when (container? container)
     (container-tab-indicator-render! container)))
 
-(define (container-tab-indicator-on-window-container-moved window old-c new-c)
-  "Handle window moved between containers, re-render both containers."
-  (when (container? old-c)
-    (container-tab-indicator-render! old-c))
-  (when (container? new-c)
-    (container-tab-indicator-render! new-c)))
+(define (container-tab-indicator-on-window-container-moved window old-container new-container)
+  "Invoked when WINDOW moves from OLD-CONTAINER to NEW-CONTAINER.
+Re-render both containers' tab indicators.
+Parameters: (WINDOW OLD-CONTAINER NEW-CONTAINER)
+  - WINDOW: <window> record moved (unused).
+  - OLD-CONTAINER: <container> record previously holding WINDOW, or #f.
+  - NEW-CONTAINER: <container> record receiving WINDOW, or #f."
+  (when (container? old-container)
+    (container-tab-indicator-render! old-container))
+  (when (container? new-container)
+    (container-tab-indicator-render! new-container)))
 
 (define (container-tab-indicator-on-window-destroyed window container workspace)
-  "Handle window destroyed event, re-render container indicator."
+  "Invoked when WINDOW is destroyed.
+Re-render CONTAINER's tab indicator when present.
+Parameters: (WINDOW CONTAINER WORKSPACE)
+  - WINDOW: <window> record destroyed (unused).
+  - CONTAINER: <container> record that held WINDOW, or #f.
+  - WORKSPACE: <workspace> record (unused)."
   (when (container? container)
     (container-tab-indicator-render! container)))
 
 (define (container-tab-indicator-on-pointer-position seat x y)
-  "Record pointer coordinates for click resolution."
+  "Invoked when compositor pointer coordinates update.
+Record X and Y for WM shell interaction click resolution.
+Parameters: (SEAT X Y)
+  - SEAT: <seat> record reporting pointer movement (unused).
+  - X: Float pointer X coordinate.
+  - Y: Float pointer Y coordinate."
   (set! *container-tab-indicator-last-pointer-x* x)
   (set! *container-tab-indicator-last-pointer-y* y))
 
 (define (container-tab-indicator-on-shell-interaction seat proxy-shell)
-  "Handle shell surface mouse interaction like clicking a window tab."
+  "Invoked when a tab indicator shell surface is clicked.
+Focus the window tab matching clicked PROXY-SHELL using recorded hit-boxes.
+Parameters: (SEAT PROXY-SHELL)
+  - SEAT: <seat> record that initiated the interaction (unused).
+  - PROXY-SHELL: Pointer to clicked river_shell_surface_v1 proxy."
   (when (and *container-tab-indicator-clickable?*
-             proxy-shell
-             (pointer? proxy-shell)
-             (not (null-pointer? proxy-shell)))
-    (let ((container (container-tab-indicator-find-by-shell-surface proxy-shell)))
-      (when (container? container)
-        (let* ((windows (container-windows container))
-               (n (length windows)))
-          (cond
-           ((= n 1)
-            (window-focus! (car windows))
-			;; mark dirty to re-render
-            (wm-manager-manage-dirty (manager-wl-proxy *manager*)))
-           ((> n 1)
-            (let* ((cx (container-x container))
-                   (cw (container-width container))
-                   (px (or *container-tab-indicator-last-pointer-x* cx))
-                   (rel-x (max 0 (min (- cw 1) (- px cx))))
-                   (tab-idx (inexact->exact (floor (/ rel-x (/ cw n)))))
-                   (clamped-idx (max 0 (min (1- n) tab-idx)))
-                   (win (list-ref windows clamped-idx)))
-              (log-debug "Clicked indicator tab ~a for window ~a in container ~a"
-                         clamped-idx (window-title win) (container-id container))
-              (window-focus! win)
-			  ;; mark dirty to re-render
-              (wm-manager-manage-dirty (manager-wl-proxy *manager*))))
-           (else #f)))))))
-
-(define (container-tab-indicator-find-at-pointer)
-  "Find the container currently under the pointer, using surface or coordinates."
-  (or (and (valid-pointer? *container-tab-indicator-pointer-surface*)
-           (let ((c (container-tab-indicator-find-by-surface *container-tab-indicator-pointer-surface*)))
-             (and c
-                  (container? c)
-                  (workspace-visible? (container-workspace c))
-                  c)))
-      (and *container-tab-indicator-last-pointer-x*
-           *container-tab-indicator-last-pointer-y*
-           (let ((px *container-tab-indicator-last-pointer-x*)
-                 (py *container-tab-indicator-last-pointer-y*)
-                 (found #f))
-             (hash-for-each
-              (lambda (c state)
-                (when (and (not found)
-                           (container? c)
-                           (workspace-visible? (container-workspace c))
-                           (container-tab-indicator-should-show? c))
-                  (let* ((cx (container-x c))
-                         (cw (container-width c))
-                         (ch (container-height c))
-                         (h (min ch (max 0 (inexact->exact (round *container-tab-indicator-height*)))))
-                         (cy (if (eq? *container-tab-indicator-position* 'bottom)
-                                 (+ (container-y c) (- ch h))
-                                 (container-y c))))
-                    (when (and (>= px cx) (< px (+ cx cw))
-                               (>= py cy) (< py (+ cy h)))
-                      (set! found c)))))
-              *container-tab-indicator-table*)
-             found))))
+             (valid-pointer? proxy-shell))
+    (and-let* ((container (container-tab-indicator-find-by-shell-surface proxy-shell))
+               ((container? container)))
+      (let* ((state        (container-tab-indicator-state-get container))
+             (strip-height (min (container-height container)
+                                (max 0 (inexact->exact (round *container-tab-indicator-height*)))))
+             (origin-x     (container-x container))
+             (origin-y     (if (eq? *container-tab-indicator-position* 'bottom)
+                               (+ (container-y container) (- (container-height container) strip-height))
+                               (container-y container)))
+             ;; convert global compositor pointer coords to surface-local hit-box coords
+             (rel-x        (max 0 (- (or *container-tab-indicator-last-pointer-x*
+                                         origin-x)
+                                     origin-x)))
+             (rel-y        (max 0 (- (or *container-tab-indicator-last-pointer-y*
+                                         origin-y)
+                                     origin-y)))
+             (hit          (and state (gleui-find-hit-box (%cwi-hit-boxes state) rel-x rel-y)))
+             (windows      (container-windows container))
+             (target       (or (and hit (gleui-hit-box-data hit))
+                               (and (pair? windows) (car windows)))))
+        (when (window? target)
+          (window-focus! target)
+          ;; I am not sure why I have to let river know that manager
+          ;; became dirty, I thought it should do it with mouse/keyboard interactions
+          (wm-manager-manage-dirty (manager-wl-proxy *manager*)))))))
 
 (define (container-tab-indicator-switch-window! container direction)
-  "Switch the active window in CONTAINER in DIRECTION ('next or 'prev)."
+  "Switch the active window in CONTAINER in DIRECTION.
+Parameters: (CONTAINER DIRECTION)
+  - CONTAINER: <container> record target.
+  - DIRECTION: Symbol 'next or 'prev indicating tab step direction."
   (when (container? container)
-    (let* ((windows (container-windows container))
-           (n (length windows)))
-      (when (> n 1)
-        (and-let* ((active-win (or (container-window-current container)
-								   (and (pair? windows) (car windows))))
-				   (idx (list-index (lambda (w) (eq? w active-win)) windows))
-				   (target-idx (modulo (if (eq? direction 'next) (1+ idx) (1- idx)) n))
-				   (target-win (list-ref windows target-idx)))
-          (unless (eq? target-win active-win)
-            (log-debug "Indicator: switching container ~a window ~a -> ~a (~a)"
+    (let* ((windows      (container-windows container))
+           (window-count (length windows)))
+      (when (> window-count 1)
+        (and-let* ((active-window (or (container-window-current container)
+                                      (car windows)))
+                   (active-index  (list-index (lambda (window)
+                                                (eq? window active-window))
+                                              windows))
+                   (target-index  (modulo (if (eq? direction 'next)
+                                              (1+ active-index)
+                                              (1- active-index))
+                                          window-count))
+                   (target-window (list-ref windows target-index)))
+          (unless (eq? target-window active-window)
+            (log-debug "container-tab-indicator: switching container ~a window ~a -> ~a (~a)"
                        (container-id container)
-                       (if (window? active-win) (window-id active-win) "none")
-                       (window-id target-win)
+                       (if (window? active-window)
+                           (window-id active-window)
+                           "none")
+                       (window-id target-window)
                        direction)
-            (window-focus! target-win)
-            ;; we have to call manage dirty to update focused window
-            ;; otherwise river won't go to manage or render state immediately
+            (window-focus! target-window)
             (wm-manager-manage-dirty (manager-wl-proxy *manager*))))))))
 
 (define (container-tab-indicator-on-scroll container delta)
-  "Handle scroll event on CONTAINER's tab indicator.
-DELTA < 0 is scroll up, DELTA > 0 is scroll down.
-Calls switch-window to go to target one."
+  "Invoked when pointer scroll occurs on CONTAINER's tab indicator.
+Step to the next or previous window in CONTAINER according to DELTA.
+Parameters: (CONTAINER DELTA)
+  - CONTAINER: <container> record target.
+  - DELTA: Float scroll axis delta (< 0 scrolls up/previous, > 0 scrolls down/next)."
   (when (and *container-tab-indicator-scrollable?*
-             (container? container))
-    (let* ((up? (< delta 0))
+             (container? container)
+             (not (zero? delta)))
+    (let* ((up?       (< delta 0))
            (direction (if (memq *container-tab-indicator-scroll-direction* '(up-next inverted))
                           (if up? 'next 'prev)
                           (if up? 'prev 'next))))
       (container-tab-indicator-switch-window! container direction))))
 
-(define (container-tab-indicator-handle-pointer-enter data proxy serial surface sx sy)
-  "Handle wl_pointer enter event."
-  (set! *container-tab-indicator-pointer-surface* surface))
-
-(define (container-tab-indicator-handle-pointer-leave data proxy serial surface)
-  "Handle wl_pointer leave event."
-  (set! *container-tab-indicator-pointer-surface* %null-pointer))
-
-(define (container-tab-indicator-handle-pointer-motion data proxy time sx sy)
-  #t)
-
-(define (container-tab-indicator-handle-pointer-button data proxy serial time button state)
-  #t)
-
-(define (container-tab-indicator-handle-pointer-axis data proxy time axis value)
-  "Handle wl_pointer axis (scroll) event."
-  (when (and *container-tab-indicator-scrollable?*
-             (zero? axis)
-             (not (zero? value)))
-    (and-let* ((container (container-tab-indicator-find-at-pointer)))
-      (container-tab-indicator-on-scroll container value))))
-
-(define (container-tab-indicator-handle-pointer-frame data proxy)
-  #t)
-
-(define (container-tab-indicator-handle-pointer-axis-source data proxy axis-source)
-  #t)
-
-(define (container-tab-indicator-handle-pointer-axis-stop data proxy time axis)
-  #t)
-
-(define (container-tab-indicator-handle-pointer-axis-discrete data proxy axis discrete)
-  #t)
-
-(define (container-tab-indicator-handle-pointer-axis-value120 data proxy axis value120)
-  #t)
-
-(define (container-tab-indicator-handle-pointer-axis-relative-direction data proxy axis dir)
-  #t)
-
-(define (container-tab-indicator-seat-setup!)
-  "Set up Wayland pointer listener on seats for scrolling tabs."
-  (when *%container-tab-indicator-enabled*
-    (let ((seats (if (pair? (manager-seats *manager*))
-                     (manager-seats *manager*)
-                     (let ((s (seat-current))) (if s (list s) '())))))
-      (for-each
-       (lambda (seat)
-         (let ((obj-id (and (seat? seat) (seat-wl-seat seat))))
-           (when (and (number? obj-id)
-                      (not (assv obj-id *container-tab-indicator-seat-proxies*)))
-             (let ((wl-seat (gliver-wl-registry-bind *wl-registry* obj-id *wl-seat-interface* 7)))
-               (when (valid-pointer? wl-seat)
-                 (let ((ptr (wl-seat-get-pointer wl-seat)))
-                   (when (valid-pointer? ptr)
-                     (let ((listener (make-wl-pointer-listener
-                                      container-tab-indicator-handle-pointer-enter
-                                      container-tab-indicator-handle-pointer-leave
-                                      container-tab-indicator-handle-pointer-motion
-                                      container-tab-indicator-handle-pointer-button
-                                      container-tab-indicator-handle-pointer-axis
-                                      container-tab-indicator-handle-pointer-frame
-                                      container-tab-indicator-handle-pointer-axis-source
-                                      container-tab-indicator-handle-pointer-axis-stop
-                                      container-tab-indicator-handle-pointer-axis-discrete
-                                      container-tab-indicator-handle-pointer-axis-value120
-                                      container-tab-indicator-handle-pointer-axis-relative-direction)))
-                       (wl-proxy-add-listener ptr listener %null-pointer)
-                       (set! *container-tab-indicator-seat-proxies*
-                             (cons (list obj-id wl-seat ptr)
-                                   *container-tab-indicator-seat-proxies*))
-                       (log-debug "Container tab indicator: pointer listener registered for seat ~a" obj-id)))))))))
-       seats))))
-
-(define (container-tab-indicator-seat-cleanup!)
-  "Clean up Wayland pointer and seat proxies for tab scrolling."
-  (set! *container-tab-indicator-pointer-surface* %null-pointer)
-  (for-each
-   (match-lambda
-     ((obj-id wl-seat ptr)
-      (when (valid-pointer? ptr)
-        (catch #t (lambda () (wl-pointer-release ptr)) (lambda _ #f)))
-      (when (valid-pointer? wl-seat)
-        (catch #t (lambda () (wl-seat-release wl-seat)) (lambda _ #f)))))
-   *container-tab-indicator-seat-proxies*)
-  (set! *container-tab-indicator-seat-proxies* '()))
-
 (define (container-tab-indicator-on-seat-object-id-changed seat prev-id)
-  "Handle seat object-id change event to initialize pointer listener."
-  (when *%container-tab-indicator-enabled*
-    (container-tab-indicator-seat-setup!)))
+  "Invoked when SEAT updates its Wayland object ID.
+Ensure pointer listeners are attached to the updated seat.
+Parameters: (SEAT PREV-ID)
+  - SEAT: <seat> record whose object ID changed (unused).
+  - PREV-ID: Integer previous Wayland object ID (unused)."
+  (container-tab-indicator-seat-setup!))
 
 (define (container-tab-indicator-on-globals-unbind)
-  "Clean up all container indicator surfaces on unbind/shutdown."
-  (container-tab-indicator-seat-cleanup!)
-  (let ((containers (hash-map->list (lambda (k v) k) *container-tab-indicator-table*)))
+  "Invoked when Wayland globals unbind or shut down.
+Clean up all container tab indicator surfaces.
+Parameters: None."
+  (let ((containers (hash-map->list (lambda (container _state) container)
+                                    *container-tab-indicator-table*)))
     (for-each container-tab-indicator-cleanup! containers)))
 
+(define (container-tab-indicator-on-handshake-complete)
+  "Invoked once the manager handshake completes.
+This caused some bugs because it was running before initialization of
+Wayland objects like output. Should probably only load user configuration
+file after manage start hook, then this is not needed.
+Attach seat pointer listeners and render all container tab indicators.
+Parameters: None."
+  (gliver-hook-remove! *manager-manage-start-hook* 'container-tab-indicator-on-handshake-complete)
+  (when *%container-tab-indicator-enabled*
+    (container-tab-indicator-seat-setup!)
+    (container-tab-indicators-update-all!)))
+
 (define (container-tab-indicator-on-listeners-attach)
-  "Initialize indicators for any existing containers when listeners attach."
-  (container-tab-indicator-seat-setup!)
-  (container-tab-indicators-update-all!))
+  "Invoked when Wayland listeners attach.
+Defer indicator setup until the first River manage_start handshake completes.
+Parameters: None."
+  (when *%container-tab-indicator-enabled*
+    (gliver-hook-add! *manager-manage-start-hook* 'container-tab-indicator-on-handshake-complete)))
 
 (define (container-tab-indicator-on-window-fullscreen-entered window prev-status)
-  "Hide indicator when a window enters fullscreen."
-  (when (window? window)
-    (let ((container (window-container window)))
-      (when (container? container)
-        (container-tab-indicator-hide! container)))))
+  "Invoked when WINDOW enters fullscreen mode.
+Hide the parent container's tab indicator.
+Parameters: (WINDOW PREV-STATUS)
+  - WINDOW: <window> record entering fullscreen.
+  - PREV-STATUS: Boolean previous fullscreen status (unused)."
+  (and-let* (((window? window))
+             (container (window-container window))
+             ((container? container)))
+    (container-tab-indicator-hide! container)))
 
 (define (container-tab-indicator-on-window-fullscreen-exited window prev-status)
-  "Restore indicator when a window exits fullscreen."
-  (when (window? window)
-    (let ((container (window-container window)))
-      (when (container? container)
-        (container-tab-indicator-render! container)))))
+  "Invoked when WINDOW exits fullscreen mode.
+Restore the parent container's tab indicator.
+Parameters: (WINDOW PREV-STATUS)
+  - WINDOW: <window> record exiting fullscreen.
+  - PREV-STATUS: Boolean previous fullscreen status (unused)."
+  (%render-window-container window))
+
+(define (container-tab-indicator-on-surface-scale-changed surface scale)
+  "Invoked when the SURFACE SCALE changes.
+Re-render the matching tab indicator so it respects the new SCALE.
+Parameters: (SURFACE SCALE)
+  - SURFACE: Pointer to Wayland wl_surface whose scale changed.
+  - SCALE: Float new fractional surface scale factor (unused)."
+  (hash-for-each
+   (lambda (container state)
+     ;; find the container that has the surface that got updated
+     (when (and (container? container)
+                (equal? surface (%cwi-wl-surface state)))
+       (container-tab-indicator-render! container #:force #t)))
+   *container-tab-indicator-table*))
+
+(define *container-tab-indicator-hooks*
+  (list (cons *container-created-hook*                 'container-tab-indicator-on-container-created)
+        (cons *container-destroy-hook*                 'container-tab-indicator-on-container-destroy)
+        (cons *container-focused-hook*                 'container-tab-indicator-on-container-focused)
+        (cons *container-unfocused-hook*               'container-tab-indicator-on-container-unfocused)
+        (cons *container-resize-hook*                  'container-tab-indicator-on-container-resize)
+        (cons *container-position-changed-hook*        'container-tab-indicator-on-container-resize)
+        (cons *workspace-switch-hook*                  'container-tab-indicator-on-workspace-switch)
+        (cons *gliver-globals-unbind-hook*             'container-tab-indicator-on-globals-unbind)
+        (cons *gliver-listeners-attach-hook*           'container-tab-indicator-on-listeners-attach)
+        (cons *window-container-removed-hook*          'container-tab-indicator-on-window-container-removed)
+        (cons *window-container-added-hook*            'container-tab-indicator-on-window-container-added)
+        (cons *window-container-moved-hook*            'container-tab-indicator-on-window-container-moved)
+        (cons *window-destroyed-hook*                  'container-tab-indicator-on-window-destroyed)
+        (cons *window-focused-hook*                    'container-tab-indicator-on-window-focused)
+        (cons *window-unfocused-hook*                  'container-tab-indicator-on-window-unfocused)
+        (cons *window-title-changed-hook*              'container-tab-indicator-on-window-title-changed)
+        (cons *window-app-id-changed-hook*             'container-tab-indicator-on-window-app-id-changed)
+        (cons *seat-shell-interacted-hook*             'container-tab-indicator-on-shell-interaction)
+        (cons *seat-seat-pointer-position-changed-hook* 'container-tab-indicator-on-pointer-position)
+        (cons *seat-object-id-changed-hook*            'container-tab-indicator-on-seat-object-id-changed)
+        (cons *window-fullscreen-entered-hook*         'container-tab-indicator-on-window-fullscreen-entered)
+        (cons *window-fullscreen-exited-hook*          'container-tab-indicator-on-window-fullscreen-exited)
+        (cons *output-removed-hook*                    'container-tab-indicator-on-output-removed)
+        (cons *surface-scale-changed-hook*             'container-tab-indicator-on-surface-scale-changed)))
 
 (define (container-tab-indicator-enable!)
-  "Enable container window indicator and hook into events and render indicators."
+  "Install container tab indicator hooks and render indicators across all active outputs.
+Parameters: None."
   (unless *%container-tab-indicator-enabled*
-    (gliver-hook-add! *container-created-hook* 'container-tab-indicator-on-container-created)
-    (gliver-hook-add! *container-destroy-hook* 'container-tab-indicator-on-container-destroy)
-    (gliver-hook-add! *container-focused-hook* 'container-tab-indicator-on-container-focused)
-    (gliver-hook-add! *container-unfocused-hook* 'container-tab-indicator-on-container-unfocused)
-    (gliver-hook-add! *container-resize-hook* 'container-tab-indicator-on-container-resize)
-    (gliver-hook-add! *container-position-changed-hook* 'container-tab-indicator-on-container-resize)
-    (gliver-hook-add! *workspace-switch-hook* 'container-tab-indicator-on-workspace-switch)
-    (gliver-hook-add! *gliver-globals-unbind-hook* 'container-tab-indicator-on-globals-unbind)
-    (gliver-hook-add! *gliver-listeners-attach-hook* 'container-tab-indicator-on-listeners-attach)
-    (gliver-hook-add! *window-container-removed-hook* 'container-tab-indicator-on-window-container-removed)
-    (gliver-hook-add! *window-container-added-hook* 'container-tab-indicator-on-window-container-added)
-    (gliver-hook-add! *window-container-moved-hook* 'container-tab-indicator-on-window-container-moved)
-    (gliver-hook-add! *window-destroyed-hook* 'container-tab-indicator-on-window-destroyed)
-    (gliver-hook-add! *window-focused-hook* 'container-tab-indicator-on-window-focused)
-    (gliver-hook-add! *window-unfocused-hook* 'container-tab-indicator-on-window-unfocused)
-    (gliver-hook-add! *window-title-changed-hook* 'container-tab-indicator-on-window-title-changed)
-    (gliver-hook-add! *window-app-id-changed-hook* 'container-tab-indicator-on-window-app-id-changed)
-    (gliver-hook-add! *seat-shell-interacted-hook* 'container-tab-indicator-on-shell-interaction)
-    (gliver-hook-add! *seat-seat-pointer-position-changed-hook* 'container-tab-indicator-on-pointer-position)
-    (gliver-hook-add! *seat-object-id-changed-hook* 'container-tab-indicator-on-seat-object-id-changed)
-    (gliver-hook-add! *window-fullscreen-entered-hook* 'container-tab-indicator-on-window-fullscreen-entered)
-    (gliver-hook-add! *window-fullscreen-exited-hook* 'container-tab-indicator-on-window-fullscreen-exited)
-    (gliver-hook-add! *output-removed-hook* 'container-tab-indicator-on-output-removed)
+    (for-each (lambda (hook-pair)
+                (gliver-hook-add! (car hook-pair) (cdr hook-pair)))
+              *container-tab-indicator-hooks*)
     (set! *%container-tab-indicator-enabled* #t)
-    (container-tab-indicator-seat-setup!)
-    (container-tab-indicators-update-all!)
-    (log-info "Container tab indicator enabled.")))
+    (if (and (valid-pointer? (manager-wl-proxy *manager*))
+             (or *in-manage-sequence* *in-render-sequence*))
+        (begin
+          (container-tab-indicator-seat-setup!)
+          (container-tab-indicators-update-all!))
+        (gliver-hook-add! *manager-manage-start-hook* 'container-tab-indicator-on-handshake-complete))
+    (log-info "container-tab-indicator: enabled")))
 
 (define (container-tab-indicator-disable!)
-  "Disable container window indicators and unhook and clean up all resources."
+  "Uninstall container tab indicator hooks and clean up all indicator surfaces.
+Parameters: None."
   (when *%container-tab-indicator-enabled*
-    (gliver-hook-remove! *container-created-hook* 'container-tab-indicator-on-container-created)
-    (gliver-hook-remove! *container-destroy-hook* 'container-tab-indicator-on-container-destroy)
-    (gliver-hook-remove! *container-focused-hook* 'container-tab-indicator-on-container-focused)
-    (gliver-hook-remove! *container-unfocused-hook* 'container-tab-indicator-on-container-unfocused)
-    (gliver-hook-remove! *container-resize-hook* 'container-tab-indicator-on-container-resize)
-    (gliver-hook-remove! *container-position-changed-hook* 'container-tab-indicator-on-container-resize)
-    (gliver-hook-remove! *workspace-switch-hook* 'container-tab-indicator-on-workspace-switch)
-    (gliver-hook-remove! *gliver-globals-unbind-hook* 'container-tab-indicator-on-globals-unbind)
-    (gliver-hook-remove! *gliver-listeners-attach-hook* 'container-tab-indicator-on-listeners-attach)
-    (gliver-hook-remove! *window-container-removed-hook* 'container-tab-indicator-on-window-container-removed)
-    (gliver-hook-remove! *window-container-added-hook* 'container-tab-indicator-on-window-container-added)
-    (gliver-hook-remove! *window-container-moved-hook* 'container-tab-indicator-on-window-container-moved)
-    (gliver-hook-remove! *window-destroyed-hook* 'container-tab-indicator-on-window-destroyed)
-    (gliver-hook-remove! *window-focused-hook* 'container-tab-indicator-on-window-focused)
-    (gliver-hook-remove! *window-unfocused-hook* 'container-tab-indicator-on-window-unfocused)
-    (gliver-hook-remove! *window-title-changed-hook* 'container-tab-indicator-on-window-title-changed)
-    (gliver-hook-remove! *window-app-id-changed-hook* 'container-tab-indicator-on-window-app-id-changed)
-    (gliver-hook-remove! *seat-shell-interacted-hook* 'container-tab-indicator-on-shell-interaction)
-    (gliver-hook-remove! *seat-seat-pointer-position-changed-hook* 'container-tab-indicator-on-pointer-position)
-    (gliver-hook-remove! *seat-object-id-changed-hook* 'container-tab-indicator-on-seat-object-id-changed)
-    (gliver-hook-remove! *window-fullscreen-entered-hook* 'container-tab-indicator-on-window-fullscreen-entered)
-    (gliver-hook-remove! *window-fullscreen-exited-hook* 'container-tab-indicator-on-window-fullscreen-exited)
-    (gliver-hook-remove! *output-removed-hook* 'container-tab-indicator-on-output-removed)
+    (gliver-hook-remove! *manager-manage-start-hook* 'container-tab-indicator-on-handshake-complete)
+    (for-each (lambda (hook-pair)
+                (gliver-hook-remove! (car hook-pair) (cdr hook-pair)))
+              *container-tab-indicator-hooks*)
     (set! *%container-tab-indicator-enabled* #f)
-    (container-tab-indicator-seat-cleanup!)
     (container-tab-indicator-on-globals-unbind)
-    (log-info "Container tab indicator disabled.")))
-
-(define (container-tab-indicator-enabled?)
-  "Return #t if container window indicator is enabled, #f otherwise."
-  *%container-tab-indicator-enabled*)
+    (log-info "container-tab-indicator: disabled")))

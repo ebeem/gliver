@@ -1,6 +1,12 @@
 2026-11-10  ebeem  <lord.ebeem@gmail.com>
 	Version 0.0.5 released.
 
+	BREAKING CHANGES:
+	* removed (gliver contrib ui statusbar), if it's imported in user
+	configuration then it should be removed. (gliver contrib ui gleui)
+	already imports it.
+
+	UPDATES:
 	* gleui/toast: Add #:eat-next-key? key to emit toast on next key
 	press.
 	* commands/help: Add describe-top-map command to show the
@@ -23,7 +29,34 @@
 	will most likely cause errors in the future.
 	* core/surface: Add core module surface to provide fractional
 	scaling information.
+	* gleui/palette: Fix Wayland keyboard is cached in palette causing
+	it to become unresponsive if seat is re-created.
 	* core/config: Use different suffix for state (repl & logs) if the
 	use Wayland display is different than wayland-1 (avoid conflicts).
 	* core/helpers: Improve define-var macro to introduce key
 	#:inherit which allows variable inheritance.
+	* gleui/*: Fix Wayland pointer is cached causing it to become
+	unresponsive if seat is re-created.
+	* gleui/widgets: Implement simple declarative framework (flutter
+	inspired) to create common UI widgets.
+	* gleui/*: Refactor gleui components to utilize gleui refactored
+	base and widgets.
+	* gleui/statusbar: Switch bar layout from stack to flex row, this
+	should help prevent them from overlapping.
+	* gleui/toast: Make toast accept a gleui-widget rather than the
+	custom row/column records.
+	* ui/components: Remove backend wrappers and call gleui UI
+	components directly. This wrappers were meant to abstract these
+	components which should allow users to use other backends for them
+	like fuzzel or rofi. This is not in the vision anymore.
+	* core/config: All palette definitions starting with `*palette-`
+	moved to (gliver contrib ui gleui palette), users who overwrite
+	these variables will have to import the module or use var-set!
+	instead.
+	* gleui/statusbar: statusbar modules are now under the same
+	directory as the gleui statusbar module, there is no plan to make
+	the statusbar modules backend-agnostic.
+	* gleui/statusbar: statusbar modules update functions now all run
+	in a background worker to avoid main thread blocking.
+
+	CONTRIBUTORS:

@@ -11,7 +11,7 @@
   #:use-module (ice-9 format)
   #:use-module (ice-9 popen)
   #:use-module (ice-9 textual-ports)
-  #:use-module (gliver contrib ui components launcher)
+  #:use-module (gliver contrib ui gleui launcher)
   #:declarative? #f
   #:export (
 			shell-command-output
@@ -90,8 +90,8 @@ Returns the PID."
   (exec (format #f "exec ~a" *terminal*)))
 
 (define-command (launcher-run)
-  "Spawn dmenu run process."
-  (launcher-show))
+  "Open the application launcher palette."
+  (gleui-launcher-show))
 
 (define-command (command-palette-open)
   "Open the colon command prompt."

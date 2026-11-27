@@ -29,7 +29,7 @@
              (gliver contrib debug ipc-server)
              (gliver contrib debug repl-server))
 
-(define *version* "0.0.4")
+(define *version* "0.0.5")
 (add-to-load-path %gliver-source-directory)
 (set! %load-compiled-path
       (cons %gliver-compiled-directory %load-compiled-path))

@@ -4,6 +4,7 @@
 ;;; SPDX-License-Identifier: GPL-3.0-or-later
 
 (define-module (gliver contrib commands)
+  #:use-module (gliver core helpers)
   #:use-module (gliver contrib commands shell)
   #:use-module (gliver contrib commands help)
   #:use-module (gliver contrib commands keybindings)
@@ -14,14 +15,6 @@
   #:use-module (gliver contrib commands output)
   #:use-module (gliver contrib commands keyboard)
   #:declarative? #f)
-
-(define-syntax re-export-modules
-  (syntax-rules ()
-    ((_ (mod ...) ...)
-     (begin
-       (module-use! (module-public-interface (current-module))
-                    (resolve-interface '(mod ...)))
-       ...))))
 
 (re-export-modules (gliver contrib commands shell)
                    (gliver contrib commands help)

@@ -95,7 +95,7 @@
   "Resolve the effective wallpaper path or color for OUTPUT.
 Priority: workspace -> output -> global *wallpaper* -> #f.
 Parameters: (OUTPUT)
-  - OUTPUT: Target <output> record.
+  - OUTPUT: <output> record target.
 Returns effective wallpaper path or color for OUTPUT, or #f."
   (let* ((ws (output-workspace-current output))
          (ws-wp (and ws (workspace-wallpaper ws)))
@@ -107,7 +107,7 @@ Returns effective wallpaper path or color for OUTPUT, or #f."
 (define (%wallpaper-find-state-by-layer-surface proxy)
   "Find `<wallpaper-output-state>` record associated with layer surface PROXY.
 Parameters: (PROXY)
-  - PROXY: Pointer to zwlr_layer_surface_v1 proxy.
+  - PROXY: Pointer to zwlr_layer_surface_v1.
 Returns: `<wallpaper-output-state>` record if found, #f otherwise."
       (find (lambda (state)
               (equal? (wallpaper-output-state-layer-surface state)
@@ -118,11 +118,11 @@ Returns: `<wallpaper-output-state>` record if found, #f otherwise."
 (define (wallpaper-on-layer-surface-configure data proxy serial width height)
   "Invoked when compositor configures layer surface.
 Parameters: (DATA PROXY-LAYER-SURFACE SERIAL WIDTH HEIGHT)
-  - DATA: User context pointer (unused, null in Gliver).
-  - PROXY-LAYER-SURFACE: Pointer to zwlr_layer_surface_v1 proxy.
-  - SERIAL: Serial number of this configure event.
-  - WIDTH: Allocated width of the layer surface in pixels.
-  - HEIGHT: Allocated height of the layer surface in pixels."
+  - DATA: Pointer to user context (unused, null in Gliver).
+  - PROXY-LAYER-SURFACE: Pointer to zwlr_layer_surface_v1.
+  - SERIAL: Integer serial number of this configure event.
+  - WIDTH: Integer allocated width of the layer surface in pixels.
+  - HEIGHT: Integer allocated height of the layer surface in pixels."
   (and-let* ((state (%wallpaper-find-state-by-layer-surface proxy)))
     (wlr-layer-surface-ack-configure proxy serial)
     (let* ((output (wallpaper-output-state-output state))
@@ -149,8 +149,8 @@ Parameters: (DATA PROXY-LAYER-SURFACE SERIAL WIDTH HEIGHT)
 (define (wallpaper-on-layer-surface-closed data proxy)
   "Invoked when layer surface has been closed by compositor.
 Parameters: (DATA PROXY-LAYER-SURFACE)
-  - DATA: User context pointer (unused, null in Gliver).
-  - PROXY-LAYER-SURFACE: Pointer to zwlr_layer_surface_v1 proxy."
+  - DATA: Pointer to user context (unused, null in Gliver).
+  - PROXY-LAYER-SURFACE: Pointer to zwlr_layer_surface_v1."
   (and-let* ((state (%wallpaper-find-state-by-layer-surface proxy)))
     (log-info "wallpaper: layer surface closed for output ~a"
               (output-name (wallpaper-output-state-output state)))
@@ -160,8 +160,8 @@ Parameters: (DATA PROXY-LAYER-SURFACE)
 (define (wallpaper-shm-buffer-create width height fill-proc!)
   "Allocate a shared memory wl_buffer of size WIDTHxHEIGHT and populate it with FILL-PROC!.
 Parameters: (WIDTH HEIGHT FILL-PROC!)
-  - WIDTH: Buffer width in pixels.
-  - HEIGHT: Buffer height in pixels.
+  - WIDTH: Integer buffer width in pixels.
+  - HEIGHT: Integer buffer height in pixels.
   - FILL-PROC!: Procedure `(lambda (ptr bv stride size width height) ...)` to paint pixels.
 Returns: Wayland buffer foreign pointer on success, %null-pointer on failure."
   (if (or (<= width 0) (<= height 0) (not (valid-pointer? *wl-shm*)))
@@ -219,11 +219,11 @@ Returns: Wayland buffer foreign pointer on success, %null-pointer on failure."
 (define* (wallpaper-buffer-render wp width height #:optional (scale 1.0) (surface #f))
   "Create and return a wl_buffer containing the rendered wallpaper WP for size WIDTHxHEIGHT using Cairo.
 Parameters: (WP WIDTH HEIGHT [SCALE] [SURFACE])
-  - WP: Wallpaper specification (file path string or hex color string).
-  - WIDTH: Target width in pixels.
-  - HEIGHT: Target height in pixels.
-  - SCALE: Scaling factor.
-  - SURFACE: Associated wl_surface pointer (optional, unused).
+  - WP: String, symbol, or #f wallpaper specification (file path or hex color).
+  - WIDTH: Integer target width in pixels.
+  - HEIGHT: Integer target height in pixels.
+  - SCALE: Float scaling factor.
+  - SURFACE: Pointer to Wayland wl_surface or #f (optional, unused).
 Returns: Wayland buffer foreign pointer on success, %null-pointer on failure."
   (let* ((s (if (and (number? scale) (> scale 0))
 				scale 1.0))
@@ -322,8 +322,8 @@ Returns: Wayland buffer foreign pointer on success, %null-pointer on failure."
 (define (wallpaper-render-and-commit! output state)
   "Render the effective wallpaper for OUTPUT and commit the surface.
 Parameters: (OUTPUT STATE)
-  - OUTPUT: Output record to render wallpaper for.
-  - STATE: `<wallpaper-output-state>` record holding current surface handles and cached dimensions."
+  - OUTPUT: <output> record to render wallpaper for.
+  - STATE: <wallpaper-output-state> record holding current surface handles and cached dimensions."
   (let* ((wp (output-effective-wallpaper output))
          (width (wallpaper-output-state-rendered-width state))
          (height (wallpaper-output-state-rendered-height state))
@@ -356,7 +356,7 @@ Parameters: (OUTPUT STATE)
 (define (wallpaper-init-output! output)
   "Initialize the background layer surface for OUTPUT.
 Parameters: (OUTPUT)
-  - OUTPUT: Output record to initialize wallpaper surface for."
+  - OUTPUT: <output> record to initialize wallpaper surface for."
   (unless (or (not *wallpaper-manager-enabled*)
               (not (valid-pointer? *wl-compositor*))
               (not (valid-pointer? *wlr-layer-shell*))
@@ -403,16 +403,16 @@ Parameters: (OUTPUT)
 (define (wallpaper-on-output-created output prev-obj-id)
   "Handle new output creation event for OUTPUT.
 Parameters: (OUTPUT PREV-OBJ-ID)
-  - OUTPUT: Output record newly created or modified.
-  - PREV-OBJ-ID: Previous Wayland object ID or #f."
+  - OUTPUT: <output> record newly created or modified.
+  - PREV-OBJ-ID: Integer or #f previous Wayland object ID."
   (when (and *wallpaper-manager-enabled* output)
 	(wallpaper-init-output! output)))
 
 (define (wallpaper-on-workspace-wallpaper-changed workspace wp)
   "Update output wallpaper when WORKSPACE wallpaper is modified to WP.
 Parameters: (WORKSPACE WP)
-  - WORKSPACE: Workspace record whose wallpaper changed.
-  - WP: New wallpaper specification (file path string or hex color)."
+  - WORKSPACE: <workspace> record whose wallpaper changed.
+  - WP: String, symbol, or #f new wallpaper specification (file path or hex color)."
   (when (and *wallpaper-manager-enabled* workspace)
     (let ((output (workspace-output workspace)))
       (when (and output (eq? (output-workspace-current output) workspace))
@@ -421,8 +421,8 @@ Parameters: (WORKSPACE WP)
 (define (wallpaper-on-wallpaper-output-changed output wp)
   "Update OUTPUT wallpaper when output wallpaper is modified to WP.
 Parameters: (OUTPUT WP)
-  - OUTPUT: Output record whose wallpaper changed.
-  - WP: New wallpaper specification (file path string or hex color)."
+  - OUTPUT: <output> record whose wallpaper changed.
+  - WP: String, symbol, or #f new wallpaper specification (file path or hex color)."
   (when (and *wallpaper-manager-enabled* output wp)
     (let* ((ws (output-workspace-current output))
            (ws-wp (and ws (workspace-wallpaper ws))))
@@ -434,8 +434,8 @@ Parameters: (OUTPUT WP)
 (define (wallpaper-on-workspace-switch workspace prev-workspace)
   "Update output wallpaper when switching to WORKSPACE from PREV-WORKSPACE.
 Parameters: (WORKSPACE PREV-WORKSPACE)
-  - WORKSPACE: Workspace switched to.
-  - PREV-WORKSPACE: Workspace switched from."
+  - WORKSPACE: <workspace> record switched to.
+  - PREV-WORKSPACE: <workspace> record switched from, or #f."
   (when (and *wallpaper-manager-enabled* workspace)
     (and-let* ((output (workspace-output workspace)))
       (wallpaper-update-output! output))))
@@ -443,7 +443,7 @@ Parameters: (WORKSPACE PREV-WORKSPACE)
 (define (wallpaper-update-output! output)
   "Update the wallpaper rendered on OUTPUT if its effective wallpaper changed.
 Parameters: (OUTPUT)
-  - OUTPUT: Output record to update."
+  - OUTPUT: <output> record to update."
   (when (and *wallpaper-manager-enabled* output)
     (let ((state (hash-table-ref/default *wallpaper-output-table* (output-id output) #f)))
       (if (and state (wallpaper-output-state-configured? state))
@@ -454,7 +454,10 @@ Parameters: (OUTPUT)
           (wallpaper-init-output! output)))))
 
 (define* (wallpaper-on-surface-scale-changed surface scale)
-  "Invoked when scaling factor changes for SURFACE."
+  "Invoked when scaling factor changes for SURFACE.
+Parameters: (SURFACE SCALE)
+  - SURFACE: Pointer to Wayland wl_surface whose scale changed.
+  - SCALE: Float new fractional scale factor (unused)."
   (when *wallpaper-manager-enabled*
     (for-each
      (lambda (state)
@@ -468,9 +471,9 @@ Parameters: (OUTPUT)
 (define (wallpaper-on-output-dimensions output prev-width prev-height)
   "Handle dimensions change event for OUTPUT from PREV-WIDTHxPREV-HEIGHT.
 Parameters: (OUTPUT PREV-WIDTH PREV-HEIGHT)
-  - OUTPUT: Output record whose dimensions changed.
-  - PREV-WIDTH: Previous width in pixels.
-  - PREV-HEIGHT: Previous height in pixels."
+  - OUTPUT: <output> record whose dimensions changed.
+  - PREV-WIDTH: Integer previous width in pixels.
+  - PREV-HEIGHT: Integer previous height in pixels."
   (when (and *wallpaper-manager-enabled* output)
 	(let ((state (hash-table-ref/default *wallpaper-output-table* (output-id output) #f)))
       (when state
@@ -494,7 +497,7 @@ Parameters: None."
 (define (wallpaper-cleanup-output! output)
   "Clean up layer shell resources and buffer state for OUTPUT.
 Parameters: (OUTPUT)
-  - OUTPUT: Output record to clean up."
+  - OUTPUT: <output> record to clean up."
   (when (and output (output? output))
     (let ((state (hash-table-ref/default *wallpaper-output-table* (output-id output) #f)))
       (when state
@@ -524,7 +527,7 @@ Parameters: None."
   #:interactive (string)
   "Set the global wallpaper to PATH-OR-COLOR (image path or hex color).
 Parameters: (PATH-OR-COLOR)
-  - PATH-OR-COLOR: Image path string or hex color string."
+  - PATH-OR-COLOR: String image path or hex color."
   (var-set! *wallpaper* path-or-color)
   (gliver-hook-run! *wallpaper-changed-hook* path-or-color)
   (wallpaper-update-all!)
@@ -534,7 +537,7 @@ Parameters: (PATH-OR-COLOR)
   #:interactive (string)
   "Set the wallpaper for the current output.
 Parameters: (PATH-OR-COLOR)
-  - PATH-OR-COLOR: Image path string or hex color string."
+  - PATH-OR-COLOR: String image path or hex color."
   (let ((output (output-current)))
     (when output
       (output-wallpaper-set! output path-or-color)
@@ -545,7 +548,7 @@ Parameters: (PATH-OR-COLOR)
   #:interactive (string)
   "Set the wallpaper for the current workspace.
 Parameters: (PATH-OR-COLOR)
-  - PATH-OR-COLOR: Image path string or hex color string."
+  - PATH-OR-COLOR: String image path or hex color."
   (let ((workspace (workspace-current)))
     (when workspace
       (workspace-wallpaper-set! workspace path-or-color)
@@ -561,13 +564,15 @@ Parameters: None."
   (log-info "wallpaper: wallpapers reloaded"))
 
 (define-command (wallpaper-enable!)
-  "Enable and show the statusbar across configured outputs."
+  "Enable and show the statusbar across configured outputs.
+Parameters: None."
   (var-set! *wallpaper-manager-enabled* #t)
   (wallpaper-reload)
   (log-info "Enabling wallpaper-basic ..."))
 
 (define-command (wallpaper-disable!)
-  "Enable and show the statusbar across configured outputs."
+  "Enable and show the statusbar across configured outputs.
+Parameters: None."
   (var-set! *wallpaper-manager-enabled* #f)
   (log-info "Disabling wallpaper-basic ..."))
 

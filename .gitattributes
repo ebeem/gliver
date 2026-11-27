@@ -1,0 +1,2 @@
+*.scm       diff=scheme linguist-language=Scheme
+*.scm.in    diff=scheme

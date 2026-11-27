@@ -1,563 +1,319 @@
-;;; gliver/contrib/ui/gleui/notifications.scm --- Native D-Bus Notification Daemon for Gliver
+;;; gliver/contrib/ui/gleui/notifications.scm --- Native D-Bus Notification Daemon
 ;;;
 ;;; Copyright (C) 2026 Gliver Contributors
 ;;; SPDX-License-Identifier: GPL-3.0-or-later
 ;;;
-;;; NOTE: this uses unix sockets rather than implementing dbus bindings via ffi
-;;; this has some disadvantages, but it seems like it's not recommended by freedesktop
-;;; to bindings to libdbus anymore, maybe needs more investigation and study
-;;; the code is ugly because it deals with low-level dbus interaction via POSIX docket
-;;; would love to have a library under deps to manage the low-level calls so this
-;;; file can become more compact and easier to read and maintain
+;;; This module implements the org.freedesktop.Notifications D-Bus daemon
+;;; using (gliver deps dbus) and gleui toasts.
+;;; It handles:
+;;;  - Configuring and activating notification daemon
+;;;  - Decoding and displaying notification payloads
+;;;  - Dispatching D-Bus method calls, emitting signals, and daemon lifecycle
+;;;
+;;; NOTE: this uses unix sockets via (gliver deps dbus) rather than libdbus ffi.
+;;; as far as I am concerned, this is the recommended approach as per freedesktop
 
 (define-module (gliver contrib ui gleui notifications)
+  #:use-module (cairo)
   #:use-module (ice-9 format)
-  #:use-module (ice-9 rdelim)
-  #:use-module (ice-9 binary-ports)
-  #:use-module (ice-9 string-fun)
   #:use-module (ice-9 match)
-  #:use-module (srfi srfi-1)
-  #:use-module (srfi srfi-11)
   #:use-module (rnrs bytevectors)
   #:use-module (rnrs io ports)
+  #:use-module (srfi srfi-1)
+  #:use-module (srfi srfi-2)
   #:use-module (gliver core)
   #:use-module (gliver deps pango)
+  #:use-module (gliver deps dbus)
+  #:use-module (gliver contrib ui gleui base)
   #:use-module (gliver contrib ui gleui toast)
   #:declarative? #f
   #:export (
-			*notification-daemon-enabled*
-			*notification-daemon-timeout*
-			*notification-daemon-show-app-name*
-			*notification-daemon-show-actions*
-			*notification-daemon-max-history*
-			*notification-daemon-max-visible*
-			*notification-daemon-gap*
-			*notification-daemon-font*
-			*notification-daemon-font-size*
-			*notification-daemon-bg-color*
-			*notification-daemon-fg-color*
-			*notification-daemon-border-color*
-			*notification-daemon-border-width*
-			*notification-daemon-border-radius*
-			*notification-daemon-location*
-			*notification-daemon-margin*
-			*notification-daemon-padding-x*
-			*notification-daemon-padding-y*
-			*notification-daemon-width*
-			*notification-daemon-icon-show*
-			*notification-daemon-icon-location*
-			*notification-daemon-icon-border-radius*
-			*notification-daemon-icon-border-width*
-			*notification-daemon-icon-border-color*
-			*notification-daemon-icon-size*
-			*notification-daemon-socket*
-			*notification-daemon-serial*
-			*notification-daemon-id-counter*
-			*notification-daemon-active-id*
-			*notification-daemon-active-ids*
-			*notification-daemon-history*
-			*notification-daemon-dbus-in-buffer*
-			notification-daemon-clear-history!
-			notification-daemon-dismiss!
-			notification-daemon-dismiss-all!
-			notification-daemon-redisplay-last!
-			*notification-daemon-introspection-xml*
-			notification-daemon-poll!
-			notification-daemon-start!
-			notification-daemon-stop!
-			notification-daemon-restart!
+            *notification-daemon-enabled*
+            *notification-daemon-timeout*
+            *notification-daemon-show-app-name*
+            *notification-daemon-show-actions*
+            *notification-daemon-max-history*
+            *notification-daemon-max-visible*
+            *notification-daemon-gap*
+            *notification-daemon-font*
+            *notification-daemon-font-size*
+            *notification-daemon-bg-color*
+            *notification-daemon-fg-color*
+            *notification-daemon-border-color*
+            *notification-daemon-border-urgent-color*
+            *notification-daemon-border-width*
+            *notification-daemon-border-radius*
+            *notification-daemon-location*
+            *notification-daemon-margin*
+            *notification-daemon-padding-x*
+            *notification-daemon-padding-y*
+            *notification-daemon-width*
+            *notification-daemon-icon-show*
+            *notification-daemon-icon-location*
+            *notification-daemon-icon-border-radius*
+            *notification-daemon-icon-border-width*
+            *notification-daemon-icon-border-color*
+            *notification-daemon-icon-size*
+            *notification-daemon-dbus*
+            *notification-daemon-id-counter*
+            *notification-daemon-active-id*
+            *notification-daemon-active-ids*
+            *notification-daemon-history*
+            notification-daemon-clear-history!
+            notification-daemon-dismiss-all!
+            notification-daemon-redisplay-last!
+            notification-daemon-poll!
+            notification-daemon-start!
+            notification-daemon-stop!
+            notification-daemon-restart!
 ))
 
 (define-var *notification-daemon-enabled* #t
-			"Whether the Gliver notification daemon should be started with gleui components.")
-(define-var *notification-daemon-timeout* *message-timeout*
-			"Expiration timeout for notifications in milliseconds.")
+            "Whether the Gliver notification daemon should be started with gleui components.")
+(define-var *notification-daemon-timeout* #:inherit *message-timeout*
+            "Expiration timeout for notifications in seconds.")
 (define-var *notification-daemon-show-app-name* #t
-			"Whether to display the calling application name.")
+            "Whether to display the calling application name.")
 (define-var *notification-daemon-show-actions* #t
-			"Whether to display notification action button labels.")
+            "Whether to display notification action button labels.")
 (define-var *notification-daemon-max-history* 50
-			"Maximum number of notifications to keep in history.")
+            "Maximum number of notifications to keep in history.")
 (define-var *notification-daemon-max-visible* 6
-			"Maximum number of notification toasts visible on screen.")
+            "Maximum number of notification toasts visible on screen.")
 (define-var *notification-daemon-gap* 12
-			"Vertical gap in pixels between stacked notifications.")
+            "Vertical gap in pixels between stacked notifications.")
 
-(define-var *notification-daemon-font* *gleui-toast-font*
-			"Font used for gleui toast notifications.")
-(define-var *notification-daemon-font-size* *gleui-toast-font-size*
-			"Font size used for gleui toast notifications.")
-(define-var *notification-daemon-bg-color* *gleui-toast-bg-color*
-			"Background color for gleui toast notifications.")
-(define-var *notification-daemon-fg-color* *gleui-toast-fg-color*
-			"Text color for gleui toast notifications.")
-(define-var *notification-daemon-border-color* *gleui-toast-border-color*
-			"Border color for gleui toast notifications.")
-(define-var *notification-daemon-border-width* *gleui-toast-border-width*
-			"Border width in pixels for gleui toast notifications.")
-(define-var *notification-daemon-border-radius* *gleui-toast-border-radius*
-			"Corner border radius in pixels for gleui toast notifications.")
-(define-var *notification-daemon-location* *gleui-toast-location*
-			"Gliver position (1-9) for gleui toast notifications.")
-(define-var *notification-daemon-margin* *gleui-toast-margin*
-			"Margin in pixels from the screen edge for gleui toast notifications.")
-(define-var *notification-daemon-padding-x* *gleui-toast-padding-x*
-			"Padding horizontal content in pixels for gleui toast notifications.")
-(define-var *notification-daemon-padding-y* *gleui-toast-padding-y*
-			"Padding vertical content in pixels for gleui toast notifications.")
+(define-var *notification-daemon-font* #:inherit *gleui-toast-font*
+            "Font used for gleui toast notifications.")
+(define-var *notification-daemon-font-size* #:inherit *gleui-toast-font-size*
+            "Font size used for gleui toast notifications.")
+(define-var *notification-daemon-bg-color* #:inherit *gleui-toast-bg-color*
+            "Background color for gleui toast notifications.")
+(define-var *notification-daemon-fg-color* #:inherit *gleui-toast-fg-color*
+            "Text color for gleui toast notifications.")
+(define-var *notification-daemon-border-color* #:inherit *gleui-toast-border-color*
+            "Border color for gleui toast notifications.")
+(define-var *notification-daemon-border-urgent-color* #:inherit *theme-urgent-color*
+            "Border color for urgent gleui toast notifications.")
+(define-var *notification-daemon-border-width* #:inherit *gleui-toast-border-width*
+            "Border width in pixels for gleui toast notifications.")
+(define-var *notification-daemon-border-radius* #:inherit *gleui-toast-border-radius*
+            "Corner border radius in pixels for gleui toast notifications.")
+(define-var *notification-daemon-location* #:inherit *gleui-toast-location*
+            "Gliver position (1-9) for gleui toast notifications.")
+(define-var *notification-daemon-margin* #:inherit *gleui-toast-margin*
+            "Margin in pixels from the screen edge for gleui toast notifications.")
+(define-var *notification-daemon-padding-x* #:inherit *gleui-toast-padding-x*
+            "Padding horizontal content in pixels for gleui toast notifications.")
+(define-var *notification-daemon-padding-y* #:inherit *gleui-toast-padding-y*
+            "Padding vertical content in pixels for gleui toast notifications.")
 (define-var *notification-daemon-width* 500
-			"Fixed width in pixels for notification daemon toasts.")
-(define-var *notification-daemon-icon-show* *gleui-toast-icon-show*
-			"Whether to display icons in notification daemon toasts.")
-(define-var *notification-daemon-icon-location* *gleui-toast-icon-location*
-			"Icon placement in notification daemon toasts: 'left or 'right.")
-(define-var *notification-daemon-icon-border-radius* *gleui-toast-icon-border-radius*
-			"Corner border radius in pixels for icons in notification daemon toasts.")
-(define-var *notification-daemon-icon-border-width* *gleui-toast-icon-border-width*
-			"Border width in pixels around icons in notification daemon toasts.")
-(define-var *notification-daemon-icon-border-color* *gleui-toast-icon-border-color*
-			"Border color around icons in notification daemon toasts.")
-(define-var *notification-daemon-icon-size* *gleui-toast-icon-size*
-			"Icon dimensions (width and height) in pixels in notification daemon toasts.")
+            "Fixed width in pixels for notification daemon toasts.")
+(define-var *notification-daemon-icon-show* #:inherit *gleui-toast-icon-show*
+            "Whether to display icons in notification daemon toasts.")
+(define-var *notification-daemon-icon-location* #:inherit *gleui-toast-icon-location*
+            "Icon placement in notification daemon toasts: 'left or 'right.")
+(define-var *notification-daemon-icon-border-radius* #:inherit *gleui-toast-icon-border-radius*
+            "Corner border radius in pixels for icons in notification daemon toasts.")
+(define-var *notification-daemon-icon-border-width* #:inherit *gleui-toast-icon-border-width*
+            "Border width in pixels around icons in notification daemon toasts.")
+(define-var *notification-daemon-icon-border-color* #:inherit *gleui-toast-icon-border-color*
+            "Border color around icons in notification daemon toasts.")
+(define-var *notification-daemon-icon-size* #:inherit *gleui-toast-icon-size*
+            "Icon dimensions (width and height) in pixels in notification daemon toasts.")
 
-;;; global state
-(define *notification-daemon-socket* #f)
-(define *notification-daemon-serial* 1)
-(define *notification-daemon-id-counter* 1)
-(define *notification-daemon-active-id* #f)
-(define *notification-daemon-active-ids* '())
-(define *notification-daemon-history* '())
-(define *notification-daemon-dbus-in-buffer* (make-bytevector 0 0))
+(define-var *notification-daemon-dbus* #f
+            "Connected <dbus-connection> record, or #f when stopped.")
+(define-var *notification-daemon-id-counter* 1
+            "Monotonic freedesktop notification ID counter.")
+(define-var *notification-daemon-active-id* #f
+            "Most recently shown active notification ID, or #f.")
+(define-var *notification-daemon-active-ids* '()
+            "Ordered list of currently visible notification IDs (newest first).")
+(define-var *notification-daemon-history* '()
+            "Bounded list of recent notification history alists (newest first).")
 
-(define (%next-serial!)
-  (let ((s *notification-daemon-serial*))
-    (set! *notification-daemon-serial* (1+ *notification-daemon-serial*))
-    s))
+(define %notification-service-name "org.freedesktop.Notifications")
+(define %notification-object-path  "/org/freedesktop/Notifications")
 
 (define (%next-id!)
+  "Return and increment the next notification ID.
+Parameters: None.
+Returns positive integer notification ID."
   (let ((id *notification-daemon-id-counter*))
     (set! *notification-daemon-id-counter* (1+ *notification-daemon-id-counter*))
     id))
 
+(define (%notification-toast-name id)
+  "Build the toast instance name corresponding to notification ID.
+ID is concatenated with 'notification' to create a unique toast name.
+Parameters: (ID)
+  - ID: Integer notification identifier.
+Returns formatted string toast instance name."
+  (format #f "notification-~a" id))
+
+(define (%add-to-history! id app-name summary body urgency icon)
+  "Prepend a notification entry to `*notification-daemon-history*'
+Parameters: (ID APP-NAME SUMMARY BODY URGENCY ICON)
+  - ID: Integer assigned notification ID.
+  - APP-NAME: String or #f application name.
+  - SUMMARY: String or #f notification summary text.
+  - BODY: String or #f notification body text.
+  - URGENCY: Integer urgency level (0=low, 1=normal, 2=critical).
+  - ICON: String, list, or #f icon path/name or decoded '(image-data ...) payload."
+  (let ((entry `((id . ,id)
+                 (app-name . ,app-name)
+                 (summary . ,summary)
+                 (body . ,body)
+                 (urgency . ,urgency)
+                 (icon . ,icon)
+                 (timestamp . ,(current-time)))))
+    (set! *notification-daemon-history*
+          (cons entry *notification-daemon-history*))
+    ;; pop last notification in history if it exceed max length
+    (when (> (length *notification-daemon-history*) *notification-daemon-max-history*)
+      (set! *notification-daemon-history*
+            (take *notification-daemon-history* *notification-daemon-max-history*)))))
+
 (define-command (notification-daemon-clear-history!)
-  "Clear the notification history."
+  "Clear the stored notification history.
+Parameters: None."
   (set! *notification-daemon-history* '())
-  (log-info "History cleared."))
+  (log-info "notification-daemon: history cleared"))
 
-(define (%dbus-session-bus-path)
-  "Locate the dbus UNIX socket path."
-  (let ((addr (getenv "DBUS_SESSION_BUS_ADDRESS")))
-    (cond
-     ((and addr (string-prefix? "unix:path=" addr))
-      (let* ((rest (substring addr (string-length "unix:path=")))
-             (comma (string-index rest #\,)))
-        (if comma (substring rest 0 comma) rest)))
-     ((and addr (file-exists? addr))
-      addr)
-     (else
-      (let ((fallback (string-append "/run/user/" (number->string (getuid)) "/bus")))
-        (if (file-exists? fallback) fallback #f))))))
+;;; notification dbus wire codec signals
+(define (%read-image-data port)
+  "Decode a freedesktop D-Bus (iiibiiay) image-data struct from PORT.
+https://specifications.freedesktop.org/notification/latest-single/#icons-and-images-formats
+Parameters: (PORT)
+  - PORT: Input port supporting seek (binary) inside a variant payload.
+Returns decoded '(image-data WIDTH HEIGHT ROWSTRIDE HAS-ALPHA BPS CHANNELS DATA) list, or #f."
+  (dbus-get-align port 8)
+  (let* ((width            (dbus-get-s32 port))
+         (height           (dbus-get-s32 port))
+         (rowstride        (dbus-get-s32 port))
+         (has-alpha        (not (zero? (dbus-get-u32 port))))
+         (bits-per-sample  (dbus-get-s32 port))
+         (channels         (dbus-get-s32 port))
+         (data-len         (dbus-get-u32 port))
+         (data             (get-bytevector-n port data-len)))
+    (and (bytevector? data)
+         (list 'image-data width height rowstride has-alpha
+               bits-per-sample channels data))))
 
-(define (%dbus-connect path)
-  "Connect to dbus session bus at PATH."
-  (let ((sock (socket AF_UNIX SOCK_STREAM 0)))
-    ;; prevent socket leakage to child processes
-    (fcntl sock F_SETFD FD_CLOEXEC)
-    (connect sock AF_UNIX path)
-    ;; sasl external auth requires hex-encoding the ASCII string of decimal UID
-    (let* ((uid-str (number->string (getuid)))
-           (uid-hex (apply string-append
-                           (map (lambda (c) (number->string (char->integer c) 16))
-                                (string->list uid-str)))))
-
-      ;; initial null byte + auth external <uid-hex>\r\n
-      (display (string-append "\x00AUTH EXTERNAL " uid-hex "\r\n") sock)
-      (force-output sock)
-      (let ((line (read-line sock)))
-        (unless (and (string? line) (string-prefix? "OK" line))
-          (close-port sock)
-          (error "D-Bus SASL auth failed" line)))
-
-      ;; begin\r\n
-      (display "BEGIN\r\n" sock)
-      (force-output sock)
-      sock)))
-
-;;; encoders and decoders
-;;; these are all helpers to read and write to dbus socket
-(define (%bytevector-slice bv start len)
-  (let ((out (make-bytevector len 0)))
-    (bytevector-copy! bv start out 0 len)
-    out))
-
-(define (%bytevector-append bv1 bv2)
-  (let* ((l1 (bytevector-length bv1))
-         (l2 (bytevector-length bv2))
-         (out (make-bytevector (+ l1 l2) 0)))
-    (bytevector-copy! bv1 0 out 0 l1)
-    (bytevector-copy! bv2 0 out l1 l2)
-    out))
-
-(define (%align-offset offset n)
-  (let ((rem (modulo offset n)))
-    (if (zero? rem) offset (+ offset (- n rem)))))
-
-(define (%put-align port alignment)
-  (let ((rem (modulo (seek port 0 SEEK_CUR) alignment)))
-    (unless (zero? rem)
-      (put-bytevector port (make-bytevector (- alignment rem) 0)))))
-
-(define (%get-align port alignment)
-  (let* ((pos (seek port 0 SEEK_CUR))
-         (rem (modulo pos alignment)))
-    (unless (zero? rem)
-      (catch 'out-of-range
-        (lambda ()
-          (seek port (- alignment rem) SEEK_CUR))
-        (lambda _ #f)))))
-
-(define (%socket-send-all! sock bv)
-  (put-bytevector sock bv)
-  (force-output sock))
-
-;;; encoders
-(define (%put-u8 port n)
-  (put-u8 port n))
-
-(define (%put-u32 port n)
-  (%put-align port 4)
-  (let ((bv (make-bytevector 4 0)))
-    (bytevector-u32-set! bv 0 n (endianness little))
-    (put-bytevector port bv)))
-
-(define (%put-s32 port n)
-  (%put-align port 4)
-  (let ((bv (make-bytevector 4 0)))
-    (bytevector-s32-set! bv 0 n (endianness little))
-    (put-bytevector port bv)))
-
-(define (%put-dbus-string port str)
-  (let ((utf (string->utf8 (or str ""))))
-    (%put-u32 port (bytevector-length utf))
-    (put-bytevector port utf)
-    (%put-u8 port 0)))
-
-(define (%put-dbus-signature port sig)
-  (let ((utf (string->utf8 (or sig ""))))
-    (%put-u8 port (bytevector-length utf))
-    (put-bytevector port utf)
-    (%put-u8 port 0)))
-
-(define (%call-with-bv-output proc)
-  (call-with-values open-bytevector-output-port
-    (lambda (port get-bv)
-      (proc port)
-      (get-bv))))
-
-(define (%encode-u32 n)
-  (%call-with-bv-output (lambda (p) (%put-u32 p n))))
-(define (%encode-string str)
-  (%call-with-bv-output (lambda (p) (%put-dbus-string p str))))
-
-(define (%encode-string-array strs)
-  (let ((data (%call-with-bv-output
-               (lambda (p) (for-each (lambda (s) (%put-dbus-string p s)) strs)))))
-    (%call-with-bv-output
-     (lambda (p)
-       (%put-u32 p (bytevector-length data))
-       (put-bytevector p data)))))
-
-(define (%encode-4-strings . strs)
-  (%call-with-bv-output
-   (lambda (p) (for-each (lambda (s) (%put-dbus-string p s)) strs))))
-
-;; decoders
-(define (%get-u8 port)
-  (let ((b (get-u8 port)))
-    (if (number? b) b 0)))
-
-(define (%get-u32 port)
-  (%get-align port 4)
-  (let ((bv (get-bytevector-n port 4)))
-    (if (and (bytevector? bv) (= (bytevector-length bv) 4))
-        (bytevector-u32-ref bv 0 (endianness little))
-        0)))
-
-(define (%get-s32 port)
-  (%get-align port 4)
-  (let ((bv (get-bytevector-n port 4)))
-    (if (and (bytevector? bv) (= (bytevector-length bv) 4))
-        (bytevector-s32-ref bv 0 (endianness little))
-        0)))
-
-(define (%get-dbus-string port)
-  (let* ((len (%get-u32 port))
-         (bv  (if (> len 0)
-                  (let ((b (get-bytevector-n port len)))
-                    (if (bytevector? b) b #vu8()))
-                  #vu8())))
-    (get-u8 port)
-    (catch #t
-      (lambda () (utf8->string bv))
-      (lambda _ ""))))
-
-(define (%get-dbus-signature port)
-  (let* ((len (%get-u8 port))
-         (bv  (if (> len 0)
-                  (let ((b (get-bytevector-n port len)))
-                    (if (bytevector? b) b #vu8()))
-                  #vu8())))
-    (get-u8 port)
-    (catch #t
-      (lambda () (utf8->string bv))
-      (lambda _ ""))))
-
-(define (%get-dbus-string-array port)
-  (let* ((len (%get-u32 port))
-         (cur (seek port 0 SEEK_CUR))
-         (end (+ cur len)))
-    (let loop ((acc '()))
-      (if (or (port-eof? port) (>= (seek port 0 SEEK_CUR) end))
-          (reverse acc)
-          (loop (cons (%get-dbus-string port) acc))))))
-
-(define (%get-dbus-hints-dict port)
-  (catch #t
-    (lambda ()
-      (define (%cur-pos)
-        (seek port 0 SEEK_CUR))
-
-      (define (%safe-skip n)
-        (when (positive? n)
-          (catch 'out-of-range
-            (lambda () (seek port n SEEK_CUR))
-            (lambda _ #f))))
-
-      (define (%read-8byte ref-proc default)
-        (%get-align port 8)
-        (let ((b (get-bytevector-n port 8)))
-          (if (and (bytevector? b) (= (bytevector-length b) 8))
-              (ref-proc b 0 (endianness little))
-              default)))
-
-      (define (%read-image-data)
-        (%get-align port 8)
-        (let* ((w         (%get-s32 port))
-               (h         (%get-s32 port))
-               (rowstride (%get-s32 port))
-               (has-alpha (not (zero? (%get-u32 port))))
-               (bps       (%get-s32 port))
-               (channels  (%get-s32 port))
-               (data-len  (%get-u32 port))
-               (data      (get-bytevector-n port data-len)))
-          (if (bytevector? data)
-              (list 'image-data w h rowstride has-alpha bps channels data)
-              #f)))
-
-      (define (%read-variant sig)
-        (cond
-         ((string=? sig "y")  (%get-u8 port))
-         ((string=? sig "u")  (%get-u32 port))
-         ((string=? sig "i")  (%get-s32 port))
-         ((or (string=? sig "q") (string=? sig "n"))
-          (%get-align port 2)
-          (let ((bv (get-bytevector-n port 2)))
-            (if (and (bytevector? bv) (= (bytevector-length bv) 2))
-                (bytevector-u16-ref bv 0 (endianness little))
-                0)))
-         ((string=? sig "x")  (%read-8byte bytevector-s64-ref 0))
-         ((string=? sig "t")  (%read-8byte bytevector-u64-ref 0))
-         ((string=? sig "d")  (%read-8byte bytevector-ieee-double-ref 0.0))
-         ((string=? sig "b")  (not (zero? (%get-u32 port))))
-         ((or (string=? sig "s") (string=? sig "o")) (%get-dbus-string port))
-         ((string=? sig "as") (%get-dbus-string-array port))
-         ((string=? sig "(iiibiiay)") (%read-image-data))
-         ((string-prefix? "a" sig)
-          (let ((arr-len (%get-u32 port)))
-            (%safe-skip arr-len)
-            #f))
-         (else #f)))
-
-      (let ((len (%get-u32 port)))
-        (%get-align port 8)
-        (let ((end (+ (%cur-pos) len)))
-          (let loop ((acc '()))
-            (let* ((cur (%cur-pos))
-                   (rem (modulo cur 8))
-                   (pad (if (zero? rem) 0 (- 8 rem))))
-              (if (or (port-eof? port) (>= (+ cur pad) end))
-                  (begin
-                    (seek port end SEEK_SET)
-                    (reverse acc))
-                  (begin
-                    (%safe-skip pad)
-                    (let* ((key (%get-dbus-string port))
-                           (sig (%get-dbus-signature port))
-                           (val (%read-variant sig)))
-                      (if val
-                          (loop (cons (cons key val) acc))
-                          (if (< (%cur-pos) end)
-                              (loop acc)
-                              (begin
-                                (seek port end SEEK_SET)
-                                (reverse acc))))))))))))
-    (lambda (k . args)
-      (log-error "notification-daemon: Error parsing hints dict: ~a ~a" k args)
-      '())))
-
-;;; dbus message and body handlers
-(define (%build-header-fields fields)
-  (%call-with-bv-output
-   (lambda (p)
-     (for-each
-      (lambda (f)
-        (let ((code (car f))
-              (sig  (cadr f))
-              (val  (caddr f)))
-          (%put-align p 8)
-          (%put-u8 p code)
-          (%put-dbus-signature p sig)
-          (cond
-           ((or (string=? sig "s") (string=? sig "o")) (%put-dbus-string p val))
-           ((string=? sig "u")                         (%put-u32 p val))
-           ((string=? sig "g")                         (%put-dbus-signature p val)))))
-      fields))))
-
-(define (%build-dbus-message type serial fields body)
-  (let* ((hfields     (%build-header-fields fields))
-         (hfields-len (bytevector-length hfields))
-         (body-len    (if body (bytevector-length body) 0))
-         (hdr         (make-bytevector 16 0)))
-    ;; dbus header: [endianness, type, flags, version, body length, serial, fields length]
-    (bytevector-u8-set!  hdr 0 108) ;; 'l' little endian
-    (bytevector-u8-set!  hdr 1 type)
-    (bytevector-u8-set!  hdr 2 0)   ;; flags
-    (bytevector-u8-set!  hdr 3 1)   ;; protocol version 1
-    (bytevector-u32-set! hdr 4  body-len    (endianness little))
-    (bytevector-u32-set! hdr 8  serial      (endianness little))
-    (bytevector-u32-set! hdr 12 hfields-len (endianness little))
-    (%call-with-bv-output
-     (lambda (p)
-       (put-bytevector p hdr)
-       (put-bytevector p hfields)
-       (%put-align p 8)
-       (when body (put-bytevector p body))))))
-
-(define (%parse-header-fields bv)
-  (let* ((p   (open-bytevector-input-port bv))
-         (len (bytevector-length bv)))
-    (let loop ((acc '()))
-      (let* ((pos (seek p 0 SEEK_CUR))
-             (rem (modulo pos 8))
-             (pad (if (zero? rem) 0 (- 8 rem)))
-             (next-pos (+ pos pad)))
-        ;; header field struct (yv) needs at least 4 bytes (code, siglen, sig, \0)
-        (if (>= next-pos (- len 3))
-            (reverse acc)
-            (begin
-              (when (> pad 0)
-                (catch 'out-of-range
-                  (lambda () (seek p pad SEEK_CUR))
-                  (lambda _ #f)))
-              (let* ((code   (%get-u8 p))
-                     (siglen (%get-u8 p)))
-                (if (or (eof-object? siglen) (>= (+ (seek p 0 SEEK_CUR) siglen 1) len))
-                    (reverse acc)
-                    (let* ((sig (utf8->string (get-bytevector-n p siglen))))
-                      (get-u8 p) ;; sig \0
-                      (let ((val (cond
-                                  ((or (string=? sig "s") (string=? sig "o")) (%get-dbus-string p))
-                                  ((string=? sig "u")                         (%get-u32 p))
-                                  ((string=? sig "g")                         (%get-dbus-signature p))
-                                  (else #f))))
-                        (if val
-                            (loop (cons (cons code val) acc))
-                            (reverse acc))))))))))))
+(define %notification-hint-readers
+  `(("(iiibiiay)" . ,%read-image-data)))
 
 (define (%parse-notify-body bv)
+  "Parse org.freedesktop.Notifications.Notify body bytevector BV.
+Parameters: (BV)
+  - BV: Bytevector holding the D-Bus Notify method call body.
+Returns list (APP-NAME REPLACES-ID APP-ICON SUMMARY BODY ACTIONS HINTS EXPIRE-TIMEOUT), or #f on error."
   (catch #t
     (lambda ()
-      (let ((p (open-bytevector-input-port bv)))
-        (let* ((app-name       (%get-dbus-string p))
-               (replaces-id    (%get-u32 p))
-               (app-icon       (%get-dbus-string p))
-               (summary        (%get-dbus-string p))
-               (body           (%get-dbus-string p))
-               (actions        (%get-dbus-string-array p))
-               (hints          (%get-dbus-hints-dict p))
-               (expire-timeout (%get-s32 p)))
-          (list app-name replaces-id app-icon summary body actions hints expire-timeout))))
+      (let* ((p              (open-bytevector-input-port bv))
+             (app-name       (dbus-get-string p))
+             (replaces-id    (dbus-get-u32 p))
+             (app-icon       (dbus-get-string p))
+             (summary        (dbus-get-string p))
+             (body           (dbus-get-string p))
+             (actions        (dbus-get-string-array p))
+             (hints          (dbus-get-dict p #:custom-readers %notification-hint-readers))
+             (expire-timeout (dbus-get-s32 p)))
+        (list app-name replaces-id app-icon summary body actions hints expire-timeout)))
     (lambda (k . args)
-      (log-error "notification-daemon: Error parsing Notify body: ~a ~a" k args)
+      (log-error "notification-daemon: error parsing Notify body: ~a ~a" k args)
       #f)))
 
-(define (%dbus-reply! sock sender reply-serial sig body-bv)
-  (when sock
-    (catch #t
-      (lambda ()
-        (let* ((serial (%next-serial!))
-               (fields `((5 "u" ,reply-serial)
-                         (6 "s" ,sender)
-                         ,@(if (and sig (not (string-null? sig)))
-                               `((8 "g" ,sig))
-                               '())))
-               (msg (%build-dbus-message 2 serial fields body-bv)))
-          (%socket-send-all! sock msg)))
-      (lambda (key . args)
-        (log-error "notification-daemon: Error sending reply: ~a ~a" key args)))))
+(define (%dbus-emit-notification-closed! conn id reason)
+  "Emit NotificationClosed for ID and REASON over D-Bus CONN.
+Parameters: (CONN ID REASON)
+  - CONN: <dbus-connection> record or #f.
+  - ID: Integer notification identifier.
+  - REASON: Integer close reason code per freedesktop specification."
+  (dbus-emit-signal! conn
+                     %notification-object-path
+                     %notification-service-name
+                     "NotificationClosed"
+                     "uu"
+                     (lambda (p)
+                       (dbus-put-u32 p id)
+                       (dbus-put-u32 p reason))))
 
-(define (%dbus-error-reply! sock sender reply-serial error-name error-msg)
-  "Send a D-Bus ERROR reply message (type 3) for the method call with REPLY-SERIAL."
-  (when (and sock sender reply-serial)
-    (catch #t
-      (lambda ()
-        (let* ((serial (%next-serial!))
-               (err (or error-name "org.freedesktop.DBus.Error.Failed"))
-               (fields `((4 "s" ,err)
-                         (5 "u" ,reply-serial)
-                         (6 "s" ,sender)
-                         ,@(if (and error-msg (not (string-null? error-msg)))
-                               `((8 "g" "s"))
-                               '())))
-               (body-bv (if (and error-msg (not (string-null? error-msg)))
-                            (%encode-string error-msg)
-                            #f))
-               (msg (%build-dbus-message 3 serial fields body-bv)))
-          (%socket-send-all! sock msg)))
-      (lambda (key . args)
-        (log-error "notification-daemon: Error sending error reply: ~a ~a" key args)))))
+(define (%dbus-emit-action-invoked! conn id action-key)
+  "Emit ActionInvoked for ID and ACTION-KEY over D-Bus CONN.
+Parameters: (CONN ID ACTION-KEY)
+  - CONN: <dbus-connection> record or #f.
+  - ID: Integer notification identifier.
+  - ACTION-KEY: String invoked action identifier."
+  (dbus-emit-signal! conn
+                     %notification-object-path
+                     %notification-service-name
+                     "ActionInvoked"
+                     "us"
+                     (lambda (p)
+                       (dbus-put-u32 p id)
+                       (dbus-put-string p action-key))))
 
-;; integration with gleui toast
+;; these functions are all just to parse components from dbus notification
+;; response and return the needed data/widgets to be used in %notification-daemon-show!
+(define (%build-toast-actions notif-id actions)
+  "Convert paired D-Bus ACTIONS for NOTIF-ID into clickable gleui button callbacks.
+Parameters: (NOTIF-ID ACTIONS)
+  - NOTIF-ID: Integer notification identifier passed to ActionInvoked.
+  - ACTIONS: List of alternating action keys and display labels.
+Returns list of (LABEL . CALLBACK) pairs."
+  ;; only return list of actions if show actions is enabled
+  (if (and *notification-daemon-show-actions*
+           (pair? actions))
+      (let loop ((remaining actions) (buttons '()))
+        (if (or (null? remaining) (null? (cdr remaining)))
+            (reverse buttons)
+            ;; actions has key followed by label in a flat list
+            ;; so car for key and cadr for label
+            (let* ((action-key   (car remaining))
+                   (raw-label    (cadr remaining))
+                   (button-label (if (string? raw-label) raw-label ""))
+                   ;; emit action and kill toast on click
+                   (on-click     (lambda ()
+                                   (%dbus-emit-action-invoked! *notification-daemon-dbus*
+                                                               notif-id
+                                                               action-key)
+                                   (gleui-toast-kill! #:name (%notification-toast-name notif-id)))))
+              ;; for loop we will skip next item which is actually the
+              ;; label of the current key, so use cddr
+              (loop (cddr remaining)
+                    (cons (cons button-label on-click) buttons)))))
+      '()))
+
 (define (%format-notification-message app-name summary body actions urgency)
-  "Format notification parts into a Pango markup string suitable for gleui-toast-show."
-  (let* ((lines '())
-         (badge (if (and *notification-daemon-show-app-name*
+  "Format APP-NAME, SUMMARY, and BODY into Pango markup for toast display.
+Parameters: (APP-NAME SUMMARY BODY ACTIONS URGENCY)
+  - APP-NAME: String or #f application name.
+  - SUMMARY: String or #f notification title.
+  - BODY: String or #f notification body.
+  - ACTIONS: List notification actions (unused).
+  - URGENCY: Integer notification urgency level (unused).
+Returns formatted Pango markup string."
+  (let* ((badge (if (and *notification-daemon-show-app-name*
                          (string? app-name)
                          (not (string-null? app-name)))
-                    (format #f "<span alpha=\"70%\" size=\"small\">[~a]</span> " (pango-escape-markup app-name))
+                    (format #f "<span alpha=\"70%\" size=\"small\">[~a]</span> "
+                            (pango-escape-markup app-name))
                     ""))
          (safe-summary (if (string? summary) summary ""))
-         (title-line (string-append badge "<b>" (pango-escape-markup safe-summary) "</b>")))
-    (set! lines (cons title-line lines))
+         (title-line (string-append badge "<b>" (pango-escape-markup safe-summary) "</b>"))
+         (lines (list title-line)))
     (when (and (string? body) (not (string-null? body)))
-      (set! lines (cons (gleui-toast-markup-ensure body) lines)))
-    (when (and *notification-daemon-show-actions*
-               (pair? actions))
-      ;; actions is list: (id1 label1 id2 label2 ...)
-      (let loop ((acts actions) (tags '()))
-        (if (or (null? acts) (null? (cdr acts)))
-            (when (pair? tags)
-              (set! lines (cons (string-append "<span alpha=\"65%\" size=\"smaller\">Actions: "
-                                               (string-join (reverse tags) " | ")
-                                               "</span>")
-                                lines)))
-            (let ((key (car acts))
-                  (label (cadr acts)))
-              (loop (cddr acts)
-                    (cons (format #f "<b>[~a]</b>" (pango-escape-markup (if (string? label) label ""))) tags))))))
+      (set! lines (cons (gleui-pango-markup-ensure body) lines)))
     (string-join (reverse lines) "\n")))
 
 (define (%extract-notification-icon app-icon hints)
+  "Resolve the preferred notification icon from HINTS or APP-ICON.
+Parameters: (APP-ICON HINTS)
+  - APP-ICON: String or #f application icon path or freedesktop icon name.
+  - HINTS: Alist or #f of decoded D-Bus notification hints.
+Returns icon string, decoded '(image-data ...) payload, or #f."
   (let ((hint-img (and (list? hints)
                        (or (assoc-ref hints "image-path")
                            (assoc-ref hints "image_path"))))
@@ -566,33 +322,35 @@
                             (assoc-ref hints "image_data")
                             (assoc-ref hints "icon_data")))))
     (cond
-     ((and (string? hint-img) (not (string-null? hint-img))) hint-img)
-     ((and (pair? hint-data) (eq? (car hint-data) 'image-data)) hint-data)
-     ((and (string? app-icon) (not (string-null? app-icon))) app-icon)
+     ;; hint data is image from app, like avatar from messaging
+     ;; platforms notifications coming from browsers
+     ((and (pair? hint-data)
+           (eq? (car hint-data) 'image-data))
+      hint-data)
+     ;; hint image has image name or path, this may be used
+     ;; for battery icon for example
+     ((and (string? hint-img)
+           (not (string-null? hint-img)))
+      hint-img)
+     ;; otherwise icon of app sending the notification
+     ((and (string? app-icon)
+           (not (string-null? app-icon)))
+      app-icon)
      (else #f))))
 
-(define (%add-to-history! id app-name summary body urgency icon)
-  (let ((entry `((id . ,id)
-                 (app-name . ,app-name)
-                 (summary . ,summary)
-                 (body . ,body)
-                 (urgency . ,urgency)
-                 (icon . ,icon)
-                 (timestamp . ,(current-time)))))
-    (set! *notification-daemon-history* (cons entry *notification-daemon-history*))
-    (when (> (length *notification-daemon-history*) *notification-daemon-max-history*)
-      (set! *notification-daemon-history* (take *notification-daemon-history* *notification-daemon-max-history*)))))
-
 (define* (%notification-daemon-theme-overrides urgency #:optional (icon #f))
+  "Build toast theme overrides for notification.
+Parameters: (URGENCY [ICON])
+  - URGENCY: Integer notification urgency level (0 = low, 1 = normal, 2 = critical).
+  - ICON: String, list, or #f icon specification bound under the 'icon key.
+Returns alist of toast theme override keys and values."
   `((font . ,*notification-daemon-font*)
     (font-size . ,*notification-daemon-font-size*)
     (background . ,*notification-daemon-bg-color*)
-    (bg-color . ,*notification-daemon-bg-color*)
     (foreground . ,*notification-daemon-fg-color*)
-    (fg-color . ,*notification-daemon-fg-color*)
     (border-color . ,(case urgency
-                       ((2) *theme-urgent-color*)
-                       ((0) *theme-overlay0*)
+                       ((2) *notification-daemon-border-urgent-color*)
+                       ((0) *notification-daemon-border-color*)
                        (else *notification-daemon-border-color*)))
     (border-width . ,*notification-daemon-border-width*)
     (border-radius . ,*notification-daemon-border-radius*)
@@ -609,99 +367,166 @@
     (icon-size . ,*notification-daemon-icon-size*)
     ,@(if icon `((icon . ,icon)) '())))
 
-(define (%dbus-emit-notification-closed! sock id reason)
-  "Emit NotificationClosed DBus signal."
-  (when sock
-    (catch #t
-      (lambda ()
-        (let* ((serial (%next-serial!))
-               (fields `((1 "o" "/org/freedesktop/Notifications")
-                         (2 "s" "org.freedesktop.Notifications")
-                         (3 "s" "NotificationClosed")
-                         (8 "g" "uu")))
-               (body (%call-with-bv-output
-                      (lambda (p)
-                        (%put-u32 p id)
-                        (%put-u32 p reason))))
-               (msg (%build-dbus-message 4 serial fields body)))
-          (%socket-send-all! sock msg)))
-      (lambda (k . args)
-        (log-error "notification-daemon: Error sending NotificationClosed signal: ~a ~a" k args)))))
+(define (%image-data->cairo-surface data-list)
+  "Convert decoded D-Bus DATA-LIST into an ARGB32 Cairo image surface.
+Parameters: (DATA-LIST)
+  - DATA-LIST: List decoded as ('image-data width height rowstride has-alpha bps channels data).
+Returns Cairo image surface, or #f on invalid input or error."
+  (match data-list
+    (('image-data width height rowstride has-alpha bps channels data)
+     (catch #t
+       (lambda ()
+         ;; cairo argb32 uses 4 bytes per pixel
+         ;; some aliases are introduced to make code easier below
+         (let* ((src-stride rowstride)
+                (src-channels channels)
+                (dst-channels 4)
+                (dst-stride (* width dst-channels))
+                (dst-bv (make-bytevector (* dst-stride height) 0)))
+           ;; loop each y and x pixel
+           (do ((y 0 (1+ y)))
+               ((>= y height))
+             (do ((x 0 (1+ x)))
+                 ((>= x width))
+               ;; dst-channels maybe (typically 3 for rgb or 4 for rgba).
+               (let* ((src-off (+ (* y src-stride) (* x src-channels)))
+                      (dst-off (+ (* y dst-stride) (* x dst-channels)))
+                      (r (bytevector-u8-ref data src-off))
+                      (g (bytevector-u8-ref data (+ src-off 1)))
+                      (b (bytevector-u8-ref data (+ src-off 2)))
+                      ;; default to fully opaque when the source omits an alpha channel.
+                      (a (if (and has-alpha (>= src-channels 4))
+                             (bytevector-u8-ref data (+ src-off 3))
+                             255)))
+                 ;; cairo 'argb32 stores 32-bit pixels in host endianness
+                 ;; little-endian hosts that is byte order b, g, r, a.
+                 (bytevector-u8-set! dst-bv dst-off b)
+                 (bytevector-u8-set! dst-bv (+ dst-off 1) g)
+                 (bytevector-u8-set! dst-bv (+ dst-off 2) r)
+                 (bytevector-u8-set! dst-bv (+ dst-off 3) a))))
+           (cairo-image-surface-create-for-data dst-bv 'argb32 width height dst-stride)))
+       (lambda (k . args)
+         (log-error "notification-daemon: Failed to convert image-data to surface: ~a ~a" k args)
+         #f)))
+    (_ #f)))
 
 (define (%notification-daemon-restack!)
-  "Rerender all active notifications so they stack vertically."
+  "Reposition all active notification toasts so they stack vertically.
+When a new notification shows up while other are still visible, the expected
+behavior is that all notifications are pushed away (below if location is top,
+and above if location bottom).
+Parameters: None."
   (let* ((offset  *notification-daemon-margin*)
          (gap     *notification-daemon-gap*)
          (loc     *notification-daemon-location*)
+         ;; this won't work well for 4 5 6, but hopefully
+         ;; no one will use these weird locations :)
          (bottom? (memv loc '(1 2 3))))
     (for-each
      (lambda (id)
-       (let ((name (format #f "notification-~a" id)))
-         (when (gleui-toast-visible? name)
-           (let* ((h     (gleui-toast-get-height name))
-                  (eff-h (if (and (number? h) (positive? h)) h 80)))
-             (if bottom?
-                 (gleui-toast-set-margin! name #:margin-bottom offset)
-                 (gleui-toast-set-margin! name #:margin-top offset))
-             (set! offset (+ offset eff-h gap))))))
+       (and-let* ((state (gleui-toast-get-instance
+                          (%notification-toast-name id)))
+                  ((gleui-toast-state-visible? state)))
+         (let* ((height           (gleui-toast-state-height state))
+                ;; there should be a height always, and it's dynamic
+                (effective-height (if (and (number? height)
+                                           (positive? height))
+                                      height
+                                      80)))
+           ;; margin bottom or top based on notification location
+           (if bottom?
+               (gleui-toast-set-margin! state #:margin-bottom offset)
+               (gleui-toast-set-margin! state #:margin-top offset))
+           ;; increase offset so next notification shows up above/below
+           (set! offset
+                 (+ offset effective-height gap)))))
      *notification-daemon-active-ids*)))
 
 (define (%notification-daemon-on-toast-closed! id)
-  "Called when a notification toast is dismissed or timed out."
+  "Invoked when notification toast is dismissed or expired.
+Parameters: (ID)
+  - ID: Integer notification identifier of the closed toast."
   (when (memv id *notification-daemon-active-ids*)
-    (set! *notification-daemon-active-ids* (delete id *notification-daemon-active-ids*))
-    (when (and *notification-daemon-active-id* (= *notification-daemon-active-id* id))
-      (set! *notification-daemon-active-id* (if (pair? *notification-daemon-active-ids*)
-                                                (car *notification-daemon-active-ids*)
-                                                #f)))
-    (%dbus-emit-notification-closed! *notification-daemon-socket* id 1)
-    (%notification-daemon-restack!)))
+    (let ((remaining (delete id *notification-daemon-active-ids*)))
+      (set! *notification-daemon-active-ids* remaining)
+      (when (and *notification-daemon-active-id*
+                 (= *notification-daemon-active-id* id))
+        ;; update the current active, #f if no notifications are currently
+        ;; active or first if some exist, this could happen if notification is dismissed
+        (set! *notification-daemon-active-id*
+              (if (pair? remaining)
+                  (car remaining)
+                  #f)))
+      (%dbus-emit-notification-closed! *notification-daemon-dbus* id 1)
+      ;; we will have to restack again, because newer notifications maybe dismissed early
+      (%notification-daemon-restack!))))
 
-(define (%notification-daemon-show! formatted timeout notif-id icon theme-overrides)
-  "Display notification toast and pad all existing notifications down."
-  ;; remove replaces-id from active list if already present
-  (set! *notification-daemon-active-ids* (delete notif-id *notification-daemon-active-ids*))
+(define* (%notification-daemon-show! formatted timeout notif-id icon theme-overrides #:optional (actions '()))
+  "Display notification NOTIF-ID with FORMATTED markup.
+Parameters: (FORMATTED TIMEOUT NOTIF-ID ICON THEME-OVERRIDES [ACTIONS])
+  - FORMATTED: String formatted Pango markup.
+  - TIMEOUT: Float auto-dismiss delay in seconds, or 0 to disable.
+  - NOTIF-ID: Integer notification identifier.
+  - ICON: String, list, or #f icon path/name or '(image-data ...) payload.
+  - THEME-OVERRIDES: Alist of toast theme override keys and values.
+  - ACTIONS: List of flat D-Bus action keys followed by labels (even)."
 
-  ;; kill active notifications exceeding max-visible
-  (let ((max-vis (or *notification-daemon-max-visible* 6)))
-    (while (>= (length *notification-daemon-active-ids*) max-vis)
-      (let ((oldest (last *notification-daemon-active-ids*)))
-        (set! *notification-daemon-active-ids* (drop-right *notification-daemon-active-ids* 1))
-        (gleui-toast-kill #:name (format #f "notification-~a" oldest)))))
+  ;; kill all toasts that exceed the max visible and add new one as current active
+  (let ((ids     (delete notif-id *notification-daemon-active-ids*))
+        (max-vis (or *notification-daemon-max-visible* 6)))
+    (let loop ((cur ids))
+      ;; while length is more than max-vis
+      (if (>= (length cur) max-vis)
+          (let ((oldest (last cur)))
+            (gleui-toast-kill! #:name (%notification-toast-name oldest))
+            (loop (drop-right cur 1)))
+          (set! ids cur)))
+    (set! *notification-daemon-active-ids* (cons notif-id ids))
+    (set! *notification-daemon-active-id* notif-id))
 
-  ;; add new notification to head/top of list
-  (set! *notification-daemon-active-ids* (cons notif-id *notification-daemon-active-ids*))
-  (set! *notification-daemon-active-id* notif-id)
-
-  ;; display toast
-  (gleui-toast-show formatted
-                    #:timeout timeout
-                    #:name (format #f "notification-~a" notif-id)
-                    #:icon icon
-                    #:theme-overrides theme-overrides
-                    #:on-close (lambda () (%notification-daemon-on-toast-closed! notif-id)))
-
-  ;; call restack to pad down rest of notifications
+  ;; convert raw dbus image-data payloads just before display so history remains reusable
+  (let* ((image-data-pair? (lambda (val)
+                             (and (pair? val) (eq? (car val) 'image-data))))
+         (eff-icon (if (image-data-pair? icon)
+                       (%image-data->cairo-surface icon)
+                       icon))
+         (eff-overrides (if (and (list? theme-overrides)
+                                 (image-data-pair? (assq-ref theme-overrides 'icon)))
+                            (map (lambda (entry)
+                                   (if (eq? (car entry) 'icon)
+                                       (cons 'icon eff-icon)
+                                       entry))
+                                 theme-overrides)
+                            theme-overrides)))
+    (gleui-toast-show formatted
+                      #:timeout timeout
+                      #:name (%notification-toast-name notif-id)
+                      #:icon eff-icon
+                      #:theme-overrides eff-overrides
+                      #:actions (%build-toast-actions notif-id actions)
+                      #:on-close (lambda () (%notification-daemon-on-toast-closed! notif-id))))
+  ;; restack as a new notification must push the older ones
   (%notification-daemon-restack!))
 
 (define-command (notification-daemon-dismiss-all!)
-  "Dismiss all currently visible notification toasts."
-  (let ((ids *notification-daemon-active-ids*))
-    (for-each
-     (lambda (id)
-       (gleui-toast-kill #:name (format #f "notification-~a" id)))
-     ids)))
+  "Dismiss all currently visible notification toasts.
+Parameters: None."
+  (for-each
+   (lambda (id)
+     (gleui-toast-kill! #:name (%notification-toast-name id)))
+   *notification-daemon-active-ids*))
 
 (define-command (notification-daemon-redisplay-last!)
-  "Redisplay the most recent notification from history."
+  "Redisplay the most recent notification stored in daemon history.
+Parameters: None."
   (if (null? *notification-daemon-history*)
-      (log-info "No notifications in history.")
-      (let* ((last (car *notification-daemon-history*))
-             (app-name (assoc-ref last 'app-name))
-             (summary (assoc-ref last 'summary))
-             (body (assoc-ref last 'body))
-             (urgency (or (assoc-ref last 'urgency) 1))
-             (icon (assoc-ref last 'icon))
+      (log-info "notification-daemon: no notifications in history")
+      (let* ((last-entry (car *notification-daemon-history*))
+             (app-name (assoc-ref last-entry 'app-name))
+             (summary (assoc-ref last-entry 'summary))
+             (body (assoc-ref last-entry 'body))
+             (urgency (or (assoc-ref last-entry 'urgency) 1))
+             (icon (assoc-ref last-entry 'icon))
              (formatted (%format-notification-message app-name summary body '() urgency))
              (notif-id (%next-id!))
              (theme-overrides (%notification-daemon-theme-overrides urgency icon)))
@@ -711,341 +536,171 @@
                                     icon
                                     theme-overrides))))
 
-;; i prefer having this a separate xml file under the protocols directory
-;; this will cause complexity installing tho as I currently don't install
-;; protocols as part of gliver, so I am just embedding it for now
-(define *notification-daemon-introspection-xml*
-  (string-append
-   "<!DOCTYPE node PUBLIC \"-//freedesktop//DTD D-BUS Object Introspection 1.0//EN\"\n"
-   " \"http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd\">\n"
-   "<node>\n"
-   "  <interface name=\"org.freedesktop.Notifications\">\n"
-   "    <method name=\"GetCapabilities\">\n"
-   "      <arg direction=\"out\" name=\"capabilities\" type=\"as\"/>\n"
-   "    </method>\n"
-   "    <method name=\"Notify\">\n"
-   "      <arg direction=\"in\" name=\"app_name\" type=\"s\"/>\n"
-   "      <arg direction=\"in\" name=\"replaces_id\" type=\"u\"/>\n"
-   "      <arg direction=\"in\" name=\"app_icon\" type=\"s\"/>\n"
-   "      <arg direction=\"in\" name=\"summary\" type=\"s\"/>\n"
-   "      <arg direction=\"in\" name=\"body\" type=\"s\"/>\n"
-   "      <arg direction=\"in\" name=\"actions\" type=\"as\"/>\n"
-   "      <arg direction=\"in\" name=\"hints\" type=\"a{sv}\"/>\n"
-   "      <arg direction=\"in\" name=\"expire_timeout\" type=\"i\"/>\n"
-   "      <arg direction=\"out\" name=\"id\" type=\"u\"/>\n"
-   "    </method>\n"
-   "    <method name=\"CloseNotification\">\n"
-   "      <arg direction=\"in\" name=\"id\" type=\"u\"/>\n"
-   "    </method>\n"
-   "    <method name=\"GetServerInformation\">\n"
-   "      <arg direction=\"out\" name=\"name\" type=\"s\"/>\n"
-   "      <arg direction=\"out\" name=\"vendor\" type=\"s\"/>\n"
-   "      <arg direction=\"out\" name=\"version\" type=\"s\"/>\n"
-   "      <arg direction=\"out\" name=\"spec_version\" type=\"s\"/>\n"
-   "    </method>\n"
-   "    <signal name=\"NotificationClosed\">\n"
-   "      <arg name=\"id\" type=\"u\"/>\n"
-   "      <arg name=\"reason\" type=\"u\"/>\n"
-   "    </signal>\n"
-   "    <signal name=\"ActionInvoked\">\n"
-   "      <arg name=\"id\" type=\"u\"/>\n"
-   "      <arg name=\"action_key\" type=\"s\"/>\n"
-   "    </signal>\n"
-   "  </interface>\n"
-   "  <interface name=\"org.freedesktop.DBus.Introspectable\">\n"
-   "    <method name=\"Introspect\">\n"
-   "      <arg direction=\"out\" name=\"data\" type=\"s\"/>\n"
-   "    </method>\n"
-   "  </interface>\n"
-   "</node>\n"))
-
-;;; method handling
-(define (%handle-method-call! member sender serial path iface body-bv)
-  (cond
-   ((string=? member "Notify")
-    (let ((args (%parse-notify-body body-bv)))
-      (if args
-          (match-let (((app-name replaces-id app-icon summary body actions hints expire-timeout) args))
-            (let* ((urgency (or (assoc-ref hints "urgency") 1))
-                   (icon (%extract-notification-icon app-icon hints))
-                   (notif-id (if (and (number? replaces-id) (> replaces-id 0))
-                                 replaces-id
-                                 (%next-id!)))
-                   (formatted (%format-notification-message app-name summary body actions urgency))
-                   (timeout (cond
-                             ((> expire-timeout 0) expire-timeout)
-                             ((zero? expire-timeout) 0)
-                             (else *notification-daemon-timeout*)))
-                   (theme-overrides (%notification-daemon-theme-overrides urgency icon)))
-              ;; send reply immediately so caller never waits
-              (%dbus-reply! *notification-daemon-socket* sender serial "u" (%encode-u32 notif-id))
-              (%add-to-history! notif-id app-name summary body urgency icon)
-              (catch #t
-                (lambda ()
-                  (%notification-daemon-show! formatted
-                                              timeout
-                                              notif-id
-                                              icon
-                                              theme-overrides))
-                (lambda (k . args)
-                  (log-error "notification-daemon: Error displaying toast: ~a ~a" k args)))))
-          (%dbus-reply! *notification-daemon-socket* sender serial "u" (%encode-u32 0)))))
-
-   ((string=? member "GetCapabilities")
-    (%dbus-reply! *notification-daemon-socket* sender serial "as"
-                  (%encode-string-array '("actions" "body" "body-markup" "persistence" "icon-static"))))
-
-   ((string=? member "GetServerInformation")
-    (%dbus-reply! *notification-daemon-socket* sender serial "ssss"
-                  (%encode-4-strings "Gliver Notification Daemon" "Gliver" "0.1" "1.2")))
-
-   ((string=? member "CloseNotification")
-    (catch #t
-      (lambda ()
-        (let* ((p (open-bytevector-input-port body-bv))
-               (close-id (%get-u32 p)))
-          (gleui-toast-kill #:name (format #f "notification-~a" close-id))))
-      (lambda _ #f))
-    (%dbus-reply! *notification-daemon-socket* sender serial "" #f))
-
-   ((string=? member "Introspect")
-    (%dbus-reply! *notification-daemon-socket* sender serial "s"
-                  (%encode-string *notification-daemon-introspection-xml*)))
-
-   (else
-    (%dbus-error-reply! *notification-daemon-socket*
-                        sender
-                        serial
-                        "org.freedesktop.DBus.Error.UnknownMethod"
-                        (format #f "Method ~a is not supported on interface ~a" member (or iface ""))))))
-
-(define (%unpack-dbus-message bv)
-  "Unpack a raw dbus message bytevector into a list."
-  (let* ((mtype (bytevector-u8-ref bv 1))
-         (serial (bytevector-u32-ref bv 8 (endianness little)))
-         (blen (bytevector-u32-ref bv 4 (endianness little)))
-         (hlen (bytevector-u32-ref bv 12 (endianness little)))
-         (rem (modulo (+ 16 hlen) 8))
-         (pad (if (zero? rem) 0 (- 8 rem)))
-         (hfields-bv (%bytevector-slice bv 16 hlen))
-         (body-bv (if (> blen 0)
-                      (%bytevector-slice bv (+ 16 hlen pad) blen)
-                      (make-bytevector 0 0))))
-    (list mtype serial hfields-bv body-bv)))
-
-(define (%handle-dbus-message! bv)
-  (let ((unpacked (catch #t
-                    (lambda () (%unpack-dbus-message bv))
-                    (lambda (k . args)
-                      (log-error "notification-daemon: Error unpacking D-Bus message: ~a ~a" k args)
-                      #f))))
-    (when unpacked
-      (match-let (((mtype serial hfields-bv body-bv) unpacked))
-        (let* ((fields (catch #t
-                         (lambda () (%parse-header-fields hfields-bv))
-                         (lambda (k . args)
-                           (log-error "notification-daemon: Error parsing header fields: ~a ~a" k args)
-                           '())))
-               (member (assoc-ref fields 3))
-               (sender (assoc-ref fields 7))
-               (path   (assoc-ref fields 1))
-               (iface  (assoc-ref fields 2)))
-          (when (and (= mtype 1) member sender) ;; METHOD_CALL
+;;; method dispatch
+(define (%handle-notify! sender serial body-bv)
+  "Decode a Notify call from SENDER and display it.
+This will be invoked when an application sends a notification message.
+Parameters: (SENDER SERIAL BODY-BV)
+  - SENDER: String unique D-Bus sender bus name.
+  - SERIAL: Integer request serial number for the reply.
+  - BODY-BV: Bytevector containing raw D-Bus Notify method arguments."
+  (let ((args (%parse-notify-body body-bv)))
+    (if (not args)
+        ;; no body found, we must reply with id 0 which means failure
+        (dbus-reply! *notification-daemon-dbus* sender serial "u" (dbus-encode-u32 0))
+        ;; otherwise, we will get our arguments from body
+        (match-let (((app-name replaces-id app-icon summary body actions hints expire-timeout) args))
+          (let* ((urgency (or (assoc-ref hints "urgency") 1))
+                 (icon (%extract-notification-icon app-icon hints))
+                 (notif-id (if (and (number? replaces-id) (> replaces-id 0))
+                               replaces-id
+                               (%next-id!)))
+                 (formatted (%format-notification-message app-name summary body actions urgency))
+                 ;; freedesktop Notify passes expire_timeout in milliseconds; toast expects seconds
+                 (timeout (cond
+                           ((> expire-timeout 0)
+                            (/ expire-timeout 1000.0))
+                           ((zero? expire-timeout)
+                            0)
+                           (else *notification-daemon-timeout*)))
+                 (theme-overrides (%notification-daemon-theme-overrides urgency icon)))
+            ;; send reply with new notification id, this means a success
+            (dbus-reply! *notification-daemon-dbus* sender serial "u" (dbus-encode-u32 notif-id))
+            (%add-to-history! notif-id app-name summary body urgency icon)
             (catch #t
               (lambda ()
-                (%handle-method-call! member sender serial path iface body-bv))
+                (%notification-daemon-show! formatted timeout notif-id icon theme-overrides actions))
               (lambda (k . args)
-                (log-error "notification-daemon: Error executing method ~a: ~a ~a" member k args)
-                (%dbus-error-reply! *notification-daemon-socket*
-                                    sender
-                                    serial
-                                    "org.freedesktop.DBus.Error.Failed"
-                                    (format #f "Internal error handling method ~a" member))))))))))
+                (log-error "notification-daemon: Error displaying toast: ~a ~a" k args))))))))
 
-(define (%pop-message!)
-  "Extract the next complete dbus message bytevector from the input buffer."
-  (let ((buf-len (bytevector-length *notification-daemon-dbus-in-buffer*)))
-    (if (< buf-len 16)
-        #f
-        (let* ((blen (bytevector-u32-ref *notification-daemon-dbus-in-buffer* 4 (endianness little)))
-               (hlen (bytevector-u32-ref *notification-daemon-dbus-in-buffer* 12 (endianness little)))
-               (rem (modulo (+ 16 hlen) 8))
-               (pad (if (zero? rem) 0 (- 8 rem)))
-               (total (+ 16 hlen pad blen)))
-          (if (< buf-len total)
-              #f
-              (let ((msg-bv (%bytevector-slice *notification-daemon-dbus-in-buffer* 0 total)))
-                (set! *notification-daemon-dbus-in-buffer*
-                      (%bytevector-slice *notification-daemon-dbus-in-buffer* total (- buf-len total)))
-                msg-bv))))))
+(define (%handle-method-call! member sender serial path iface body-bv)
+  "Dispatch D-Bus method call MEMBER from SENDER with SERIAL on PATH and IFACE.
+https://specifications.freedesktop.org/notification/latest-single/#commands
+Parameters: (MEMBER SENDER SERIAL PATH IFACE BODY-BV)
+  - MEMBER: String D-Bus method name.
+  - SENDER: String unique D-Bus sender bus name.
+  - SERIAL: Integer request serial number.
+  - PATH: String or #f target D-Bus object path.
+  - IFACE: String or #f target D-Bus interface name.
+  - BODY-BV: Bytevector containing raw method argument payload."
+  (cond
+   ((string=? member "Notify")
+    (%handle-notify! sender serial body-bv))
 
-(define (%process-in-buffer!)
-  (let loop ()
-    (let ((msg-bv (%pop-message!)))
-      (when msg-bv
-        (%handle-dbus-message! msg-bv)
-        (loop)))))
+   ((string=? member "GetCapabilities")
+    ;; if we are asked for available capabilities
+    ;; we return a list of the supported ones (refer to docs server capabilities)
+    (dbus-reply! *notification-daemon-dbus* sender serial "as"
+                 (dbus-encode-string-array '("actions" "body" "body-markup" "persistence" "icon-static"))))
 
-(define (notification-daemon-poll!)
-  "Poll the dbus socket for incoming messages.
-This should be called manually via tick hook for instance"
-  (when *notification-daemon-socket*
+   ((string=? member "GetServerInformation")
+    ;; server information should return list (name vendor version spec-version)
+    (dbus-reply! *notification-daemon-dbus* sender serial "ssss"
+                 (dbus-encode-strings "Gliver Notification Daemon" "Gliver" "0.1" "1.2")))
+
+   ((string=? member "CloseNotification")
+    ;; we are asked to close the notification
     (catch #t
       (lambda ()
-        (let loop ()
-          (when (and *notification-daemon-socket*
-                     (pair? (car (select (list *notification-daemon-socket*) '() '() 0 0))))
-            (let* ((scratch (make-bytevector 4096 0))
-                   (n (catch 'system-error
-                        (lambda () (recv! *notification-daemon-socket* scratch MSG_DONTWAIT))
-                        (lambda (k . args) #f))))
-              (cond
-               ((and (number? n) (> n 0))
-                (set! *notification-daemon-dbus-in-buffer*
-                      (%bytevector-append *notification-daemon-dbus-in-buffer* (%bytevector-slice scratch 0 n)))
-                (%process-in-buffer!)
-                (loop))
-               ((and (number? n) (= n 0))
-                (log-info "D-Bus socket closed by peer.")
-                (notification-daemon-stop!))
-               (else #f))))))
-      (lambda (key . args)
-        (log-error "Polling error: ~a ~a" key args)))))
+        (let* ((p        (open-bytevector-input-port body-bv))
+               (close-id (dbus-get-u32 p)))
+          (gleui-toast-kill! #:name (%notification-toast-name close-id))))
+      (lambda _ #f))
+    (dbus-reply! *notification-daemon-dbus* sender serial "" #f))
 
-(define (%recv-with-timeout! s scratch timeout-sec)
-  "Read with timeout TIMEOUT-SEC."
-  (let ((ready (select (list s) '() '() timeout-sec 0)))
-    (if (pair? (car ready))
-        (recv! s scratch 0)
-        #f)))
+   (else
+    (dbus-error-reply! *notification-daemon-dbus*
+                       sender
+                       serial
+                       "org.freedesktop.DBus.Error.UnknownMethod"
+                       (format #f "Method ~a is not supported on interface ~a"
+                               member (or iface ""))))))
 
-(define (%read-next-dbus-msg! sock timeout-sec)
-  "Wait for and extract the next dbus message during handshake."
-  (let loop ()
-    (let ((msg-bv (%pop-message!)))
-      (cond
-       (msg-bv
-        (%unpack-dbus-message msg-bv))
-       (else
-        (let* ((scratch (make-bytevector 4096 0))
-               (n (%recv-with-timeout! sock scratch timeout-sec)))
-          (if (and (number? n) (> n 0))
-              (begin
-                (set! *notification-daemon-dbus-in-buffer*
-                      (%bytevector-append *notification-daemon-dbus-in-buffer*
-                                          (%bytevector-slice scratch 0 n)))
-                (loop))
-              #f)))))))
+(define (%handle-dbus-message! mtype serial fields body-bv)
+  "Dispatch an unpacked D-Bus frame with MTYPE, SERIAL, FIELDS, and BODY-BV.
+Parameters: (MTYPE SERIAL FIELDS BODY-BV)
+  - MTYPE: Integer D-Bus message type.
+  - SERIAL: Integer D-Bus message serial.
+  - FIELDS: Alist of parsed D-Bus header fields.
+  - BODY-BV: Bytevector containing message body."
+  (let ((member (assoc-ref fields 3))
+        (sender (assoc-ref fields 7))
+        (path   (assoc-ref fields 1))
+        (iface  (assoc-ref fields 2)))
+    (when (and (= mtype 1) member sender) ;; this type is METHOD_CALL
+      (catch #t
+        (lambda ()
+          ;; now that mtype is (method call), member will become the typed-array?
+          ;; of method to call like Notify which requests the notification daemon
+          ;; to display a notification message. The best way to learn all of
+          ;; those things is the free desktop documentation
+          ;; https://specifications.freedesktop.org/notification/latest-single/#commands
+          (%handle-method-call! member sender serial path iface body-bv))
+        (lambda (k . args)
+          (log-error "notification-daemon: Error executing method ~a: ~a ~a" member k args)
+          (dbus-error-reply! *notification-daemon-dbus*
+                             sender
+                             serial
+                             "org.freedesktop.DBus.Error.Failed"
+                             (format #f "Internal error handling method ~a" member)))))))
 
+(define (notification-daemon-poll!)
+  "Poll the shared D-Bus session connection for pending notification method calls.
+Parameters: None."
+  (dbus-session-poll!))
+
+;;; lifecycle & handshake
 (define-command (notification-daemon-start!)
-  "Start the dbus notification daemon.
-Returns bool that indicates whether daemon has been started successfully."
-
-  (if *notification-daemon-socket*
-	  ;; socket is already running, return true
+  "Start the D-Bus notification daemon and acquire the session bus name.
+Parameters: None.
+Returns #t if the daemon is running, #f on failure."
+  (if *notification-daemon-dbus*
       (begin
-        (log-info "Already running.")
+        (log-info "notification-daemon: already running")
         #t)
-      (let ((path (%dbus-session-bus-path)))
-        (if (not path)
-			;; socket path wasn't properly detected, return false
+      (let ((conn (dbus-session-connect!)))
+        (if (not conn)
             (begin
-              (log-warn "DBUS_SESSION_BUS_ADDRESS not found; daemon not started.")
+              (log-warn "notification-daemon: D-Bus session bus unavailable; daemon not started")
               #f)
-
-			(catch #t
+            (catch #t
               (lambda ()
-                ;; connect via posix socket & sasl auth
-                (let ((sock (%dbus-connect path)))
-                  (set! *notification-daemon-socket* sock)
-                  (set! *notification-daemon-dbus-in-buffer* (make-bytevector 0 0))
-
-                  ;; send hello and wait for reply (handshake)
-                  (let ((hello-msg (%build-dbus-message 1 (%next-serial!)
-														'((1 "o" "/org/freedesktop/DBus")
-                                                          (6 "s" "org.freedesktop.DBus")
-                                                          (2 "s" "org.freedesktop.DBus")
-                                                          (3 "s" "Hello"))
-														#f)))
-                    (%socket-send-all! sock hello-msg))
-
-				  ;; wait for a response from hello message
-                  (let loop-hello ()
-                    (let ((msg (%read-next-dbus-msg! sock 3)))
-                      (cond
-                       ((not msg)
-                        (error "Timeout waiting for Hello reply"))
-                       ((= (car msg) 2)
-                        #t)
-                       (else
-                        (loop-hello)))))
-
-				  ;; own the RequestName org.freedesktop.Notifications
-                  ;; flags: 7 = REPLACE_EXISTING (1) | ALLOW_REPLACEMENT (2) | DO_NOT_QUEUE (4)
-                  (let-values (((p get-bv) (open-bytevector-output-port)))
-                    (%put-dbus-string p "org.freedesktop.Notifications")
-                    (%put-u32 p 7)
-                    (let ((req-msg (%build-dbus-message 1 (%next-serial!)
-														'((1 "o" "/org/freedesktop/DBus")
-                                                          (6 "s" "org.freedesktop.DBus")
-                                                          (2 "s" "org.freedesktop.DBus")
-                                                          (3 "s" "RequestName")
-                                                          (8 "g" "su"))
-														(get-bv))))
-                      (%socket-send-all! sock req-msg)))
-
-                  ;; wait for RequestName reply
-                  (let loop-req ()
-                    (let ((msg (%read-next-dbus-msg! sock 3)))
-                      (cond
-                       ((not msg)
-                        (error "Timeout waiting for RequestName reply"))
-                       ((= (car msg) 2)
-                        (let ((code (bytevector-u32-ref (cadddr msg) 0 (endianness little))))
-                          (if (or (= code 1) (= code 4))
-                              (begin
-                                ;; set socket to non-blocking mode
-                                (fcntl sock F_SETFL (logior (fcntl sock F_GETFL) O_NONBLOCK))
-								;; poll socket every tick
-                                (gliver-hook-add! *manager-tick-hook* 'notification-daemon-poll!)
-                                (log-info "Acquired org.freedesktop.Notifications.")
-                                #t)
-                              (begin
-                                (log-warn "Could not acquire org.freedesktop.Notifications (code ~a)." code)
-                                (close-port sock)
-                                (set! *notification-daemon-socket* #f)
-                                #f))))
-                       (else
-                        (loop-req)))))))
-
+                (if (dbus-register-service! conn
+                                            %notification-service-name
+                                            %handle-dbus-message!
+                                            #:path %notification-object-path)
+                    (begin
+                      (set! *notification-daemon-dbus* conn)
+                      (log-info "notification-daemon: acquired ~a" %notification-service-name)
+                      #t)
+                    (begin
+                      (log-warn "notification-daemon: could not acquire ~a" %notification-service-name)
+                      #f)))
               (lambda (key . args)
-                (log-error "Failed to start: ~a ~a" key args)
-                (when *notification-daemon-socket*
-                  (close-port *notification-daemon-socket*)
-                  (set! *notification-daemon-socket* #f))
+                (log-error "notification-daemon: failed to start: ~a ~a" key args)
                 #f))))))
 
 (define-command (notification-daemon-stop!)
-  "Stop the dbus notification daemon.
-Returns bool that indicates whether daemon has been stopped successfully."
+  "Stop the D-Bus notification daemon and dismiss active notification toasts.
+Parameters: None.
+Returns #t if the daemon was active, unspecified otherwise."
   (catch #t
     (lambda () (notification-daemon-dismiss-all!))
     (lambda _ #f))
   (set! *notification-daemon-active-ids* '())
   (set! *notification-daemon-active-id* #f)
-  (when *notification-daemon-socket*
-    (log-info "Stopping...")
-    (gliver-hook-remove! *manager-tick-hook* 'notification-daemon-poll!)
-    (catch #t
-      (lambda ()
-        (close-port *notification-daemon-socket*))
-      (lambda _ #f))
-    (set! *notification-daemon-socket* #f)
-    (set! *notification-daemon-dbus-in-buffer* (make-bytevector 0 0))
-    (log-info "Stopped.")
+  (when *notification-daemon-dbus*
+    (log-info "notification-daemon: stopping")
+    (dbus-unregister-service! *notification-daemon-dbus*
+                              %notification-service-name
+                              #:path %notification-object-path)
+    (set! *notification-daemon-dbus* #f)
+    (log-info "notification-daemon: stopped")
     #t))
 
 (define-command (notification-daemon-restart!)
-  "Restart the dbus notification daemon."
+  "Restart the D-Bus notification daemon.
+Parameters: None.
+Returns #t if restarted successfully, #f on failure."
   (notification-daemon-stop!)
   (notification-daemon-start!))

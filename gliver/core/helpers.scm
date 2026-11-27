@@ -14,14 +14,15 @@
   #:use-module (srfi srfi-69)
   #:declarative? #f
   #:export (
-			valid-pointer?
-			*variable-registry*
-			variable-register!
-			define-var
-			var-get
-			%var-set!
-			var-set!
-			re-export-modules
+            valid-pointer?
+            *variable-registry*
+            *variable-accessors*
+            ??
+            variable-register!
+            define-var
+            var-get
+            var-set!
+            re-export-modules
 ))
 
 (define (valid-pointer? ptr)
@@ -34,6 +35,8 @@ Returns #t if PTR is valid, #f otherwise."
 ;;; variable introspection registry
 (define *variable-registry* (make-hash-table))
 (define *variable-accessors* (make-hash-table))
+;; helper for fallback (unsetting variable value)
+(define ?? *unspecified*)
 
 (define (variable-register! name module docstring . accessors)
   "Register a variable NAME with DOCSTRING in MODULE.
@@ -59,28 +62,49 @@ Parameters: (NAME MODULE DOCSTRING [GETTER SETTER])
             (define name init-val)
             (variable-register! 'name (current-module) doc))))
 
+    ;; expand an inherited variable into a hidden backing binding, registry accessors,
+    ;; and a variable transformer that falls back to `parent' when unspecified.
     (define (emit-inherited name init-val parent doc)
       (with-syntax ((name name)
                     (init-val init-val)
                     (parent parent)
                     (doc doc)
+                    ;; give the gensym name syntax context so `define` binds
+                    ;; it in the caller's module.
                     (backing (datum->syntax name (gensym "%var-"))))
         #'(begin
+            ;; holds the local override, or `*unspecified*' (also `??`) when inheriting
             (define backing init-val)
+            ;; register custom getter/setter closures
+            ;; we can't have just name like other variables, because
+            ;; name is here a define-syntax, not a defined variable
             (variable-register! 'name (current-module) doc
                                 (lambda ()
-                                  (if (unspecified? backing) parent backing))
+                                  (if (unspecified? backing)
+                                      parent
+                                      backing))
                                 (lambda (val)
                                   (set! backing val)))
+            ;; variable transformer for custom getter/setter.
             (define-syntax name
               (make-variable-transformer
                (lambda (y)
                  (syntax-case y (set!)
+                   ;; set should update the backing override
+                   ;; use `??` to revert to `parent`
                    ((set! id val) #'(set! backing val))
+                   ;; operator position, invoke it
+                   ;; this maybe helpful for functions inheritance
+                   ;; I don't think that it will be used in gliver
                    ((id . args)
-                    #'((if (unspecified? backing) parent backing) . args))
+                    #'((if (unspecified? backing)
+                           parent
+                           backing) . args))
+                   ;; value position, resolve to `parent` unless overridden.
                    (id (identifier? #'id)
-                       #'(if (unspecified? backing) parent backing)))))))))
+                       #'(if (unspecified? backing)
+                             parent
+                             backing)))))))))
 
     (syntax-case x ()
       ;; (define-var name #:inherit parent "docstring")

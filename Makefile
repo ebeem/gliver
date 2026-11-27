@@ -38,6 +38,7 @@ MODULES =	gliver/config.scm \
 			gliver/core-base.scm \
 			gliver/deps/libc.scm \
 			gliver/deps/color.scm \
+			gliver/deps/dbus.scm \
 			gliver/deps/librsvg.scm \
 			gliver/deps/libxkbcommon.scm \
 			gliver/deps/pango.scm \
@@ -94,36 +95,59 @@ MODULES =	gliver/config.scm \
 			gliver/contrib/debug/ipc-server.scm \
 			gliver/contrib/debug/repl-server.scm \
 			gliver/contrib/utils/systemd.scm \
-			gliver/contrib/ui/components/palette.scm \
-			gliver/contrib/ui/components/launcher.scm \
-			gliver/contrib/ui/components/toast.scm \
+			gliver/contrib/ui/gleui/base/surface.scm \
+			gliver/contrib/ui/gleui/base/shm.scm \
+			gliver/contrib/ui/gleui/base/draw.scm \
+			gliver/contrib/ui/gleui/base/theme.scm \
+			gliver/contrib/ui/gleui/base/text.scm \
+			gliver/contrib/ui/gleui/base/icons.scm \
+			gliver/contrib/ui/gleui/base/repeat.scm \
+			gliver/contrib/ui/gleui/base/pointer.scm \
 			gliver/contrib/ui/gleui/base.scm \
+			gliver/contrib/ui/gleui/widgets/engine.scm \
+			gliver/contrib/ui/gleui/widgets/box.scm \
+			gliver/contrib/ui/gleui/widgets/flex.scm \
+			gliver/contrib/ui/gleui/widgets/align.scm \
+			gliver/contrib/ui/gleui/widgets/stack.scm \
+			gliver/contrib/ui/gleui/widgets/text.scm \
+			gliver/contrib/ui/gleui/widgets/icon.scm \
+			gliver/contrib/ui/gleui/widgets/grid.scm \
+			gliver/contrib/ui/gleui/widgets/clickable.scm \
+			gliver/contrib/ui/gleui/widgets/button.scm \
+			gliver/contrib/ui/gleui/widgets.scm \
+			gliver/contrib/ui/gleui/palette/state.scm \
+			gliver/contrib/ui/gleui/palette/matching.scm \
+			gliver/contrib/ui/gleui/palette/render.scm \
+			gliver/contrib/ui/gleui/palette/input.scm \
 			gliver/contrib/ui/gleui/palette.scm \
 			gliver/contrib/ui/gleui/launcher.scm \
+			gliver/contrib/ui/gleui/toast/state.scm \
+			gliver/contrib/ui/gleui/toast/render.scm \
 			gliver/contrib/ui/gleui/toast.scm \
 			gliver/contrib/ui/gleui/notifications.scm \
+			gliver/contrib/ui/gleui/statusbar/state.scm \
+			gliver/contrib/ui/gleui/statusbar/worker.scm \
+			gliver/contrib/ui/gleui/statusbar/render.scm \
+			gliver/contrib/ui/gleui/statusbar/modules/workspaces.scm \
+			gliver/contrib/ui/gleui/statusbar/modules/window.scm \
+			gliver/contrib/ui/gleui/statusbar/modules/cpu.scm \
+			gliver/contrib/ui/gleui/statusbar/modules/cpu-temp.scm \
+			gliver/contrib/ui/gleui/statusbar/modules/ram.scm \
+			gliver/contrib/ui/gleui/statusbar/modules/date.scm \
+			gliver/contrib/ui/gleui/statusbar/modules/weather.scm \
+			gliver/contrib/ui/gleui/statusbar/modules/battery.scm \
+			gliver/contrib/ui/gleui/statusbar/modules/disk.scm \
+			gliver/contrib/ui/gleui/statusbar/modules/keyboard.scm \
+			gliver/contrib/ui/gleui/statusbar/modules/network.scm \
+			gliver/contrib/ui/gleui/statusbar/modules/net-speed.scm \
+			gliver/contrib/ui/gleui/statusbar/modules/mpd.scm \
+			gliver/contrib/ui/gleui/statusbar/modules/volume.scm \
+			gliver/contrib/ui/gleui/statusbar/modules/custom.scm \
 			gliver/contrib/ui/gleui/statusbar.scm \
 			gliver/contrib/ui/gleui.scm \
 			gliver/contrib/ui/overlay/which-key.scm \
 			gliver/contrib/ui/container/container-border.scm \
 			gliver/contrib/ui/container/container-tab-indicator.scm \
-			gliver/contrib/ui/statusbar/base.scm \
-			gliver/contrib/ui/statusbar/workspaces.scm \
-			gliver/contrib/ui/statusbar/window.scm \
-			gliver/contrib/ui/statusbar/cpu.scm \
-			gliver/contrib/ui/statusbar/cpu-temp.scm \
-			gliver/contrib/ui/statusbar/ram.scm \
-			gliver/contrib/ui/statusbar/date.scm \
-			gliver/contrib/ui/statusbar/weather.scm \
-			gliver/contrib/ui/statusbar/battery.scm \
-			gliver/contrib/ui/statusbar/disk.scm \
-			gliver/contrib/ui/statusbar/keyboard.scm \
-			gliver/contrib/ui/statusbar/network.scm \
-			gliver/contrib/ui/statusbar/net-speed.scm \
-			gliver/contrib/ui/statusbar/mpd.scm \
-			gliver/contrib/ui/statusbar/volume.scm \
-			gliver/contrib/ui/statusbar/custom.scm \
-			gliver/contrib/ui/statusbar.scm \
 			gliver/contrib/ui/wallpaper/wallpaper-basic.scm \
 			gliver/contrib/windows/window-rules.scm \
 			gliver/contrib/workspaces/workspace-group.scm \
@@ -251,4 +275,7 @@ debug:
 
 repl:
 	./bin/gliver-repl
+
+pdf:
+	emacs --batch -Q -l tools/export-pdf.el doc/manual.org
 

@@ -158,9 +158,10 @@ Parameters: (CONTEXT)
   (let ((proto-err (wl-display-get-protocol-error *wl-display*))
         (err (wl-display-get-error *wl-display*)))
     (if proto-err
-        (log-error "~a: protocol error: code ~a on interface ~a (object id ~a)"
-                   context (car proto-err) (cadr proto-err) (caddr proto-err))
-        (log-error "~a: system error (errno ~a)" context err))))
+        (log-error "~a: protocol error (errno ~a): code ~a on interface ~a (object id ~a)"
+                   context err (car proto-err) (cadr proto-err) (caddr proto-err))
+        (log-error "~a: system error (errno ~a: ~a)"
+                   context err (strerror err)))))
 
 (define (river-event-loop!)
   "Run the main Wayland event loop, flush requests, and dispatch incoming events.
@@ -191,12 +192,14 @@ Parameters: None."
                 (let ((ready (select (list wl-fd) '() '() 0 16000)))
                   (if (pair? (car ready))
                       ;; data available, read and dispatch
-                      (begin
-                        (wl-display-read-events *wl-display*)
-                        (let ((ret (wl-display-dispatch-pending *wl-display*)))
-                          (when (< ret 0)
-                            (log-wayland-error! "Wayland dispatch error")
-                            (set! *river-connected?* #f))))
+                      (if (< (wl-display-read-events *wl-display*) 0)
+                          (begin
+                            (log-wayland-error! "Wayland read-events error")
+                            (set! *river-connected?* #f))
+                          (let ((ret (wl-display-dispatch-pending *wl-display*)))
+                            (when (< ret 0)
+                              (log-wayland-error! "Wayland dispatch error")
+                              (set! *river-connected?* #f))))
 
                       ;; timeout, no events, cancel the read lock
                       (wl-display-cancel-read *wl-display*)))))

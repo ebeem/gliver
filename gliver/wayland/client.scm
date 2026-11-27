@@ -142,21 +142,24 @@
 (define (wl-display-get-protocol-error display)
   "Return (code interface-name id) if a protocol error occurred on DISPLAY, or #f."
   (let ((err (%wl-display-get-error display)))
-    (if (= err 71) ; EPROTO
+    (if (or (= err 71) ; EPROTO
+            (= err 22)) ; EINVAL
         (let* ((interface-ptr (make-bytevector (sizeof '*) 0))
                (id-ptr (make-bytevector (sizeof uint32) 0))
                (code (%wl-display-get-protocol-error display
                                                     (bytevector->pointer interface-ptr)
                                                     (bytevector->pointer id-ptr)))
                (raw-iface (dereference-pointer (bytevector->pointer interface-ptr)))
-               (name (if (null-pointer? raw-iface)
-                         "unknown"
-                         (let ((name-ptr (dereference-pointer raw-iface)))
-                           (if (null-pointer? name-ptr)
-                               "unknown"
-                               (pointer->string name-ptr)))))
                (id (bytevector-u32-native-ref id-ptr 0)))
-          (list code name id))
+          (if (and (null-pointer? raw-iface) (zero? code) (zero? id))
+              #f
+              (let ((name (if (null-pointer? raw-iface)
+                              "unknown"
+                              (let ((name-ptr (dereference-pointer raw-iface)))
+                                (if (null-pointer? name-ptr)
+                                    "unknown"
+                                    (pointer->string name-ptr))))))
+                (list code name id))))
         #f)))
 
 (define %wl-display-prepare-read

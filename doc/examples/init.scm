@@ -14,8 +14,7 @@
 
 			 ;; optional deps (recommended)
 			 (gliver contrib ui overlay which-key)
-             (gliver contrib ui gleui)
-             (gliver contrib ui statusbar))
+             (gliver contrib ui gleui))
 
 
 ;; command to spawn terminals; update to the binary name

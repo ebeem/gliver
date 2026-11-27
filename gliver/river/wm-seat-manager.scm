@@ -24,6 +24,8 @@
 (define-module (gliver river wm-seat-manager)
   #:use-module (srfi srfi-1)
   #:use-module (gliver core-base)
+  #:use-module (gliver river wm-shell-surface-manager)
+  #:use-module (gliver river wm-window-manager)
   #:use-module (gliver wayland client)
   #:use-module (gliver wayland gen river-window-management-v1)
   #:use-module (system foreign)
@@ -112,7 +114,8 @@ Parameters: (PROXY-SEAT PROXY-WINDOW)
   - PROXY-WINDOW: Pointer to river_window_v1 proxy."
   (when (and (valid-pointer? proxy-seat)
              (member proxy-seat *wm-seats*)
-             (valid-pointer? proxy-window))
+             (valid-pointer? proxy-window)
+             (hash-get-handle *wm-windows* proxy-window))
     (when *log-river-calls*
       (log-debug "Seat ~a focusing window ~a" proxy-seat proxy-window))
     (river-seat-v1-focus-window proxy-seat proxy-window)))
@@ -125,7 +128,8 @@ Parameters: (PROXY-SEAT PROXY-SURFACE)
   - PROXY-SURFACE: Pointer to river_shell_surface_v1 proxy."
   (when (and (valid-pointer? proxy-seat)
              (member proxy-seat *wm-seats*)
-             (valid-pointer? proxy-surface))
+             (valid-pointer? proxy-surface)
+             (hash-get-handle *wm-shell-surfaces* proxy-surface))
     (when *log-river-calls*
       (log-debug "Seat ~a focusing surface ~a" proxy-seat proxy-surface))
     (river-seat-v1-focus-shell-surface proxy-seat proxy-surface)))

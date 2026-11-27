@@ -9,7 +9,7 @@
   #:use-module (ice-9 pretty-print)
   #:use-module (srfi srfi-1)
   #:use-module (srfi srfi-69)
-  #:use-module (gliver contrib ui components palette)
+  #:use-module (gliver contrib ui gleui palette)
   #:use-module (gliver contrib ui overlay which-key)
   #:declarative? #f
   #:export (
@@ -52,7 +52,7 @@
                                     (val (catch #t (lambda () (var-get name)) (lambda _ "<unbound>")))
                                     (safe-val (%safe-var-value-string val))
                                     (docstring (string-replace-substring (or (cdr val-pair) "") "\n" " "))
-                                    (opt (make-dmenu-options
+                                    (opt (gleui-palette-make-dmenu-options
                                           (list (list " " name safe-val (module-name module) docstring))
                                           (list *palette-icon-color* *palette-name-color* *palette-value-color* *palette-help-color* *palette-doc-color*)
                                           #:widths *palette-variables-widths*
@@ -66,15 +66,15 @@
                                    (symbol->string (car b))))))
          (keys (map car sorted))
          (options (map cdr sorted)))
-    (palette-show options #:keys keys
-                  #:prompt "Describe variable: "
-                  #:on-select
-                  (lambda (selected)
-                    (when selected
-                      (let* ((rec (hash-table-ref/default *variable-registry* selected #f))
-                             (val (catch #t (lambda () (var-get selected)) (lambda _ "<unbound>")))
-                             (doc (and rec (cdr rec))))
-                        (log-info "Variable ~a = ~a~%~a" selected (%safe-var-value-string val) (or doc "No documentation."))))))))
+    (gleui-palette-show options #:keys keys
+                        #:prompt "Describe variable: "
+                        #:on-select
+                        (lambda (selected)
+                          (when selected
+                            (let* ((rec (hash-table-ref/default *variable-registry* selected #f))
+                                   (val (catch #t (lambda () (var-get selected)) (lambda _ "<unbound>")))
+                                   (doc (and rec (cdr rec))))
+                              (log-info "Variable ~a = ~a~%~a" selected (%safe-var-value-string val) (or doc "No documentation."))))))))
 
 (define-command (describe-command)
   "Describe a command, or prompt to select from all commands."
@@ -82,7 +82,7 @@
           (hash-table-fold *command-registry*
                            (lambda (cname cmd acc)
                              (let* ((doc (string-replace-substring (or (command-docstring cmd) "") "\n" " "))
-                                    (opt (make-dmenu-options
+                                    (opt (gleui-palette-make-dmenu-options
                                           (list (list " " cname doc))
                                           (list *palette-icon-color* *palette-name-color* *palette-doc-color*)
                                           #:widths '(2 35 60)
@@ -96,14 +96,14 @@
                                    (symbol->string (car b))))))
          (keys (map car sorted))
          (options (map cdr sorted)))
-    (palette-show options #:keys keys
-                  #:prompt "Describe command: "
-                  #:on-select
-                  (lambda (selected)
-                    (when selected
-                      (let ((cmd (command-find selected)))
-                        (when cmd
-                          (log-info "Command ~a: ~a" selected (command-docstring cmd)))))))))
+    (gleui-palette-show options #:keys keys
+                        #:prompt "Describe command: "
+                        #:on-select
+                        (lambda (selected)
+                          (when selected
+                            (let ((cmd (command-find selected)))
+                              (when cmd
+                                (log-info "Command ~a: ~a" selected (command-docstring cmd)))))))))
 
 (define-command (describe-key)
   "Describe a keybinding, prompting to select from all active keybindings."
@@ -118,7 +118,7 @@
                                          (let ((cmd (command-find action)))
                                            (if cmd (or (command-docstring cmd) "") ""))
                                          ""))
-                                (opt (make-dmenu-options
+                                (opt (gleui-palette-make-dmenu-options
                                       (list (list " " key-str act-str doc))
                                       (list *palette-icon-color* *palette-name-color* *palette-value-color* *palette-doc-color*)
                                       #:widths '(2 20 25 50)
@@ -127,12 +127,12 @@
                            (cons key-str (if (pair? opt) (car opt) opt))))
                        all-pairs))
          (sorted (sort entries (lambda (a b) (string<? (car a) (car b))))))
-    (palette-show (map cdr sorted) #:keys (map car sorted)
-                  #:prompt "Describe key: "
-                  #:on-select
-                  (lambda (selected)
-                    (when selected
-                      (log-info "Key ~a is bound in active keymap." selected))))))
+    (gleui-palette-show (map cdr sorted) #:keys (map car sorted)
+                        #:prompt "Describe key: "
+                        #:on-select
+                        (lambda (selected)
+                          (when selected
+                            (log-info "Key ~a is bound in active keymap." selected))))))
 
 (define-command (describe-top-map)
   "Describe *top-map* keybindings."

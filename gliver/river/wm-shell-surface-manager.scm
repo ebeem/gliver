@@ -22,15 +22,32 @@
   #:use-module (system foreign)
   #:declarative? #f
   #:export (
+            *wm-shell-surfaces*
             *wm-shell-surface-nodes*
+            wm-shell-surface-find-by-surface
             wm-shell-surface-destroy!
             wm-shell-surface-node-get!
             wm-shell-surface-sync-next-commit!
 ))
 
 ;;; global state
+(define-var *wm-shell-surfaces* (make-hash-table)
+            "Hash-map of river_shell_surface_v1 proxy -> wl_surface proxy.")
+
 (define-var *wm-shell-surface-nodes* (make-hash-table)
             "Hash-map of river_shell_surface_v1 proxy -> river_node_v1 proxy (or #f if pending node creation).")
+
+(define (wm-shell-surface-find-by-surface proxy-surface)
+  "Get the river_shell_surface_v1 proxy associated with PROXY-SURFACE.
+This is a reverse lookup for *wm-shell-surfaces*.
+Parameters: (PROXY-SURFACE)
+  - PROXY-SURFACE: Pointer to wl_surface proxy.
+Returns: Pointer to river_shell_surface_v1 proxy or #f."
+  (and (valid-pointer? proxy-surface)
+       (hash-fold (lambda (shell-surf surf acc)
+                    (if (equal? surf proxy-surface) shell-surf acc))
+                  #f
+                  *wm-shell-surfaces*)))
 
 ;;; shell-surface requests
 (define (wm-shell-surface-destroy! proxy-shell-surface)
@@ -39,10 +56,12 @@ cleared from client side and the server should also clear everything.
 Parameters: (PROXY-SHELL-SURFACE)
   - PROXY-SHELL-SURFACE: Pointer to river_shell_surface_v1 proxy."
   (when (and (valid-pointer? proxy-shell-surface)
-             (hash-get-handle *wm-shell-surface-nodes* proxy-shell-surface))
+             (or (hash-get-handle *wm-shell-surface-nodes* proxy-shell-surface)
+                 (hash-get-handle *wm-shell-surfaces* proxy-shell-surface)))
     (when *log-river-calls*
       (log-debug "Destroying shell-surface proxy: ~a" proxy-shell-surface))
     (river-shell-surface-v1-destroy proxy-shell-surface)
+    (hash-remove! *wm-shell-surfaces* proxy-shell-surface)
     (hash-remove! *wm-shell-surface-nodes* proxy-shell-surface)))
 
 (define (wm-shell-surface-node-get! proxy-shell-surface)
