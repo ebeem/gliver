@@ -120,6 +120,7 @@
             statusbar-shm-active-idx-set!
             statusbar-modules
             make-statusbar
+            statusbar-clone
             statusbar-bind-output!
             statusbar-unbind-output!
             <statusbar-module>
@@ -362,6 +363,42 @@ Returns flat list of module specs."
     (when (and output (output? output))
       (output-statusbar-set! output bar))
     bar))
+
+(define (statusbar-clone bar)
+  "Create a shallow copy of <statusbar> BAR referencing its module lists.
+Parameters: (BAR)
+  - BAR: <statusbar> record to clone.
+Returns new <statusbar> record."
+  (%make-statusbar
+   (gensym "statusbar-")
+   (statusbar-position bar)
+   (statusbar-height bar)
+   (statusbar-margin-top bar)
+   (statusbar-margin-bottom bar)
+   (statusbar-margin-left bar)
+   (statusbar-margin-right bar)
+   (statusbar-padding-x bar)
+   (statusbar-padding-y bar)
+   (statusbar-spacing bar)
+   (statusbar-bg-color bar)
+   (statusbar-fg-color bar)
+   (statusbar-border-color bar)
+   (statusbar-border-width bar)
+   (statusbar-border-radius bar)
+   (statusbar-pill-radius bar)
+   (statusbar-pill-padding-x bar)
+   (statusbar-pill-padding-y bar)
+   (statusbar-font bar)
+   (statusbar-font-size bar)
+   ;; NOTE: this may cause unexpected behavior when we have modules dependant
+   ;;       on outputs (I believe only workspaces module for now). The expected
+   ;;       behavior can probably be achieved by deep cloning modules.
+   (statusbar-modules-left bar)
+   (statusbar-modules-center bar)
+   (statusbar-modules-right bar)
+   (statusbar-click-enabled? bar)
+   #f %null-pointer %null-pointer %null-pointer
+   0 0 #f '() #f 0))
 
 (define (statusbar-bind-output! bar output init-width bar-height)
   "Transfer and bind BAR to OUTPUT.

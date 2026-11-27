@@ -468,6 +468,13 @@ Parameters: None."
   "Assign BAR to every currently known output.
 Parameters: (BAR)
   - BAR: <statusbar> record to assign."
-  (when *manager*
-    (for-each (lambda (output) (output-statusbar-set! output bar))
-              (manager-outputs *manager*))))
+  (when (and *manager* (statusbar? bar))
+    (let ((assigned? (statusbar-output bar)))
+      (for-each
+       (lambda (output)
+         ;; if statusbar is already assigned to an output, clone it
+         (output-statusbar-set! output (if assigned?
+                                           (statusbar-clone bar)
+                                           bar))
+         (set! assigned? #t))
+       (manager-outputs *manager*)))))
