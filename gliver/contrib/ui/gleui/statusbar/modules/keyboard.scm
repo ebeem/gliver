@@ -6,13 +6,14 @@
 (define-module (gliver contrib ui gleui statusbar modules keyboard)
   #:use-module (ice-9 format)
   #:use-module (srfi srfi-1)
+  #:use-module (srfi srfi-2)
   #:use-module (gliver core)
   #:use-module (gliver core keyboard)
   #:use-module (gliver deps libxkbcommon)
   #:use-module (gliver contrib ui gleui statusbar state)
   #:declarative? #f
   #:export (
-			make-module-keyboard
+            make-module-keyboard
 ))
 
 (define (%query-keyboard-layout)
@@ -40,27 +41,33 @@ Detects and dynamically listens to Wayland xkb_layout changes.
 Supports short aliases, custom icon, layout cycling, and click actions."
 
   (define (%update module output)
-    (let* ((raw (%query-keyboard-layout))
-		   ;; TODO: this should get layout name rather than code
-           (curr-name (keyboard-current-layout-code))
-           (curr-code (keyboard-current-layout-code))
-           ;; check custom user mappings first for raw, code, or name
-           (mapped (or (assoc-ref mappings raw)
-                       (and curr-code (assoc-ref mappings curr-code))
-                       (and curr-name (assoc-ref mappings curr-name))))
-           (display-str (cond
-                         (mapped mapped)
-                         (short? (if uppercase? (string-upcase raw) raw))
-                         (uppercase? (string-upcase (or curr-name raw)))
-                         (else (or curr-name raw))))
-           (text (format #f format-template display-str))
-           (tooltip (format #f "Keyboard Layout: ~a" (or curr-name raw))))
+    (and-let* (*keyboard-layouts*
+               (raw (%query-keyboard-layout))
+               ;; TODO: this should get layout name rather than code
+               (curr-name (keyboard-current-layout-code))
+               (curr-code (keyboard-current-layout-code))
+               ;; check custom user mappings first for raw, code, or name
+               (mapped (or (assoc-ref mappings raw)
+                           (and curr-code (assoc-ref mappings curr-code))
+                           (and curr-name (assoc-ref mappings curr-name))))
+               (display-str (cond
+                             (mapped mapped)
+                             (short? (if (and uppercase? (string? raw))
+                                         (string-upcase raw)
+                                         (or raw "")))
+                             (uppercase? (let ((val (or curr-name raw)))
+                                           (if (string? val)
+                                               (string-upcase val)
+                                               "")))
+                             (else (or curr-name raw ""))))
+               (text (format #f format-template display-str))
+               (tooltip (format #f "Keyboard Layout: ~a" (or curr-name raw))))
       (statusbar-module-text-set! module text)
       (statusbar-module-tooltip-set! module tooltip)
       (statusbar-module-state-set! module `((layout . ,raw)
-                                           (name . ,curr-name)
-                                           (code . ,curr-code)
-                                           (index . ,*keyboard-current-layout-index*)))))
+                                            (name . ,curr-name)
+                                            (code . ,curr-code)
+                                            (index . ,*keyboard-current-layout-index*)))))
 
   (define (%handle-click button x y module output custom-data)
     (cond
