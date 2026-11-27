@@ -104,7 +104,8 @@ Returns <gleui-widget> node, or #f when standard module text is empty."
                                  #:font font
                                  #:font-size font-size
                                  #:color fg-color
-                                 #:markup? #f)
+                                 #:markup? #f
+                                 #:multiline? #f)
                    #:max-height bar-height
                    #:padding-x padding-x
                    #:padding-y padding-y

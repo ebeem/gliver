@@ -112,7 +112,8 @@
                           #:font font
                           #:font-size font-size
                           #:color fg
-                          #:markup? #f)
+                          #:markup? #f
+                          #:multiline? #f)
             #:max-height bar-height
             #:padding-x padding-x
             #:padding-y padding-y
