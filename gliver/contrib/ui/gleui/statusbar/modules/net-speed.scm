@@ -77,12 +77,29 @@
      (else
       (format #f "~a B/s" (inexact->exact (round b)))))))
 
+(define (%fit-speed-width str max-width)
+  "Pad STR on the left with spaces to MAX-WIDTH, or truncate if longer.
+Parameters: (STR MAX-WIDTH)
+  - STR: String formatted network speed.
+  - MAX-WIDTH: Integer or #f target character width.
+Returns fixed-width string when MAX-WIDTH is positive, or STR unchanged."
+  (if (and (integer? max-width) (> max-width 0))
+      (let ((len (string-length str)))
+        (cond
+         ((> len max-width)
+          (substring str 0 max-width))
+         ((< len max-width)
+          (string-append (make-string (- max-width len) #\space) str))
+         (else str)))
+      str))
+
 (define* (make-module-net-speed #:key
                                 (id 'net-speed)
                                 (section 'right)
                                 (interval 2)
                                 (interface 'auto)  ;; 'auto, 'all, or "eth0"
                                 (format-template " ~a  ~a")
+                                (max-width 8)
                                 (show-interface? #f)
                                 (bg-color *statusbar-bg-color*)
                                 (fg-color *statusbar-fg-color*)
@@ -92,6 +109,14 @@
                                 (on-click-cmd #f))
   "Create a Network Download/Upload Speed monitor module.
 Calculates instantaneous throughput from /proc/net/dev deltas."
+
+  (define (%format-display-text rx-str tx-str target-iface)
+    (let* ((rx-fit     (%fit-speed-width rx-str max-width))
+           (tx-fit     (%fit-speed-width tx-str max-width))
+           (speed-text (format #f format-template rx-fit tx-fit)))
+      (if show-interface?
+          (format #f "~a: ~a" (if (eq? target-iface 'all) "all" target-iface) speed-text)
+          speed-text)))
 
   (define (%update module output)
     (let* ((stats (%parse-proc-net-dev))
@@ -130,10 +155,7 @@ Calculates instantaneous throughput from /proc/net/dev deltas."
                  (tx-speed (/ (max 0 (- cur-tx prev-tx)) dt))
                  (rx-str (%format-network-speed rx-speed))
                  (tx-str (%format-network-speed tx-speed))
-                 (speed-text (format #f format-template rx-str tx-str))
-                 (text (if show-interface?
-                           (format #f "~a: ~a" (if (eq? target-iface 'all) "all" target-iface) speed-text)
-                           speed-text)))
+                 (text (%format-display-text rx-str tx-str target-iface)))
             (statusbar-module-text-set! module text)
             (statusbar-module-state-set!
              module
@@ -143,7 +165,7 @@ Calculates instantaneous throughput from /proc/net/dev deltas."
                (interface . ,target-iface))))
 
           (begin
-            (statusbar-module-text-set! module (format #f format-template "0 B/s" "0 B/s"))
+            (statusbar-module-text-set! module (%format-display-text "0 B/s" "0 B/s" target-iface))
             (statusbar-module-state-set!
              module
              `((prev-rx . ,cur-rx)
