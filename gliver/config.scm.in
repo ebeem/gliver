@@ -1,8 +1,10 @@
 (define-module (gliver config)
   #:export
-  (%gliver-installation-prefix
+  (
+   %gliver-installation-prefix
    %gliver-source-directory
-   %gliver-compiled-directory))
+   %gliver-compiled-directory
+))
 
 (define %gliver-installation-prefix
   "@PREFIX@")
