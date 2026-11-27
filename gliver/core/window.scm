@@ -24,89 +24,89 @@
   ;; maybe using hooks is a better idea
   #:autoload (gliver core seat) (seat-wm-window-focus)
   #:autoload (gliver core container) (container-focus!
-									  container-focused?
-									  container-prev
-									  container-next)
+                                      container-focused?
+                                      container-prev
+                                      container-next)
   #:autoload (gliver core workspace) (workspace-manual?
-									  workspace-windows
-									  workspace-visible?)
+                                      workspace-windows
+                                      workspace-visible?)
   #:declarative? #f
   #:export (
-			*window-focus-new?*
-			*window-default-decoration*
-			*window-default-capabilties*
-			*window-default-edges*
-			*window-default-border-edges*
-			*window-container-navigation-recursive?*
-			window-next
-			window-prev
-			window-add!
-			window-apply-defaults!
-			window-remove!
-			window-focus!
-			window-move-to-container!
-			window-move-to-workspace!
-			window-close!
-			window-node-get!
-			window-place-top!
-			window-place-above!
-			window-place-bottom!
-			window-place-below!
-			window-dimensions-propose!
-			window-hide!
-			window-show!
-			window-decoration-client!
-			window-decoration-server!
-			window-borders-set!
-			window-tiled-set!
-			window-decoration-above-get!
-			window-decoration-below-get!
-			window-resize-started-inform!
-			window-resize-ended-inform!
-			window-capabilities-inform!
-			window-maximized-inform!
-			window-unmaximized-inform!
-			window-fullscreen-inform!
-			window-fullscreen-exit-inform!
-			window-fullscreen!
-			window-fullscreen-exit!
-			window-clip-box-set!
-			window-content-clip-box-set!
-			window-dimension-bounds-set!
-			window-position-set!
-			window-on-window
-			window-on-window-closed
-			window-on-window-focused
-			window-on-window-unfocused
-			window-on-window-title-changed
-			window-on-window-parent-changed
-			window-on-window-app-id-changed
-			window-on-window-identifier-changed
-			window-on-window-presentation-hint
-			window-on-window-pid-changed
-			window-on-window-dimensions
-			window-on-window-dimensions-hint
-			window-on-window-decoration-hint
-			window-on-seat-window-focused
-			window-on-workspace-switch
-			window-on-fullscreen-requested
-			window-on-fullscreen-exit-requested
-			window-on-minimize-requested
+            *window-focus-new?*
+            *window-default-decoration*
+            *window-default-capabilties*
+            *window-default-edges*
+            *window-default-border-edges*
+            *window-container-navigation-recursive?*
+            window-next
+            window-prev
+            window-add!
+            window-apply-defaults!
+            window-remove!
+            window-focus!
+            window-move-to-container!
+            window-move-to-workspace!
+            window-close!
+            window-node-get!
+            window-place-top!
+            window-place-above!
+            window-place-bottom!
+            window-place-below!
+            window-dimensions-propose!
+            window-hide!
+            window-show!
+            window-decoration-client!
+            window-decoration-server!
+            window-borders-set!
+            window-tiled-set!
+            window-decoration-above-get!
+            window-decoration-below-get!
+            window-resize-started-inform!
+            window-resize-ended-inform!
+            window-capabilities-inform!
+            window-maximized-inform!
+            window-unmaximized-inform!
+            window-fullscreen-inform!
+            window-fullscreen-exit-inform!
+            window-fullscreen!
+            window-fullscreen-exit!
+            window-clip-box-set!
+            window-content-clip-box-set!
+            window-dimension-bounds-set!
+            window-position-set!
+            window-on-window
+            window-on-window-closed
+            window-on-window-focused
+            window-on-window-unfocused
+            window-on-window-title-changed
+            window-on-window-parent-changed
+            window-on-window-app-id-changed
+            window-on-window-identifier-changed
+            window-on-window-presentation-hint
+            window-on-window-pid-changed
+            window-on-window-dimensions
+            window-on-window-dimensions-hint
+            window-on-window-decoration-hint
+            window-on-seat-window-focused
+            window-on-workspace-switch
+            window-on-fullscreen-requested
+            window-on-fullscreen-exit-requested
+            window-on-minimize-requested
 ))
 
 ;;; window variables and behavior
 (define-var *window-focus-new?* #t
-			"Whether newly created windows are automatically focused.")
+            "Whether newly created windows are automatically focused.")
 (define-var *window-default-decoration* 'server
-			"Default window decoration mode ('server or 'client).")
+            "Default window decoration mode ('server or 'client).")
 (define-var *window-default-capabilties* 4
-			"Default capability bitmask advertised to client surfaces (e.g. fullscreen capability).")
+            "Default capability bitmask advertised to client surfaces (e.g. fullscreen capability).")
 (define-var *window-default-edges* 15
-			"Default tiled window edge bitmask for tiling layouts.")
+            "Default tiled window edge bitmask for tiling layouts.")
 (define-var *window-default-border-edges* 15
-			"Default window border edge bitmask.")
+            "Default window border edge bitmask.")
 (define-var *window-container-navigation-recursive?* #t
-			"if #t, window-next and window-prev will loop after reaching first/last window.")
+            "if #t, window-next and window-prev will loop after reaching first/last window.")
 
 ;;; window management
 (define* (window-next current #:key (recursive *window-container-navigation-recursive?*))
@@ -116,9 +116,9 @@ Parameters: (CURRENT [#:recursive #t])
   - RECURSIVE: Boolean, whether to wrap around at list boundary (default *window-container-navigation-recursive?*).
 Returns next <window> record, or #f if not found."
   (and-let* ((_ (window? current))
-			 (container (window-container current))
-			 (windows (container-windows container))
-			 (idx (list-index (lambda (f) (eq? f current)) windows)))
+             (container (window-container current))
+             (windows (container-windows container))
+             (idx (list-index (lambda (f) (eq? f current)) windows)))
     (cond
      ((not idx)
       (and (pair? windows) (car windows)))
@@ -134,9 +134,9 @@ Parameters: (CURRENT [#:recursive #t])
   - RECURSIVE: Boolean, whether to wrap around at list boundary (default *window-container-navigation-recursive?*).
 Returns previous <window> record, or #f if not found."
   (and-let* ((_ (window? current))
-			 (container (window-container current))
-			 (windows (container-windows container))
-			 (idx (list-index (lambda (f) (eq? f current)) windows)))
+             (container (window-container current))
+             (windows (container-windows container))
+             (idx (list-index (lambda (f) (eq? f current)) windows)))
     (cond
      ((not idx)
       (and (pair? windows) (last windows)))
@@ -151,28 +151,28 @@ Parameters: (WINDOW)
   - WINDOW: <window> record to register."
   (log-info "Adding window ~a" window)
   (let* ((proxy-window (window-wl-proxy window))
-		 (container (or (window-container window)
-						(container-current)))
-		 (all-windows (append (manager-windows *manager*) (list window))))
-	;; apply default configurations to window (e.g. decoration, capabilities, tiled, border, etc.)
-	(window-apply-defaults! window)
-	;; windows are stored in the manager for quick lookups
-	(%manager-windows-set! *manager* all-windows)
-	;; move window to the given container
-	(window-move-to-container! window container #:focus *window-focus-new?*)
-	(gliver-hook-run! *window-created-hook* window)))
+         (container (or (window-container window)
+                        (container-current)))
+         (all-windows (append (manager-windows *manager*) (list window))))
+    ;; apply default configurations to window (e.g. decoration, capabilities, tiled, border, etc.)
+    (window-apply-defaults! window)
+    ;; windows are stored in the manager for quick lookups
+    (%manager-windows-set! *manager* all-windows)
+    ;; move window to the given container
+    (window-move-to-container! window container #:focus *window-focus-new?*)
+    (gliver-hook-run! *window-created-hook* window)))
 
 (define (window-apply-defaults! window)
   "Apply defaults to window, these might be overwritten by layout.
 Parameters: (WINDOW)
   - WINDOW: <window> record to configure."
   (let ((output (output-current)))
-	(when (eq? *window-default-decoration* 'server)
-	  (window-decoration-server! window))
-	(when (eq? *window-default-decoration* 'client)
-	  (window-decoration-client! window))
-	(window-capabilities-inform! window *window-default-capabilties*)
-	(window-unmaximized-inform! window)
+    (when (eq? *window-default-decoration* 'server)
+      (window-decoration-server! window))
+    (when (eq? *window-default-decoration* 'client)
+      (window-decoration-client! window))
+    (window-capabilities-inform! window *window-default-capabilties*)
+    (window-unmaximized-inform! window)
     (window-fullscreen-exit-inform! window)
     (window-tiled-set! window *window-default-edges*)
     (window-borders-set! window *window-default-border-edges*
@@ -184,24 +184,24 @@ Parameters: (WINDOW)
 Parameters: (WINDOW)
   - WINDOW: <window> record to remove."
   (let* ((remaining-windows (delq window (manager-windows *manager*)))
-		 (container (window-container window))
-		 (workspace (if container (container-workspace container) #f))
-		 (node (window-wl-node-proxy window))
-		 (dec-above (window-wl-decoration-above-proxy window))
-		 (dec-below (window-wl-decoration-below-proxy window)))
+         (container (window-container window))
+         (workspace (if container (container-workspace container) #f))
+         (node (window-wl-node-proxy window))
+         (dec-above (window-wl-decoration-above-proxy window))
+         (dec-below (window-wl-decoration-below-proxy window)))
     (%manager-windows-set! *manager* remaining-windows)
-	;; mark window as destroyed before container removal so refocus hooks ignore it
-	(%window-destroyed-set! window #t)
-	(%window-container-remove! window)
-	(when (valid-pointer? node)
-	  (wm-node-destroy! node)
-	  (%window-wl-node-proxy-set! window #f))
-	(when (valid-pointer? dec-above)
-	  (wm-decoration-destroy! dec-above)
-	  (%window-wl-decoration-above-proxy-set! window #f))
-	(when (valid-pointer? dec-below)
-	  (wm-decoration-destroy! dec-below)
-	  (%window-wl-decoration-below-proxy-set! window #f))
+    ;; mark window as destroyed before container removal so refocus hooks ignore it
+    (%window-destroyed-set! window #t)
+    (%window-container-remove! window)
+    (when (valid-pointer? node)
+      (wm-node-destroy! node)
+      (%window-wl-node-proxy-set! window #f))
+    (when (valid-pointer? dec-above)
+      (wm-decoration-destroy! dec-above)
+      (%window-wl-decoration-above-proxy-set! window #f))
+    (when (valid-pointer? dec-below)
+      (wm-decoration-destroy! dec-below)
+      (%window-wl-decoration-below-proxy-set! window #f))
     (gliver-hook-run! *window-destroyed-hook* window container workspace)))
 
 (define* (%window-container-remove! window #:key (focus #t))
@@ -210,38 +210,38 @@ Parameters: (WINDOW [#:focus #t])
   - WINDOW: <window> record to remove from its container.
   - FOCUS: Boolean, whether to focus the next window in the container (default #t)."
   (let* ((container (window-container window))
-		 (workspace (if container (container-workspace container) #f))
-		 (windows (if container (container-windows container) '()))
-		 (idx (list-index (lambda (w) (eq? w window)) windows))
-		 (windows-remaining (delq window windows))
-		 (window-target (and (pair? windows-remaining)
-							 (if (and idx (< idx (length windows-remaining)))
-								 (list-ref windows-remaining idx)
-								 (last windows-remaining)))))
+         (workspace (if container (container-workspace container) #f))
+         (windows (if container (container-windows container) '()))
+         (idx (list-index (lambda (w) (eq? w window)) windows))
+         (windows-remaining (delq window windows))
+         (window-target (and (pair? windows-remaining)
+                             (if (and idx (< idx (length windows-remaining)))
+                                 (list-ref windows-remaining idx)
+                                 (last windows-remaining)))))
     (%window-container-set! window #f)
     (when container
-	  (%container-windows-set! container windows-remaining)
-	  (gliver-hook-run! *window-container-removed-hook* window container)
-	  ;; if removed window is currently focused, focus another window
-	  (when (eq? (container-window-current container) window)
-		(%container-window-current-set! container window-target)
-		(cond
-		 ;; if we have a target window, focus it
-		 (window-target
-		  (log-debug "Current window deleted, focusing next window in same container: ~a" window-target)
-		  (when focus
-			(window-focus! window-target)))
-		 ;; in manual layout, keep container focused as it won't be removed
-		 ((workspace-manual? workspace)
-		  (log-debug "All windows removed from container ~a in manual layout, keeping container focused"
-					 (container-id container)))
-		 ;; in automatic layout, focus next container's window if available
-		 (else
-		  (let* ((container-target (or (container-next container #:recursive #f)
-									   (container-prev container #:recursive #f)))
-				 (target-win (if container-target (container-window-current container-target) #f)))
-			(when (and focus target-win)
-			  (window-focus! target-win)))))))))
+      (%container-windows-set! container windows-remaining)
+      (gliver-hook-run! *window-container-removed-hook* window container)
+      ;; if removed window is currently focused, focus another window
+      (when (eq? (container-window-current container) window)
+        (%container-window-current-set! container window-target)
+        (cond
+         ;; if we have a target window, focus it
+         (window-target
+          (log-debug "Current window deleted, focusing next window in same container: ~a" window-target)
+          (when focus
+            (window-focus! window-target)))
+         ;; in manual layout, keep container focused as it won't be removed
+         ((workspace-manual? workspace)
+          (log-debug "All windows removed from container ~a in manual layout, keeping container focused"
+                     (container-id container)))
+         ;; in automatic layout, focus next container's window if available
+         (else
+          (let* ((container-target (or (container-next container #:recursive #f)
+                                       (container-prev container #:recursive #f)))
+                 (target-win (if container-target (container-window-current container-target) #f)))
+            (when (and focus target-win)
+              (window-focus! target-win)))))))))
 
 (define* (%window-container-add! window container #:key (focus #t))
   "Add a window to a container.
@@ -253,20 +253,20 @@ Parameters: (WINDOW CONTAINER [#:focus #t])
   ;; it will be hard to force all callers to ensure that the window
   ;; they pass isn't destroyed, so the validation is done here as well
   (unless (window-destroyed? window)
-	;; remove window from old container (if exist)
-	(when (window-container window)
-	  (%window-container-remove! window #:focus focus))
-	;; add window to new container
-	(let ((container-windows (append (container-windows container) (list window))))
-	  (%window-container-set! window container)
-	  (%container-windows-set! container container-windows)
-	  (gliver-hook-run! *window-container-added-hook* window container)
-	  ;; if focus parameter is true, window will be focused
-	  (if focus
-		  (window-focus! window)
-		  ;; set window as current for container if it's empty
-		  (unless (container-window-current container)
-			(%container-window-current-set! container window))))))
+    ;; remove window from old container (if exist)
+    (when (window-container window)
+      (%window-container-remove! window #:focus focus))
+    ;; add window to new container
+    (let ((container-windows (append (container-windows container) (list window))))
+      (%window-container-set! window container)
+      (%container-windows-set! container container-windows)
+      (gliver-hook-run! *window-container-added-hook* window container)
+      ;; if focus parameter is true, window will be focused
+      (if focus
+          (window-focus! window)
+          ;; set window as current for container if it's empty
+          (unless (container-window-current container)
+            (%container-window-current-set! container window))))))
 
 (define* (window-focus! window #:key (seat #f) (focus-parent #t) (force #f))
   "Focus a window so it receives seat input.
@@ -276,7 +276,7 @@ Parameters: (WINDOW [#:seat #f] [#:focus-parent #t] [#:force #f])
   - FOCUS-PARENT: Boolean, whether to focus parent container (default #t).
   - FORCE: Boolean, whether to force refocusing even if already focused (default #f)."
   (let ((container (and (window? window)
-						(window-container window)))
+                        (window-container window)))
         (current (window-current))
         (seats (manager-seats *manager*)))
     (and-let* (((window? window))
@@ -290,11 +290,11 @@ Parameters: (WINDOW [#:seat #f] [#:focus-parent #t] [#:force #f])
                                   (every (lambda (s) (eq? (seat-window-focused s) window)) seats)
                                   (eq? current window)
                                   (container-focused? container)))))))
-	  ;; set window as current for its container to focus it if it's
-	  ;; focusing another window
+      ;; set window as current for its container to focus it if it's
+      ;; focusing another window
       (when (container? container)
         (%container-window-current-set! container window)
-		;; also focus container if it's not focused and focus-parent it #t
+        ;; also focus container if it's not focused and focus-parent it #t
         (when focus-parent
           (container-focus! container #:focus-child #f)))
       ;; place window at top so it becomes visible above other windows
@@ -304,7 +304,7 @@ Parameters: (WINDOW [#:seat #f] [#:focus-parent #t] [#:force #f])
                  (not (window-destroyed? current))
                  (not (eq? current window)))
         (gliver-hook-run! *window-unfocused-hook* current))
-	  ;; make seat(s) focus the window so input is forwarded to it
+      ;; make seat(s) focus the window so input is forwarded to it
       (if (seat? seat)
           (seat-wm-window-focus seat window #:force force)
           (for-each
@@ -320,24 +320,24 @@ Parameters: (WINDOW CONTAINER [#:focus #t])
   - CONTAINER: <container> record target.
   - FOCUS: Boolean, whether to focus WINDOW in the new container (default #t)."
   (let ((container-current (window-container window)))
-	(log-debug "Moving window ~a to container ~a with focus=~a" window container focus)
-	;; moves the window to the new container
-	(unless (eq? container-current container)
-	  (%window-container-add! window container #:focus focus))
-	(log-debug "Set window=~a geometry to ~ax~a+~a+~a"
-			   window
-			   (container-usable-width container)
-			   (container-usable-height container)
-			   (container-usable-x container)
-			   (container-usable-y container))
-	;; update window position and size to match its container usable geometry
-	(window-position-set! window
-						  (container-usable-x container)
-						  (container-usable-y container))
-	(window-dimensions-propose! window
-								(container-usable-width container)
-								(container-usable-height container))
-	(gliver-hook-run! *window-container-moved-hook* window container container-current)))
+    (log-debug "Moving window ~a to container ~a with focus=~a" window container focus)
+    ;; moves the window to the new container
+    (unless (eq? container-current container)
+      (%window-container-add! window container #:focus focus))
+    (log-debug "Set window=~a geometry to ~ax~a+~a+~a"
+               window
+               (container-usable-width container)
+               (container-usable-height container)
+               (container-usable-x container)
+               (container-usable-y container))
+    ;; update window position and size to match its container usable geometry
+    (window-position-set! window
+                          (container-usable-x container)
+                          (container-usable-y container))
+    (window-dimensions-propose! window
+                                (container-usable-width container)
+                                (container-usable-height container))
+    (gliver-hook-run! *window-container-moved-hook* window container container-current)))
 
 (define* (window-move-to-workspace! window workspace #:key (focus #t))
   "Move WINDOW to WORKSPACE, and place it in WORKSPACE's active container.
@@ -346,19 +346,19 @@ Parameters: (WINDOW WORKSPACE [#:focus #t])
   - WORKSPACE: <workspace> record target.
   - FOCUS: Boolean, whether to focus WINDOW in the new workspace (default #t)."
   (and-let* (((window? window))
-			 ((not (window-destroyed? window)))
-			 ((workspace? workspace))
-			 (output (workspace-output workspace))
-			 (containers (workspace-containers workspace))
-			 (container (or (workspace-container-current workspace)
-							(and (pair? containers) (car containers)))))
-	;; set container as current in workspace if it's not already
-	;; this shouldn't happen usually, container should be current in workspace
+             ((not (window-destroyed? window)))
+             ((workspace? workspace))
+             (output (workspace-output workspace))
+             (containers (workspace-containers workspace))
+             (container (or (workspace-container-current workspace)
+                            (and (pair? containers) (car containers)))))
+    ;; set container as current in workspace if it's not already
+    ;; this shouldn't happen usually, container should be current in workspace
     (unless (workspace-container-current workspace)
       (%workspace-container-current-set! workspace container))
-	;; move the window to the target container (current in workspace)
+    ;; move the window to the target container (current in workspace)
     (window-move-to-container! window container #:focus focus)
-	;; show or hide window base on workspace state
+    ;; show or hide window base on workspace state
     (if (workspace-visible? workspace)
         (window-show! window)
         (window-hide! window))))
@@ -368,7 +368,7 @@ Parameters: (WINDOW WORKSPACE [#:focus #t])
 Parameters: (WINDOW)
   - WINDOW: <window> record to close."
   (and-let* (((window? window))
-			 (proxy-window (window-wl-proxy window)))
+             (proxy-window (window-wl-proxy window)))
     (wm-window-close proxy-window)))
 
 (define (window-node-get! window)
@@ -377,26 +377,26 @@ Parameters: (WINDOW)
   - WINDOW: <window> record.
 Returns river_node_v1 proxy pointer."
   (and-let* (((window? window))
-			 (proxy-window (window-wl-proxy window)))
-	;; return cached node if it's available
-	(or (window-wl-node-proxy window)
-		;; otherwise get a new node proxy, store it and return it
-		(let ((proxy-node (wm-window-node-get proxy-window)))
-		  (log-debug "Setting node of window: ~a to ~a" proxy-window proxy-node)
-		  (%window-wl-node-proxy-set! window proxy-node)
-		  proxy-node))))
+             (proxy-window (window-wl-proxy window)))
+    ;; return cached node if it's available
+    (or (window-wl-node-proxy window)
+        ;; otherwise get a new node proxy, store it and return it
+        (let ((proxy-node (wm-window-node-get proxy-window)))
+          (log-debug "Setting node of window: ~a to ~a" proxy-window proxy-node)
+          (%window-wl-node-proxy-set! window proxy-node)
+          proxy-node))))
 
 (define (window-place-top! window)
   "Place WINDOW on top of all other windows.
 Parameters: (WINDOW)
   - WINDOW: <window> record."
   (and-let* ((node (window-node-get! window))
-			 (container (window-container window))
-			 (container-node (container-wl-node-proxy container))
-			 ((valid-pointer? container-node)))
-	(with-render-sequence
-	 (wm-node-place-top! node)
-	 (wm-node-place-below! node container-node))))
+             (container (window-container window))
+             (container-node (container-wl-node-proxy container))
+             ((valid-pointer? container-node)))
+    (with-render-sequence
+     (wm-node-place-top! node)
+     (wm-node-place-below! node container-node))))
 
 (define (window-place-above! window window-other)
   "Place WINDOW above WINDOW-OTHER.
@@ -404,7 +404,7 @@ Parameters: (WINDOW WINDOW-OTHER)
   - WINDOW: <window> record.
   - WINDOW-OTHER: <window> record reference."
   (and-let* ((node (window-node-get! window))
-			 (node-other (window-node-get! window-other)))
+             (node-other (window-node-get! window-other)))
     (with-render-sequence
      (wm-node-place-above! node node-other))))
 
@@ -422,7 +422,7 @@ Parameters: (WINDOW WINDOW-OTHER)
   - WINDOW: <window> record.
   - WINDOW-OTHER: <window> record reference."
   (and-let* ((node (window-node-get! window))
-			 (node-other (window-node-get! window-other)))
+             (node-other (window-node-get! window-other)))
     (with-render-sequence
      (wm-node-place-below! node node-other))))
 
@@ -434,50 +434,50 @@ Parameters: (WINDOW WIDTH HEIGHT [#:animate #t])
   - HEIGHT: Integer proposed height in pixels.
   - ANIMATE: Boolean, whether to animate the dimension change (default #t)."
   (and-let* (((window? window))
-			 (proxy-window (window-wl-proxy window))
-			 ;; round and convert to integers
-			 (int-w (inexact->exact (floor width)))
-			 (int-h (inexact->exact (floor height))))
-	(with-manage-sequence
-	 (wm-window-dimensions-propose proxy-window int-w int-h))))
+             (proxy-window (window-wl-proxy window))
+             ;; round and convert to integers
+             (int-w (inexact->exact (floor width)))
+             (int-h (inexact->exact (floor height))))
+    (with-manage-sequence
+     (wm-window-dimensions-propose proxy-window int-w int-h))))
 
 (define (window-hide! window)
   "Hide WINDOW.
 Parameters: (WINDOW)
   - WINDOW: <window> record to hide."
   (and-let* (((window? window))
-			 (proxy-window (window-wl-proxy window)))
+             (proxy-window (window-wl-proxy window)))
     (with-render-sequence
-	 (%window-visbile-set! window #f)
-	 (wm-window-hide proxy-window))))
+     (%window-visbile-set! window #f)
+     (wm-window-hide proxy-window))))
 
 (define (window-show! window)
   "Show WINDOW.
 Parameters: (WINDOW)
   - WINDOW: <window> record to show."
   (and-let* (((window? window))
-			 (proxy-window (window-wl-proxy window)))
-	(with-render-sequence
-	 (%window-visbile-set! window #t)
-	 (wm-window-show proxy-window))))
+             (proxy-window (window-wl-proxy window)))
+    (with-render-sequence
+     (%window-visbile-set! window #t)
+     (wm-window-show proxy-window))))
 
 (define (window-decoration-client! window)
   "Enable client-side decoration for WINDOW.
 Parameters: (WINDOW)
   - WINDOW: <window> record."
   (and-let* (((window? window))
-			 (proxy-window (window-wl-proxy window)))
+             (proxy-window (window-wl-proxy window)))
     (with-manage-sequence
-	 (wm-window-decoration-client proxy-window))))
+     (wm-window-decoration-client proxy-window))))
 
 (define (window-decoration-server! window)
   "Enable server-side decoration for WINDOW.
 Parameters: (WINDOW)
   - WINDOW: <window> record."
   (and-let* (((window? window))
-			 (proxy-window (window-wl-proxy window)))
-	(with-manage-sequence
-	 (wm-window-decoration-server proxy-window))))
+             (proxy-window (window-wl-proxy window)))
+    (with-manage-sequence
+     (wm-window-decoration-server proxy-window))))
 
 (define (window-borders-set! window edges width color-hex)
   "Set border state for WINDOW.
@@ -487,10 +487,10 @@ Parameters: (WINDOW EDGES WIDTH COLOR-HEX)
   - WIDTH: Integer border width in pixels.
   - COLOR-HEX: String hex color (e.g. \"#ff0000\")."
   (and-let* (((window? window))
-			 (proxy-window (window-wl-proxy window)))
-	(log-debug "Setting border color of window: ~a to ~a" window color-hex)
+             (proxy-window (window-wl-proxy window)))
+    (log-debug "Setting border color of window: ~a to ~a" window color-hex)
     (with-render-sequence
-	 (apply wm-window-borders-set
+     (apply wm-window-borders-set
             proxy-window edges width
             (color-hex->rgba-32 color-hex)))))
 
@@ -500,9 +500,9 @@ Parameters: (WINDOW EDGES)
   - WINDOW: <window> record.
   - EDGES: Integer tiled edge bitmask flags (e.g. RIVER_WINDOW_V1_EDGES_NONE)."
   (and-let* (((window? window))
-			 (proxy-window (window-wl-proxy window)))
-	(with-manage-sequence
-	 (wm-window-tiled-set proxy-window edges))))
+             (proxy-window (window-wl-proxy window)))
+    (with-manage-sequence
+     (wm-window-tiled-set proxy-window edges))))
 
 (define (window-decoration-above-get! window proxy-surface)
   "Create a decoration surface above the WINDOW.
@@ -514,13 +514,13 @@ Returns pointer to river_decoration_v1 proxy."
   (when window
     (let ((proxy-window (window-wl-proxy window))
           (cached-decoration (window-wl-decoration-below-proxy window)))
-	  ;; return cached if it exists, otherwise get its proxy
+      ;; return cached if it exists, otherwise get its proxy
       (if cached-decoration
-		  cached-decoration
-		  (let ((proxy-decoration (wm-window-decoration-above-get proxy-window proxy-surface)))
-			(log-debug "Setting above decoration of window: ~a to ~a" proxy-window proxy-decoration)
-			(%window-wl-decoration-above-proxy-set! window proxy-decoration)
-			proxy-decoration)))))
+          cached-decoration
+          (let ((proxy-decoration (wm-window-decoration-above-get proxy-window proxy-surface)))
+            (log-debug "Setting above decoration of window: ~a to ~a" proxy-window proxy-decoration)
+            (%window-wl-decoration-above-proxy-set! window proxy-decoration)
+            proxy-decoration)))))
 
 (define (window-decoration-below-get! window proxy-surface)
   "Create a decoration surface below WINDOW.
@@ -532,22 +532,22 @@ Returns river_decoration_v1 proxy pointer."
   (when window
     (let ((proxy-window (window-wl-proxy window))
           (cached-decoration (window-wl-decoration-below-proxy window)))
-	  ;; return cached if it exists, otherwise get its proxy
+      ;; return cached if it exists, otherwise get its proxy
       (if cached-decoration
-		  cached-decoration
+          cached-decoration
           (let ((proxy-decoration (wm-window-decoration-below-get proxy-window proxy-surface)))
-			(log-debug "Setting below decoration of window: ~a to ~a" proxy-window proxy-decoration)
-			(%window-wl-decoration-below-proxy-set! window proxy-decoration)
-			proxy-decoration)))))
+            (log-debug "Setting below decoration of window: ~a to ~a" proxy-window proxy-decoration)
+            (%window-wl-decoration-below-proxy-set! window proxy-decoration)
+            proxy-decoration)))))
 
 (define (window-resize-started-inform! window)
   "Inform the WINDOW that it is being resized.
 Parameters: (WINDOW)
   - WINDOW: <window> record."
   (and-let* (((window? window))
-			 (proxy-window (window-wl-proxy window)))
+             (proxy-window (window-wl-proxy window)))
     (with-manage-sequence
-	 (wm-window-resize-started-inform proxy-window)
+     (wm-window-resize-started-inform proxy-window)
      (%window-is-resizing-set! window #t)
      (gliver-hook-run! *window-resize-start-hook* window))))
 
@@ -556,9 +556,9 @@ Parameters: (WINDOW)
 Parameters: (WINDOW)
   - WINDOW: <window> record."
   (and-let* (((window? window))
-			 (proxy-window (window-wl-proxy window)))
+             (proxy-window (window-wl-proxy window)))
     (with-manage-sequence
-	 (wm-window-resize-ended-inform proxy-window)
+     (wm-window-resize-ended-inform proxy-window)
      (%window-is-resizing-set! window #f)
      (gliver-hook-run! *window-resize-end-hook* window))))
 
@@ -568,10 +568,10 @@ Parameters: (WINDOW CAPABILITIES)
   - WINDOW: <window> record.
   - CAPABILITIES: Integer capabilities enum flags bitmask."
   (and-let* (((window? window))
-			 (proxy-window (window-wl-proxy window))
-			 (prev-capabilities (window-capabilities window)))
+             (proxy-window (window-wl-proxy window))
+             (prev-capabilities (window-capabilities window)))
     (with-manage-sequence
-	 (wm-window-capabilities-inform proxy-window capabilities)
+     (wm-window-capabilities-inform proxy-window capabilities)
      (%window-capabilities-set! window capabilities)
      (gliver-hook-run! *window-capabilities-changed-hook* window prev-capabilities))))
 
@@ -580,46 +580,46 @@ Parameters: (WINDOW CAPABILITIES)
 Parameters: (WINDOW)
   - WINDOW: <window> record."
   (and-let* (((window? window))
-			 (proxy-window (window-wl-proxy window)))
-	(let ((prev-status (window-maximized? window)))
-	  (with-manage-sequence
-	   (wm-window-maximized-inform proxy-window)
-	   (%window-maximized-set! window #t)
-	   (gliver-hook-run! *window-maximized-hook* window prev-status)))))
+             (proxy-window (window-wl-proxy window)))
+    (let ((prev-status (window-maximized? window)))
+      (with-manage-sequence
+       (wm-window-maximized-inform proxy-window)
+       (%window-maximized-set! window #t)
+       (gliver-hook-run! *window-maximized-hook* window prev-status)))))
 
 (define (window-unmaximized-inform! window)
   "Inform the WINDOW that it has been unmaximized.
 Parameters: (WINDOW)
   - WINDOW: <window> record."
   (and-let* (((window? window))
-			 (proxy-window (window-wl-proxy window)))
-	(let ((prev-status (window-maximized? window)))
-	  (with-manage-sequence
-	   (wm-window-unmaximized-inform proxy-window)
-	   (%window-maximized-set! window #f)
-	   (gliver-hook-run! *window-unmaximized-hook* window prev-status)))))
+             (proxy-window (window-wl-proxy window)))
+    (let ((prev-status (window-maximized? window)))
+      (with-manage-sequence
+       (wm-window-unmaximized-inform proxy-window)
+       (%window-maximized-set! window #f)
+       (gliver-hook-run! *window-unmaximized-hook* window prev-status)))))
 
 (define (window-fullscreen-inform! window)
   "Inform the WINDOW that it has entered fullscreen mode.
 Parameters: (WINDOW)
   - WINDOW: <window> record."
   (and-let* (((window? window))
-			 (proxy-window (window-wl-proxy window)))
-	(let ((prev-status (window-fullscreen? window)))
-	  (with-manage-sequence
-	   (wm-window-fullscreen-inform proxy-window)
-	   (gliver-hook-run! *window-fullscreen-entered-informed-hook* window prev-status)))))
+             (proxy-window (window-wl-proxy window)))
+    (let ((prev-status (window-fullscreen? window)))
+      (with-manage-sequence
+       (wm-window-fullscreen-inform proxy-window)
+       (gliver-hook-run! *window-fullscreen-entered-informed-hook* window prev-status)))))
 
 (define (window-fullscreen-exit-inform! window)
   "Inform the WINDOW that it has exited fullscreen mode.
 Parameters: (WINDOW)
   - WINDOW: <window> record."
   (and-let* (((window? window))
-			 (proxy-window (window-wl-proxy window)))
-	(let ((prev-status (window-fullscreen? window)))
-	  (with-manage-sequence
-	   (wm-window-fullscreen-exit-inform proxy-window)
-	   (gliver-hook-run! *window-fullscreen-exited-informed-hook* window prev-status)))))
+             (proxy-window (window-wl-proxy window)))
+    (let ((prev-status (window-fullscreen? window)))
+      (with-manage-sequence
+       (wm-window-fullscreen-exit-inform proxy-window)
+       (gliver-hook-run! *window-fullscreen-exited-informed-hook* window prev-status)))))
 
 (define (window-fullscreen! window output)
   "Make the WINDOW fullscreen on the OUTPUT.
@@ -627,39 +627,39 @@ Parameters: (WINDOW OUTPUT)
   - WINDOW: <window> record.
   - OUTPUT: <output> record."
   (and-let* (((window? window))
-			 (proxy-window (window-wl-proxy window))
-			 (proxy-output (output-wl-proxy output)))
-	(let ((prev-status (window-fullscreen? window)))
-	  (with-manage-sequence
-	   (wm-window-fullscreen proxy-window proxy-output)
-	   (wm-window-fullscreen-inform proxy-window))
-	  (gliver-hook-run! *window-fullscreen-entered-hook* window prev-status)
+             (proxy-window (window-wl-proxy window))
+             (proxy-output (output-wl-proxy output)))
+    (let ((prev-status (window-fullscreen? window)))
+      (with-manage-sequence
+       (wm-window-fullscreen proxy-window proxy-output)
+       (wm-window-fullscreen-inform proxy-window))
+      (gliver-hook-run! *window-fullscreen-entered-hook* window prev-status)
       (gliver-hook-run! *window-fullscreen-entered-informed-hook* window prev-status)
-	  (%window-fullscreen-set! window #t)
-	  (window-place-top! window))))
+      (%window-fullscreen-set! window #t)
+      (window-place-top! window))))
 
 (define (window-fullscreen-exit! window)
   "Make the window not fullscreen.
 Parameters: (WINDOW)
   - WINDOW: <window> record."
   (and-let* (((window? window))
-			 (proxy-window (window-wl-proxy window))
-			 (container (window-container window)))
-	(let ((prev-status (window-fullscreen? window)))
-	  ;; exit fullscreen
-	  (%window-fullscreen-set! window #f)
-	  (with-manage-sequence
-	   (wm-window-fullscreen-exit proxy-window)
+             (proxy-window (window-wl-proxy window))
+             (container (window-container window)))
+    (let ((prev-status (window-fullscreen? window)))
+      ;; exit fullscreen
+      (%window-fullscreen-set! window #f)
+      (with-manage-sequence
+       (wm-window-fullscreen-exit proxy-window)
        (wm-window-fullscreen-exit-inform proxy-window))
-	  ;; resize window to its container size
-	  (window-dimensions-propose! window
-								  (container-usable-width container)
-								  (container-usable-height container))
-	  (window-position-set! window
-							(container-usable-x container)
-							(container-usable-y container))
-	  (gliver-hook-run! *window-fullscreen-exited-hook* window prev-status)
-	  (gliver-hook-run! *window-fullscreen-exited-informed-hook* window prev-status))))
+      ;; resize window to its container size
+      (window-dimensions-propose! window
+                                  (container-usable-width container)
+                                  (container-usable-height container))
+      (window-position-set! window
+                            (container-usable-x container)
+                            (container-usable-y container))
+      (gliver-hook-run! *window-fullscreen-exited-hook* window prev-status)
+      (gliver-hook-run! *window-fullscreen-exited-informed-hook* window prev-status))))
 
 (define (window-clip-box-set! window x y width height)
   "Clip the WINDOW, including borders and decoration surfaces.
@@ -671,9 +671,9 @@ Parameters: (WINDOW X Y WIDTH HEIGHT)
   - WIDTH: Integer clip box width in pixels (disabled if 0).
   - HEIGHT: Integer clip box height in pixels (disabled if 0)."
   (and-let* (((window? window))
-			 (proxy-window (window-wl-proxy window)))
+             (proxy-window (window-wl-proxy window)))
     (with-render-sequence
-	 (wm-window-clip-box-set proxy-window x y width height))))
+     (wm-window-clip-box-set proxy-window x y width height))))
 
 (define (window-content-clip-box-set! window x y width height)
   "Clip the WINDOW, excluding borders and decoration surfaces.
@@ -685,9 +685,9 @@ Parameters: (WINDOW X Y WIDTH HEIGHT)
   - WIDTH: Integer content clip box width in pixels (disabled if 0).
   - HEIGHT: Integer content clip box height in pixels (disabled if 0)."
   (and-let* (((window? window))
-			 (proxy-window (window-wl-proxy window)))
+             (proxy-window (window-wl-proxy window)))
     (with-render-sequence
-	 (wm-window-content-clip-box-set proxy-window x y width height))))
+     (wm-window-content-clip-box-set proxy-window x y width height))))
 
 (define (window-dimension-bounds-set! window max-width max-height)
   "Recommend that the WINDOW keep its dimensions within a given MAX-WIDTH and MAX-HEIGHT.
@@ -696,9 +696,9 @@ Parameters: (WINDOW MAX-WIDTH MAX-HEIGHT)
   - MAX-WIDTH: Integer maximum allowable width in pixels (unbounded if 0).
   - MAX-HEIGHT: Integer maximum allowable height in pixels (unbounded if 0)."
   (and-let* (((window? window))
-			 (proxy-window (window-wl-proxy window)))
+             (proxy-window (window-wl-proxy window)))
     (with-manage-sequence
-	 (wm-window-dimension-bounds-set proxy-window max-width max-height))))
+     (wm-window-dimension-bounds-set proxy-window max-width max-height))))
 
 (define* (window-position-set! window x y #:key (animate #t))
   "Set the position of the WINDOW.
@@ -708,11 +708,11 @@ Parameters: (WINDOW X Y [#:animate #t])
   - Y: Integer vertical position in pixels.
   - ANIMATE: Boolean, whether to animate position change (default #t)."
   (let ((node (window-node-get! window))
-		(int-x (inexact->exact (floor x)))
-		(int-y (inexact->exact (floor y))))
-	(%window-x-set! window int-x)
-	(%window-y-set! window int-y)
-	(when node
+        (int-x (inexact->exact (floor x)))
+        (int-y (inexact->exact (floor y))))
+    (%window-x-set! window int-x)
+    (%window-y-set! window int-y)
+    (when node
       (with-render-sequence
        (wm-node-position-set! node int-x int-y)))))
 
@@ -723,7 +723,7 @@ Parameters: (DATA MANAGER WINDOW-PROXY)
   - MANAGER: Pointer to river_window_manager_v1 proxy.
   - WINDOW-PROXY: Pointer to river_window_v1 proxy."
   (let ((window (make-window
-				 #:wl-proxy proxy-window)))
+                 #:wl-proxy proxy-window)))
     (window-add! window)))
 (gliver-hook-add! %window-created-hook 'window-on-window)
 
@@ -747,8 +747,8 @@ Parameters: (WINDOW)
       (container-focus! container #:focus-child #f)))
   ;; colorize the window border with active window border color
   (window-borders-set! window *window-default-border-edges*
-					   *window-border-width*
-					   *window-border-color-focused*))
+                       *window-border-width*
+                       *window-border-color-focused*))
 (gliver-hook-add! *window-focused-hook* 'window-on-window-focused)
 
 (define (window-on-window-unfocused window)
@@ -758,8 +758,8 @@ Parameters: (WINDOW)
   ;; colorize the window border with inactive window border color
   (log-debug "Unfocusing window ~a" window)
   (window-borders-set! window *window-default-border-edges*
-					   *window-border-width*
-					   *window-border-color-unfocused*))
+                       *window-border-width*
+                       *window-border-color-unfocused*))
 (gliver-hook-add! *window-unfocused-hook* 'window-on-window-unfocused)
 
 (define (window-on-window-title-changed proxy-window title)
@@ -768,10 +768,10 @@ Parameters: (PROXY-WINDOW TITLE)
   - PROXY-WINDOW: Pointer to river_window_v1 proxy.
   - TITLE: String new window title."
   (and-let* ((window (window-find-by-proxy proxy-window)))
-	;; avoid unnecessary calls
-	(unless (string= title (window-title window))
+    ;; avoid unnecessary calls
+    (unless (string= title (window-title window))
       (%window-title-set! window title)
-	  (gliver-hook-run! *window-title-changed-hook* window title))))
+      (gliver-hook-run! *window-title-changed-hook* window title))))
 (gliver-hook-add! %window-title-changed-hook 'window-on-window-title-changed)
 
 ;; TODO: check how this should be handled
@@ -784,7 +784,7 @@ Parameters: (PROXY-WINDOW PARENT-PROXY)
   - PARENT: Pointer to parent river_window_v1 proxy, or #f."
   (and-let* ((window (window-find-by-proxy proxy-window)))
     (%window-parent-set! window parent)
-	(gliver-hook-run! *window-parent-changed-hook* window parent)))
+    (gliver-hook-run! *window-parent-changed-hook* window parent)))
 (gliver-hook-add! %window-parent-changed-hook 'window-on-window-parent-changed)
 
 (define (window-on-window-app-id-changed proxy-window app-id)
@@ -794,7 +794,7 @@ Parameters: (PROXY-WINDOW APP-ID-PTR)
   - APP-ID: String app_id."
   (and-let* ((window (window-find-by-proxy proxy-window)))
     (%window-app-id-set! window app-id)
-	(gliver-hook-run! *window-app-id-changed-hook* window app-id)))
+    (gliver-hook-run! *window-app-id-changed-hook* window app-id)))
 (gliver-hook-add! %window-app-id-changed-hook 'window-on-window-app-id-changed)
 
 (define (window-on-window-identifier-changed proxy-window identifier)
@@ -804,7 +804,7 @@ Parameters: (PROXY-WINDOW IDENTIFIER)
   - IDENTIFIER: String unique window identifier."
   (and-let* ((window (window-find-by-proxy proxy-window)))
     (%window-identifier-set! window identifier)
-	(gliver-hook-run! *window-identifier-changed-hook* window identifier)))
+    (gliver-hook-run! *window-identifier-changed-hook* window identifier)))
 (gliver-hook-add! %window-identifier-changed-hook 'window-on-window-identifier-changed)
 
 (define (window-on-window-presentation-hint data proxy-window hint)
@@ -815,7 +815,7 @@ Parameters: (DATA PROXY-WINDOW HINT)
   - HINT: Integer presentation mode enum (e.g. RIVER_OUTPUT_V1_PRESENTATION_MODE_VSYNC)."
   (and-let* ((window (window-find-by-proxy proxy-window)))
     (%window-presentation-hint-set! window hint)
-	(gliver-hook-run! *window-presentation-hint-changed-hook* window hint)))
+    (gliver-hook-run! *window-presentation-hint-changed-hook* window hint)))
 (gliver-hook-add! %window-presentation-hint-changed-hook 'window-on-window-presentation-hint)
 
 (define (window-on-window-pid-changed proxy-window pid)
@@ -825,7 +825,7 @@ Parameters: (PROXY-WINDOW PID)
   - PID: Integer process ID (unverified)."
   (and-let* ((window (window-find-by-proxy proxy-window)))
     (%window-pid-set! window pid)
-	(gliver-hook-run! *window-pid-changed-hook* window pid)))
+    (gliver-hook-run! *window-pid-changed-hook* window pid)))
 (gliver-hook-add! %window-pid-changed-hook 'window-on-window-pid-changed)
 
 (define (window-on-window-dimensions proxy-window width height)
@@ -835,9 +835,9 @@ Parameters: (PROXY-WINDOW WIDTH HEIGHT)
   - WIDTH: Integer width in pixels.
   - HEIGHT: Integer height in pixels."
   (and-let* ((window (window-find-by-proxy proxy-window)))
-	(%window-width-set! window width)
-	(%window-height-set! window height)
-	(gliver-hook-run! *window-size-changed-hook* window width height)))
+    (%window-width-set! window width)
+    (%window-height-set! window height)
+    (gliver-hook-run! *window-size-changed-hook* window width height)))
 (gliver-hook-add! %window-size-changed-hook 'window-on-window-dimensions)
 
 (define (window-on-window-dimensions-hint proxy-window min-w min-h max-w max-h)
@@ -849,11 +849,11 @@ Parameters: (PROXY-WINDOW MIN-W MIN-H MAX-W MAX-H)
   - MAX-W: Integer maximum preferred width in pixels.
   - MAX-H: Integer maximum preferred height in pixels."
   (and-let* ((window (window-find-by-proxy proxy-window)))
-	(%window-width-min-set! window min-w)
-	(%window-height-min-set! window min-h)
-	(%window-width-max-set! window max-w)
-	(%window-height-max-set! window max-h)
-	(gliver-hook-run! *window-size-hint-changed-hook* window min-w min-h max-w max-h)))
+    (%window-width-min-set! window min-w)
+    (%window-height-min-set! window min-h)
+    (%window-width-max-set! window max-w)
+    (%window-height-max-set! window max-h)
+    (gliver-hook-run! *window-size-hint-changed-hook* window min-w min-h max-w max-h)))
 (gliver-hook-add! %window-size-hint-changed-hook 'window-on-window-dimensions-hint)
 
 (define (window-on-window-decoration-hint proxy-window hint)
@@ -862,8 +862,8 @@ Parameters: (PROXY-WINDOW HINT)
   - PROXY-WINDOW: Pointer to river_window_v1 proxy.
   - HINT: Integer decoration hint enum value (e.g. RIVER_WINDOW_V1_DECORATION_HINT_NO_PREFERENCE)."
   (and-let* ((window (window-find-by-proxy proxy-window)))
-	(%window-decoration-hint-set! window hint)
-	(gliver-hook-run! *window-decoration-hint-changed-hook* window hint)))
+    (%window-decoration-hint-set! window hint)
+    (gliver-hook-run! *window-decoration-hint-changed-hook* window hint)))
 (gliver-hook-add! %window-decoration-hint-changed-hook 'window-on-window-decoration-hint)
 
 (define (window-on-seat-window-focused seat window)
@@ -873,13 +873,13 @@ Parameters: (SEAT WINDOW)
   - WINDOW: <window> record or #f; window being focused."
   (log-debug "Window seat has focused ~a" window)
   (if (and window (window? window) (not (window-destroyed? window)))
-	  ;; just try to focus window, window-check! already has guard checks
-	  (window-focus! window #:seat seat)
-	  ;; if the window passed isn't a window (maybe surface)
-	  ;; then clear the focus from window so surface receives input
-	  (let ((current (window-current)))
-		(when (and current (window? current) (not (window-destroyed? current)))
-		  (gliver-hook-run! *window-unfocused-hook* current)))))
+      ;; just try to focus window, window-check! already has guard checks
+      (window-focus! window #:seat seat)
+      ;; if the window passed isn't a window (maybe surface)
+      ;; then clear the focus from window so surface receives input
+      (let ((current (window-current)))
+        (when (and current (window? current) (not (window-destroyed? current)))
+          (gliver-hook-run! *window-unfocused-hook* current)))))
 (gliver-hook-add! *seat-window-focused-hook* 'window-on-seat-window-focused)
 
 (define (window-on-workspace-switch workspace prev-workspace)
@@ -901,10 +901,10 @@ Parameters: (PROXY-WINDOW PROXY-OUTPUT)
   - PROXY-WINDOW: Pointer to river_window_v1 proxy.
   - PROXY-OUTPUT: Pointer to target river_output_v1 proxy (or null pointer for current output)."
   (and-let* ((window (window-find-by-proxy proxy-window))
-			 ;; NOTE: if not output proxy is passed then current client
-			 ;; is requesting fullscreen on current output
-			 (output (or (window-find-by-proxy proxy-output)
-						 (window-output window))))
+             ;; NOTE: if not output proxy is passed then current client
+             ;; is requesting fullscreen on current output
+             (output (or (window-find-by-proxy proxy-output)
+                         (window-output window))))
     (window-fullscreen! window output)
     (gliver-hook-run! *window-fullscreen-requested-hook* window)))
 (gliver-hook-add! %window-fullscreen-requested-hook 'window-on-fullscreen-requested)

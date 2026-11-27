@@ -18,42 +18,42 @@
   #:autoload (gliver core output) (output-focus!)
   #:declarative? #f
   #:export (
-			*workspace-name-default*
-			*workspace-focus-new*
-			*workspace-remove-to*
-			*workspace-destroyable*
-			*workspace-grid-rows*
-			*workspace-grid-wrap?*
-			workspace-add!
-			workspace-windows-move
-			workspace-containers-move
-			workspace-manual?
-			workspace-remove!
-			workspace-focused?
-			workspace-visible?
-			workspace-focus!
-			workspace-next
-			workspace-prev
-			workspace-direction
-			workspace-down
-			workspace-up
-			workspace-left
-			workspace-right
-			workspace-windows
+            *workspace-name-default*
+            *workspace-focus-new*
+            *workspace-remove-to*
+            *workspace-destroyable*
+            *workspace-grid-rows*
+            *workspace-grid-wrap?*
+            workspace-add!
+            workspace-windows-move
+            workspace-containers-move
+            workspace-manual?
+            workspace-remove!
+            workspace-focused?
+            workspace-visible?
+            workspace-focus!
+            workspace-next
+            workspace-prev
+            workspace-direction
+            workspace-down
+            workspace-up
+            workspace-left
+            workspace-right
+            workspace-windows
 ))
 
 (define-var *workspace-name-default* "Default"
-			"Default workspace name used for initial workspace.")
+            "Default workspace name used for initial workspace.")
 (define-var *workspace-focus-new* #t
-			"Whether newly created workspaces are automatically focused.")
+            "Whether newly created workspaces are automatically focused.")
 (define-var *workspace-remove-to* 'focus
-			"Strategy for choosing the next active workspace when one is removed ('focus or 'index).")
+            "Strategy for choosing the next active workspace when one is removed ('focus or 'index).")
 (define-var *workspace-destroyable* #f
-			"Whether empty workspaces can be automatically destroyed.")
+            "Whether empty workspaces can be automatically destroyed.")
 (define-var *workspace-grid-rows* 1
-			"Number of rows in the workspace grid.up/down workspace focus moves by this number.")
+            "Number of rows in the workspace grid.up/down workspace focus moves by this number.")
 (define-var *workspace-grid-wrap?* #t
-			"Whether up/down workspace focus wraps around when moving out of the grid boundaries.")
+            "Whether up/down workspace focus wraps around when moving out of the grid boundaries.")
 
 (define* (workspace-add! workspace #:key (focus #t))
   "Register WORKSPACE in its parent output's workspace list.
@@ -62,29 +62,29 @@ Parameters: (WORKSPACE [#:focus #t])
   - FOCUS: Boolean, whether to focus WORKSPACE if allowed (default #t)."
   (log-info "Adding workspace ~a" workspace)
   (let* ((output (workspace-output workspace))
-		 (output-focused-workspace (output-workspace-current output)))
-	;; each workspace must at least have one container in `workspace-containers`
-	;; if it doesn't have any workspaces, one will be created and focused automatically
-	(when (null? (workspace-containers workspace))
-	  (log-debug "Adding empty container to workspace")
-	  (let* ((container
-			  (make-container #:workspace workspace
-							  #:x (output-usable-x output)
-							  #:y (output-usable-y output)
-							  #:width (output-usable-width output)
-							  #:height (output-usable-height output))))
-		(container-add! container #:focus focus)))
-	;; add the workspace to the back referenced output workspaces
-	(%output-workspaces-set! output
-							 (append (output-workspaces output) (list workspace)))
+         (output-focused-workspace (output-workspace-current output)))
+    ;; each workspace must at least have one container in `workspace-containers`
+    ;; if it doesn't have any workspaces, one will be created and focused automatically
+    (when (null? (workspace-containers workspace))
+      (log-debug "Adding empty container to workspace")
+      (let* ((container
+              (make-container #:workspace workspace
+                              #:x (output-usable-x output)
+                              #:y (output-usable-y output)
+                              #:width (output-usable-width output)
+                              #:height (output-usable-height output))))
+        (container-add! container #:focus focus)))
+    ;; add the workspace to the back referenced output workspaces
+    (%output-workspaces-set! output
+                             (append (output-workspaces output) (list workspace)))
 
-	;; focus the workspace if no workspace is currently focused
-	;; or if configuration is set to focus new workspace
-	(when (and focus
+    ;; focus the workspace if no workspace is currently focused
+    ;; or if configuration is set to focus new workspace
+    (when (and focus
                (or *workspace-focus-new*
-			       (not output-focused-workspace)))
-	  (workspace-focus! workspace))
-	(gliver-hook-run! *workspace-created-hook* workspace)))
+                   (not output-focused-workspace)))
+      (workspace-focus! workspace))
+    (gliver-hook-run! *workspace-created-hook* workspace)))
 
 (define* (%workspace-remove-target workspace1 workspace2)
   "Determine the target fallback workspace when WORKSPACE1 is removed.
@@ -99,17 +99,17 @@ Returns <workspace> record or #f if WORKSPACE1 is the only workspace."
       workspace2
       (let* ((output (workspace-output workspace1))
              (workspaces (output-workspaces output)))
-		;; if we have only 1 workspace, we shouldn't remove it, return #f
+        ;; if we have only 1 workspace, we shouldn't remove it, return #f
         (if (<= (length workspaces) 1)
             #f
             (let ((previous-ws (output-workspace-previous output)))
-			  ;; if remove behavior set to focus and previous focused workspace
-			  ;; is not same as workspace1 and not empty, return it
+              ;; if remove behavior set to focus and previous focused workspace
+              ;; is not same as workspace1 and not empty, return it
               (if (and (eq? *workspace-remove-to* 'focus)
                        previous-ws
                        (not (eq? previous-ws workspace1)))
                   previous-ws
-				  ;; otherwise, return previous workspace by index
+                  ;; otherwise, return previous workspace by index
                   (let ((idx (list-index (lambda (w) (eq? w workspace1))
                                          workspaces)))
                     (cond ((and idx (> idx 0))
@@ -117,7 +117,7 @@ Returns <workspace> record or #f if WORKSPACE1 is the only workspace."
                           ((and idx (= idx 0))
                            (list-ref workspaces 1))
                           (else
-						   ;; in case the workspace had no index
+                           ;; in case the workspace had no index
                            (find (lambda (ws) (not (eq? ws workspace1)))
                                  workspaces))))))))))
 
@@ -137,8 +137,8 @@ Parameters: (S-WORKSPACE T-WORKSPACE)
   - T-WORKSPACE: <workspace> record target."
   (when (positive? (length (workspace-windows s-workspace)))
     (%workspace-containers-set! t-workspace
-								(append (workspace-containers t-workspace)
-										(workspace-containers s-workspace)))
+                                (append (workspace-containers t-workspace)
+                                        (workspace-containers s-workspace)))
     (%workspace-containers-set! s-workspace '())))
 
 (define (workspace-manual? workspace)
@@ -160,25 +160,25 @@ Parameters: (WORKSPACE [#:t-workspace #f])
   - WORKSPACE: <workspace> record to remove.
   - T-WORKSPACE: <workspace> record or #f; optional target fallback workspace."
   (let ((output (workspace-output workspace))
-		(target (%workspace-remove-target workspace t-workspace)))
-	(when target
-	  ;; move all windows to the target workspace
-	  (workspace-windows-move workspace target)
-	  ;; destroy all containers of the workspace
-	  (let ((containers (list-copy (workspace-containers workspace))))
-	    (%workspace-containers-set! workspace '())
-	    (%workspace-container-current-set! workspace #f)
-	    (%workspace-container-previous-set! workspace #f)
-	    (for-each (lambda (c)
-					(or (container-remove! c #:focus #f)
-						;; last container won't be removed since there must be at least
-						;; one container in each workspace, run *container-destroy-hook*
-						(gliver-hook-run! *container-destroy-hook* c workspace)))
-	              containers))
+        (target (%workspace-remove-target workspace t-workspace)))
+    (when target
+      ;; move all windows to the target workspace
+      (workspace-windows-move workspace target)
+      ;; destroy all containers of the workspace
+      (let ((containers (list-copy (workspace-containers workspace))))
+        (%workspace-containers-set! workspace '())
+        (%workspace-container-current-set! workspace #f)
+        (%workspace-container-previous-set! workspace #f)
+        (for-each (lambda (c)
+                    (or (container-remove! c #:focus #f)
+                        ;; last container won't be removed since there must be at least
+                        ;; one container in each workspace, run *container-destroy-hook*
+                        (gliver-hook-run! *container-destroy-hook* c workspace)))
+                  containers))
 
       ;; remove workspace from output
       (%output-workspaces-set! output
-							   (delq workspace (output-workspaces output)))
+                               (delq workspace (output-workspaces output)))
       ;; if this was current, switch to the target workspace
       (when (eq? (output-workspace-current output) workspace)
         (workspace-focus! target))
@@ -199,7 +199,7 @@ Parameters: (WORKSPACE)
   - WORKSPACE: <workspace> record to check.
 Returns #t if WORKSPACE is visible on its output, #f otherwise."
   (eq? workspace
-	   (output-workspace-current (workspace-output workspace))))
+       (output-workspace-current (workspace-output workspace))))
 
 (define* (workspace-focus! workspace #:key (focus-child #t) (focus-parent #t))
   "Focus active container in WORKSPACE.
@@ -208,22 +208,22 @@ Parameters: (WORKSPACE [#:focus-child #t] [#:focus-parent #t])
   - FOCUS-CHILD: Boolean, whether to focus active container within WORKSPACE (default #t).
   - FOCUS-PARENT: Boolean, whether to ensure output is focused (default #t)."
   (log-debug "Focusing workspace ~a, is focused? = ~a" workspace
-			 (workspace-focused? workspace))
+             (workspace-focused? workspace))
   (unless (workspace-focused? workspace)
-	(let* ((containers (workspace-containers workspace))
-		   (container (or (workspace-container-current workspace)
-						  (and (pair? containers) (car containers))))
-		   (output (workspace-output workspace))
-		   (prev-workspace (and output (output-workspace-current output))))
-	  (unless (eq? prev-workspace workspace)
-	    (%output-workspace-previous-set! output prev-workspace)
-	    (%output-workspace-current-set! output workspace))
-	  (when (and focus-parent output)
-		(output-focus! output #:focus-child #f))
-	  (when (and focus-child container)
-		(container-focus! container #:focus-parent #f))
-	  (unless (eq? prev-workspace workspace)
-	    (gliver-hook-run! *workspace-switch-hook* workspace prev-workspace)))))
+    (let* ((containers (workspace-containers workspace))
+           (container (or (workspace-container-current workspace)
+                          (and (pair? containers) (car containers))))
+           (output (workspace-output workspace))
+           (prev-workspace (and output (output-workspace-current output))))
+      (unless (eq? prev-workspace workspace)
+        (%output-workspace-previous-set! output prev-workspace)
+        (%output-workspace-current-set! output workspace))
+      (when (and focus-parent output)
+        (output-focus! output #:focus-child #f))
+      (when (and focus-child container)
+        (container-focus! container #:focus-parent #f))
+      (unless (eq? prev-workspace workspace)
+        (gliver-hook-run! *workspace-switch-hook* workspace prev-workspace)))))
 
 (define* (workspace-next #:optional (workspace (workspace-current)))
   "Return the next <workspace> record in output after WORKSPACE.
@@ -231,7 +231,7 @@ Parameters: ([WORKSPACE])
   - WORKSPACE: <workspace> record (defaults to current focused workspace).
 Returns next <workspace> record, or #f if not found."
   (let* ((output (workspace-output workspace))
-		 (workspaces (output-workspaces output))
+         (workspaces (output-workspaces output))
          (current (output-workspace-current output))
          (idx (list-index (lambda (g) (eq? g current)) workspaces)))
     (and idx (list-ref workspaces (modulo (1+ idx) (length workspaces))))))
@@ -242,11 +242,11 @@ Parameters: ([WORKSPACE])
   - WORKSPACE: <workspace> record (defaults to current focused workspace).
 Returns previous <workspace> record, or #f if not found."
   (let* ((output (workspace-output workspace))
-		 (workspaces (output-workspaces output))
+         (workspaces (output-workspaces output))
          (current (output-workspace-current output))
          (idx (list-index (lambda (g) (eq? g current)) workspaces)))
     (and idx (list-ref workspaces (modulo (+ idx (length workspaces) -1)
-										  (length workspaces))))))
+                                          (length workspaces))))))
 
 (define* (workspace-direction dir #:optional (workspace (workspace-current)))
   "Return the workspace in the direction DIR relative to WORKSPACE in a grid layout, or #f if none.
@@ -265,13 +265,13 @@ Returns target <workspace> record in DIR, or #f if none."
     (let* ((dir-sym    (if (string? dir) (string->symbol dir) dir))
            (vertical?  (memq dir-sym '(up down)))
            (previous?  (memq dir-sym '(up left)))
-		   ;; number of workspaces per row
+           ;; number of workspaces per row
            (cols       (if (and (number? *workspace-grid-rows*)
                                 (> *workspace-grid-rows* 1))
                            *workspace-grid-rows*
                            len))
            (step       (if vertical? cols 1))
-		   ;; starting index of current row and column
+           ;; starting index of current row and column
            (start      (if vertical?
                            (modulo idx cols)
                            (* (quotient idx cols) cols)))

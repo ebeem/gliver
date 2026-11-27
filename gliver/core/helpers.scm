@@ -148,7 +148,7 @@ Returns variable value, or #f if not found."
     (if acc
         ((car acc))
         (and-let* ((record (hash-table-ref/default *variable-registry* name #f))
-				   (module (car record)))
+                   (module (car record)))
           (module-ref module name)))))
 
 ;; TODO: maybe similar to emacs, this should overwrite the defined
@@ -165,7 +165,7 @@ Returns the updated value, or #f if not found."
     (if acc
         ((cdr acc) new-value)
         (and-let* ((record (hash-table-ref/default *variable-registry* name #f))
-				   (module (car record)))
+                   (module (car record)))
           (module-set! module name new-value)))))
 
 (define-syntax var-set!

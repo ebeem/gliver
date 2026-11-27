@@ -21,30 +21,30 @@
   #:use-module (gliver river window-manager)
   #:declarative? #f
   #:export (
-			*keybinding-current-mode*
-			*keybinding-mapping*
-			keybinding->string
-			keybinding-modifiers-list
-			define-key
-			define-keys
-			undefine-key
-			lookup-key
-			keybindings-generate
-			keybinding-generate-all
-			keybinding-on-pressed
-			keybinding-on-eaten
-			keybinding-execute-action!
-			keybinding-switch-to-mode!
-			keybinding-sync-all!
-			keybinding-sync!
+            *keybinding-current-mode*
+            *keybinding-mapping*
+            keybinding->string
+            keybinding-modifiers-list
+            define-key
+            define-keys
+            undefine-key
+            lookup-key
+            keybindings-generate
+            keybinding-generate-all
+            keybinding-on-pressed
+            keybinding-on-eaten
+            keybinding-execute-action!
+            keybinding-switch-to-mode!
+            keybinding-sync-all!
+            keybinding-sync!
 ))
 
 ;;; state
 (define-var *keybinding-current-mode* '*top-map*
-  "Current active keymap mode symbol (e.g. '*top-map*, '*root-map*, or keymap name).")
+            "Current active keymap mode symbol (e.g. '*top-map*, '*root-map*, or keymap name).")
 
 (define-var *keybinding-mapping* '()
-  "Alist of (<keybinding> . river-binding-proxy).")
+            "Alist of (<keybinding> . river-binding-proxy).")
 
 (define (%keybinding-find-by-proxy proxy-binding)
   "Look up the <keybinding> record associated with PROXY-BINDING.

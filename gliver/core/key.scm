@@ -20,14 +20,14 @@
   #:use-module (gliver deps libxkbcommon)
   #:declarative? #f
   #:export (
-			*key-modifier-bitmask-map*
-			key=?
-			key->string
-			*key-keysym-aliases*
-			key-keysym-name->xkb-value
-			key->xkb-binding-args
-			xkb-args->key
-			kbd
+            *key-modifier-bitmask-map*
+            key=?
+            key->string
+            *key-keysym-aliases*
+            key-keysym-name->xkb-value
+            key->xkb-binding-args
+            xkb-args->key
+            kbd
 ))
 
 (define-var *key-modifier-bitmask-map*
@@ -41,9 +41,9 @@
 (define (key=? a b)
   "Return #t if keys A and A represent the same key binding."
   (and (eq? (key-keysym a)
-			(key-keysym b))
+            (key-keysym b))
        (equal? (key-modifiers a)
-			   (key-modifiers b))))
+               (key-modifiers b))))
 
 (define (key->string key)
   "Convert a KEY to its display string, e.g., \"C-t\".
@@ -69,60 +69,60 @@ Returns formatted key string (e.g. \"C-t\", \"s-Return\")."
 ;; they are stolen from the project mahogany with some little extras
 (define-var *key-keysym-aliases*
   '(("RET" . "Return")
-	("ESC" . "Escape")
-	("TAB" . "Tab")
-	("DEL" . "BackSpace")
-	("SPC" . "space")
-	("!" . "exclam")
-	("\"" . "quotedbl")
-	("$" . "dollar")
-	("£" . "sterling")
-	("%" . "percent")
-	("'" . "apostrophe")
-	("`" . "grave")
-	("&" . "ampersand")
-	("(" . "parenleft")
-	(")" . "parenright")
-	("*" . "asterisk")
-	("+" . "plus")
-	("," . "comma")
-	("-" . "minus")
-	("." . "period")
-	("/" . "slash")
-	(":" . "colon")
-	(";" . "semicolon")
-	("<" . "less")
-	("=" . "equal")
-	(">" . "greater")
-	("?" . "question")
-	("@" . "at")
-	("[" . "bracketleft")
-	("\\" . "backslash")
-	("]" . "bracketright")
-	("^" . "asciicircum")
-	("_" . "underscore")
-	("#" . "numbersign")
-	("{" . "braceleft")
-	("|" . "bar")
-	("}" . "braceright")
-	("~" . "asciitilde")
-	("«" . "guillemotleft")
-	("»" . "guillemotright")
-	("À" . "Agrave")
-	("à" . "agrave")
-	("Ç" . "Ccedilla")
-	("ç" . "ccedilla")
-	("É" . "Eacute")
-	("é" . "eacute")
-	("È" . "Egrave")
-	("è" . "egrave")
-	("Ê" . "Ecircumflex")
-	("ê" . "ecircumflex")
-	("Enter" . "Return")
-	("Esc" . "Escape")
-	("Backspace" . "BackSpace")
-	("Tab" . "Tab")
-	("Space" . "space"))
+    ("ESC" . "Escape")
+    ("TAB" . "Tab")
+    ("DEL" . "BackSpace")
+    ("SPC" . "space")
+    ("!" . "exclam")
+    ("\"" . "quotedbl")
+    ("$" . "dollar")
+    ("£" . "sterling")
+    ("%" . "percent")
+    ("'" . "apostrophe")
+    ("`" . "grave")
+    ("&" . "ampersand")
+    ("(" . "parenleft")
+    (")" . "parenright")
+    ("*" . "asterisk")
+    ("+" . "plus")
+    ("," . "comma")
+    ("-" . "minus")
+    ("." . "period")
+    ("/" . "slash")
+    (":" . "colon")
+    (";" . "semicolon")
+    ("<" . "less")
+    ("=" . "equal")
+    (">" . "greater")
+    ("?" . "question")
+    ("@" . "at")
+    ("[" . "bracketleft")
+    ("\\" . "backslash")
+    ("]" . "bracketright")
+    ("^" . "asciicircum")
+    ("_" . "underscore")
+    ("#" . "numbersign")
+    ("{" . "braceleft")
+    ("|" . "bar")
+    ("}" . "braceright")
+    ("~" . "asciitilde")
+    ("«" . "guillemotleft")
+    ("»" . "guillemotright")
+    ("À" . "Agrave")
+    ("à" . "agrave")
+    ("Ç" . "Ccedilla")
+    ("ç" . "ccedilla")
+    ("É" . "Eacute")
+    ("é" . "eacute")
+    ("È" . "Egrave")
+    ("è" . "egrave")
+    ("Ê" . "Ecircumflex")
+    ("ê" . "ecircumflex")
+    ("Enter" . "Return")
+    ("Esc" . "Escape")
+    ("Backspace" . "BackSpace")
+    ("Tab" . "Tab")
+    ("Space" . "space"))
   "Alist mapping common keysym shorthand and aliases to standard XKB keysym names.")
 
 (define (key-keysym-name->xkb-value sym)
@@ -155,9 +155,9 @@ Parameters: (KEY)
   - KEY: <key> record to convert.
 Returns a pair: (modifier-bitmask . xkb-keysym-uint)."
   (define (%modifiers->bitmask mods)
-	"Return bit from list of modifiers."
-	;; really logior here is nothing but an addition instruction
-	;; to get bitmask simply sum all of the modifier values
+    "Return bit from list of modifiers."
+    ;; really logior here is nothing but an addition instruction
+    ;; to get bitmask simply sum all of the modifier values
     (apply logior
            (filter-map (lambda (m)
                          (assq-ref *key-modifier-bitmask-map* m))
@@ -190,7 +190,7 @@ Parameters: (STR)
   - STR: String key description (e.g. \"C-t\", \"s-Return\", \"C--\").
 Returns parsed <key> record."
   (define (%extract-parts s)
-	"Group key parts via regex.
+    "Group key parts via regex.
 Group 1: all leading prefixes (e.g. \"C-\", \"C-M-\").
 Group 3: the final keysym"
     (and-let* (((string? s))
@@ -205,8 +205,8 @@ Group 3: the final keysym"
            (mods   (take-while (lambda (t) (assoc-ref *key-modifier-map* t)) tokens))
            (extra  (drop tokens (length mods))))
       (values (map (lambda (t)
-					 (assoc-ref *key-modifier-map* t))
-				   mods)
+                     (assoc-ref *key-modifier-map* t))
+                   mods)
               ;; re-attach any non-modifier dash prefixes (e.g. "XF86-Audio-Mute")
               (string->symbol (string-join (append extra (list keysym-str)) "-")))))
 

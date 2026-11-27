@@ -17,20 +17,20 @@
   #:use-module (gliver core-base)
   #:declarative? #f
   #:export (
-			keymap-register!
-			keymap-find
-			keymap-mode
-			keymap-passthrough-mode?
-			define-keymap
-			keymap->alist
-			keymap-clear!
-			*top-map*
-			*root-map*
-			*workspace-map*
-			*resize-map*
-			*window-map*
-			*help-map*
-			*hotkeygrab-map*
+            keymap-register!
+            keymap-find
+            keymap-mode
+            keymap-passthrough-mode?
+            define-keymap
+            keymap->alist
+            keymap-clear!
+            *top-map*
+            *root-map*
+            *workspace-map*
+            *resize-map*
+            *window-map*
+            *help-map*
+            *hotkeygrab-map*
 ))
 
 (define (keymap-register! keymap)

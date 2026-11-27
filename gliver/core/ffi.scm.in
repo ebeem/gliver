@@ -14,12 +14,12 @@
 (define-module (gliver core ffi)
   #:declarative? #f
   #:export (
-			%libxkbcommon
-			%libwayland-client
-			%libpango
-			%libpangocairo
-			%libgobject
-			%librsvg
+            %libxkbcommon
+            %libwayland-client
+            %libpango
+            %libpangocairo
+            %libgobject
+            %librsvg
 ))
 
 ;;; shared library paths

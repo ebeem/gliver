@@ -16,47 +16,47 @@
   #:use-module (gliver core-base)
   #:use-module (gliver river wm-output-manager)
   #:autoload (gliver core workspace) (workspace-add!
-									  workspace-focus!
-									  workspace-windows
-									  workspace-remove!)
+                                      workspace-focus!
+                                      workspace-windows
+                                      workspace-remove!)
   #:autoload (gliver core window)    (window-hide!
-								      window-show!)
+                                      window-show!)
   #:autoload (gliver core container) (container-remove!)
   #:declarative? #f
   #:export (
-			*output-focus-new?*
-			*detached-output-workspaces*
-			output-add!
-			output-remove!
-			output-save-state!
-			output-restore-state!
-			output-focused?
-			output-prev-focused?
-			output-focus!
-			output-next
-			output-prev
-			output-presentation-mode-set
-			output-on-output
-			output-release-wl-output-proxy!
-			output-on-output-removed
-			output-on-output-wl-output
-			output-subpixel-code->symbol
-			output-transform-code->symbol
-			output-on-wl-output-geometry
-			output-on-wl-output-mode
-			output-on-wl-output-done
-			output-on-wl-output-scale
-			output-on-wl-output-name
-			output-on-wl-output-description
-			output-on-output-position
-			output-on-output-dimensions
+            *output-focus-new?*
+            *detached-output-workspaces*
+            output-save-state!
+            output-restore-state!
+            output-add!
+            output-remove!
+            output-focused?
+            output-prev-focused?
+            output-focus!
+            output-next
+            output-prev
+            output-presentation-mode-set
+            output-on-output
+            output-release-wl-output-proxy!
+            output-on-output-removed
+            output-on-output-wl-output
+            output-subpixel-code->symbol
+            output-transform-code->symbol
+            output-on-wl-output-geometry
+            output-on-wl-output-mode
+            output-on-wl-output-done
+            output-on-wl-output-scale
+            output-on-wl-output-name
+            output-on-wl-output-description
+            output-on-output-position
+            output-on-output-dimensions
 ))
 
 (define-var *output-focus-new?* #f
-			"Whether newly connected monitors/outputs are automatically focused.")
+            "Whether newly connected monitors/outputs are automatically focused.")
 
 (define-var *detached-output-workspaces* (make-hash-table)
-			"Hash table storing detached workspaces and output
+            "Hash table storing detached workspaces and output
 state for disconnected outputs. Key is output wl-name
 and value is a list of workspaces and output state.")
 
@@ -67,9 +67,9 @@ Returns a string (e.g. \"output-0\")."
   ;; NOTE: this is used over the previous system which kept incrementing
   ;; the output index even if previous allocated names aren't used anymore
   (let ((names (map output-name (manager-outputs *manager*))))
-	(do ((idx 0 (1+ idx))
-		 (candidate "output-0" (format #f "output-~a" (1+ idx))))
-		((not (member candidate names)) candidate))))
+    (do ((idx 0 (1+ idx))
+         (candidate "output-0" (format #f "output-~a" (1+ idx))))
+        ((not (member candidate names)) candidate))))
 
 (define (%detached-workspaces-pop! wl-name)
   "Retrieve and remove saved detached workspace state for WL-NAME.
@@ -98,7 +98,7 @@ Parameters: (OUTPUT)
 
     ;; preserve workspaces and geometry if this output had workspaces
     (and-let* ((workspaces (output-workspaces output))
-			   (name (output-wl-name output)))
+               (name (output-wl-name output)))
       (hash-set! *detached-output-workspaces*
                  name
                  (list workspaces
@@ -123,8 +123,8 @@ Parameters: (WL-NAME [OUTPUT])
   - OUTPUT: <output> record or #f; optional output (looked up by WL-NAME if omitted).
 Returns #t if state was restored, #f otherwise."
   (and-let* ((saved-state (%detached-workspaces-pop! wl-name))
-			 (out (or output (output-find-by-wl-name wl-name))))
-	(let ((workspaces (list-ref saved-state 0))
+             (out (or output (output-find-by-wl-name wl-name))))
+    (let ((workspaces (list-ref saved-state 0))
           (current-ws (list-ref saved-state 1))
           (prev-ws (list-ref saved-state 2))
           (saved-id (list-ref saved-state 3))
@@ -151,7 +151,7 @@ Returns #t if state was restored, #f otherwise."
       (when saved-uw (%output-usable-width-set! out saved-uw))
       (when saved-uh (%output-usable-height-set! out saved-uh))
 
-	  ;; clean up any empty initial placeholder workspace created during output-add!
+      ;; clean up any empty initial placeholder workspace created during output-add!
       (for-each
        (lambda (ws)
          (when (null? (workspace-windows ws))
@@ -164,14 +164,14 @@ Returns #t if state was restored, #f otherwise."
          (%workspace-output-set! ws out))
        workspaces)
 
-	  ;; set output workspaces to the new ones
+      ;; set output workspaces to the new ones
       (%output-workspaces-set! out workspaces)
-	  ;; restore previous focused workspace
+      ;; restore previous focused workspace
       (%output-workspace-previous-set! out prev-ws)
-	  ;; focus the previously focused workspace (fallback to first)
+      ;; focus the previously focused workspace (fallback to first)
       (and-let* ((target-ws (or current-ws
-								(and (pair? workspaces)
-									 (car workspaces)))))
+                                (and (pair? workspaces)
+                                     (car workspaces)))))
         (workspace-focus! target-ws
                           #:focus-child #t
                           #:focus-parent #t))
@@ -191,26 +191,26 @@ Parameters: (OUTPUT [#:focus #t])
   ;; each output must at least have one workspace in `output-workspaces`
   ;; if it doesn't have any workspaces, one will be created and focused automatically
   (when (null? (output-workspaces output))
-	(let ((workspace
-		   (make-workspace #:name (format #f "workspace-~d-~d" (output-id output) 1)
-						   #:layout `((layout . manual)
-									  (layout-type . manual)
-									  (split-ratio . 0.5)
-									  (inner-gap . #f)
-									  (outer-gap . #f))
-						   #:output output)))
-	  (workspace-add! workspace #:focus focus)))
+    (let ((workspace
+           (make-workspace #:name (format #f "workspace-~d-~d" (output-id output) 1)
+                           #:layout `((layout . manual)
+                                      (layout-type . manual)
+                                      (split-ratio . 0.5)
+                                      (inner-gap . #f)
+                                      (outer-gap . #f))
+                           #:output output)))
+      (workspace-add! workspace #:focus focus)))
 
   ;; add the output to the back referenced manager outputs
   (%manager-outputs-set! *manager*
-						 (append (manager-outputs *manager*) (list output)))
+                         (append (manager-outputs *manager*) (list output)))
 
   ;; focus the output if no output is currently focused
   ;; or if configuration is set to focus new output
   (when (and focus
              (or *output-focus-new?*
-			     (not (manager-output-current *manager*))))
-	(output-focus! output))
+                 (not (manager-output-current *manager*))))
+    (output-focus! output))
 
   (gliver-hook-run! *output-created-hook* output))
 
@@ -224,25 +224,25 @@ Parameters: (OUTPUT)
 
   (let ((remaining (delq output (manager-outputs *manager*))))
     (%manager-outputs-set! *manager* remaining)
-	;; if output is currently focused, focus another one
+    ;; if output is currently focused, focus another one
     (when (output-focused? output)
-	  (if (pair? remaining)
-		  (output-focus! (and  (car remaining)))
-		  ;; if we don't have anymore outputs, dereference deleted one
-		  (%manager-output-current-set! *manager* #f)))
+      (if (pair? remaining)
+          (output-focus! (and  (car remaining)))
+          ;; if we don't have anymore outputs, dereference deleted one
+          (%manager-output-current-set! *manager* #f)))
 
-	;; if the output deleted is the previously focused, dereference it
-	(when (output-prev-focused? output)
-	  (%manager-output-previous-set! *manager* #f))
+    ;; if the output deleted is the previously focused, dereference it
+    (when (output-prev-focused? output)
+      (%manager-output-previous-set! *manager* #f))
 
-	;; if no remaining outputs, clear window focus on seats
-	(when (null? remaining)
-	  (for-each
-	   (lambda (seat)
-		 (when (seat? seat)
-		   (%seat-window-focused-set! seat #f)
-		   (%seat-window-entered-set! seat #f)))
-	   (manager-seats *manager*)))
+    ;; if no remaining outputs, clear window focus on seats
+    (when (null? remaining)
+      (for-each
+       (lambda (seat)
+         (when (seat? seat)
+           (%seat-window-focused-set! seat #f)
+           (%seat-window-entered-set! seat #f)))
+       (manager-seats *manager*)))
 
     (gliver-hook-run! *output-removed-hook* output)))
 
@@ -266,15 +266,15 @@ Parameters: (OUTPUT [#:focus-child #t])
   - OUTPUT: <output> record to focus.
   - FOCUS-CHILD: Boolean, whether to focus the active child workspace (default #t)."
   (unless (output-focused? output)
-	(let* ((workspaces (output-workspaces output))
-		   (workspace (or (output-workspace-current output)
-						  (and (pair? workspaces) (car workspaces))))
-		   (prev-output (manager-output-current *manager*)))
-	  (%manager-output-previous-set! *manager* prev-output)
-	  (%manager-output-current-set! *manager* output)
-	  (gliver-hook-run! *output-focus-hook* output prev-output)
-	  (when (and workspace focus-child)
-		(workspace-focus! workspace #:focus-parent #f)))))
+    (let* ((workspaces (output-workspaces output))
+           (workspace (or (output-workspace-current output)
+                          (and (pair? workspaces) (car workspaces))))
+           (prev-output (manager-output-current *manager*)))
+      (%manager-output-previous-set! *manager* prev-output)
+      (%manager-output-current-set! *manager* output)
+      (gliver-hook-run! *output-focus-hook* output prev-output)
+      (when (and workspace focus-child)
+        (workspace-focus! workspace #:focus-parent #f)))))
 
 (define (output-next)
   "Return the next <output> record after current focused output, or #f.
@@ -313,17 +313,17 @@ Parameters: (DATA MANAGER PROXY-OUTPUT)
   - PROXY-OUTPUT: Pointer to river_output_v1 proxy."
   (let* ((name (%output-find-free-name))
          (output (make-output name #:wl-proxy proxy-output)))
-	(log-info "Output created: ~a" output)
-	(output-add! output)))
+    (log-info "Output created: ~a" output)
+    (output-add! output)))
 
 (define (output-release-wl-output-proxy! output)
   "Release wl_output proxy associated with OUTPUT.
 Parameters: (OUTPUT)
   - OUTPUT: <output> record to release its wl_output proxy."
   (and-let* (((output? output))
-			 (proxy (output-wl-output-proxy output)))
-	(wm-output-wl-output-release proxy)
-	(%output-wl-output-proxy-set! output #f)))
+             (proxy (output-wl-output-proxy output)))
+    (wm-output-wl-output-release proxy)
+    (%output-wl-output-proxy-set! output #f)))
 
 (define (output-on-output-removed data proxy-output)
   "Invoked when OUTPUT is removed.
@@ -333,8 +333,8 @@ Parameters: (DATA PROXY-OUTPUT)
   (log-info "Output removed: ~a" proxy-output)
   (and-let* ((output (output-find-by-proxy proxy-output)))
     (output-remove! output)
-	(gliver-hook-run! *output-destroy-hook* output)
-	;; release wl_output proxy after output hooks have cleaned up layer surfaces
+    (gliver-hook-run! *output-destroy-hook* output)
+    ;; release wl_output proxy after output hooks have cleaned up layer surfaces
     (output-release-wl-output-proxy! output)))
 
 (define (output-on-output-wl-output data proxy-output object-id)
@@ -345,14 +345,14 @@ Parameters: (DATA PROXY-OUTPUT OBJECT-ID)
   - OBJECT-ID: Integer Wayland object ID of the wl_output."
   (log-debug "Output wl_output object-id: ~a = ~a" proxy-output object-id)
   (and-let* ((output (output-find-by-proxy proxy-output)))
-	(log-debug "Setting output ~a object-id to ~a" output object-id)
-	(%output-wl-output-set! output object-id)
-	(when (number? object-id)
-	  ;; NOTE: no need to ensure the previous wl-output is cleaned
-	  ;; as this event is supposed to be sent only once
-	  (let ((proxy (wm-output-wl-output-bind object-id 4)))
-		(%output-wl-output-proxy-set! output proxy)))
-	(gliver-hook-run! *output-object-id-changed-hook* output #f)))
+    (log-debug "Setting output ~a object-id to ~a" output object-id)
+    (%output-wl-output-set! output object-id)
+    (when (number? object-id)
+      ;; NOTE: no need to ensure the previous wl-output is cleaned
+      ;; as this event is supposed to be sent only once
+      (let ((proxy (wm-output-wl-output-bind object-id 4)))
+        (%output-wl-output-proxy-set! output proxy)))
+    (gliver-hook-run! *output-object-id-changed-hook* output #f)))
 
 (define (output-subpixel-code->symbol code)
   "Convert Wayland subpixel enum integer CODE to symbol."
@@ -381,8 +381,8 @@ Parameters: (DATA PROXY-OUTPUT OBJECT-ID)
 (define (output-on-wl-output-geometry data proxy x y physical-width physical-height subpixel make model transform)
   "Invoked when wl_output geometric properties are advertised."
   (and-let* ((output (output-find-by-wl-output-proxy proxy))
-			 (sp-sym (output-subpixel-code->symbol subpixel))
-			 (tr-sym (output-transform-code->symbol transform)))
+             (sp-sym (output-subpixel-code->symbol subpixel))
+             (tr-sym (output-transform-code->symbol transform)))
     (%output-physical-width-set! output physical-width)
     (%output-physical-height-set! output physical-height)
     (%output-subpixel-set! output sp-sym)
@@ -395,12 +395,12 @@ Parameters: (DATA PROXY-OUTPUT OBJECT-ID)
 (define (output-on-wl-output-mode data proxy flags width height refresh)
   "Invoked when wl_output mode is advertised."
   (and-let* ((output (output-find-by-wl-output-proxy proxy))
-			 (current? (positive? (logand flags 1))))
+             (current? (positive? (logand flags 1))))
     (%output-mode-flags-set! output flags)
     (%output-mode-width-set! output width)
     (%output-mode-height-set! output height)
     (%output-mode-refresh-set! output refresh)
-	(gliver-hook-run! *output-mode-changed-hook* output flags width height refresh)))
+    (gliver-hook-run! *output-mode-changed-hook* output flags width height refresh)))
 
 (define (output-on-wl-output-done data proxy)
   "Invoked when all wl_output properties in the current batch have been received."
@@ -440,15 +440,15 @@ Parameters: (DATA PROXY-OUTPUT X Y)
   - Y: Integer logical vertical position in compositor space."
   (log-info "Output position: ~a = ~a,~a" proxy-output x y)
   (and-let* ((output (output-find-by-proxy proxy-output))
-			 (prev-x (output-x output))
-			 (prev-y (output-y output))
-			 (dx (- x prev-x))
-			 (dy (- y prev-y)))
-	(%output-x-set! output x)
-	(%output-y-set! output y)
-	(%output-usable-x-set! output (+ (output-usable-x output) dx))
-	(%output-usable-y-set! output (+ (output-usable-y output) dy))
-	(gliver-hook-run! *output-position-changed-hook* output prev-x prev-y)))
+             (prev-x (output-x output))
+             (prev-y (output-y output))
+             (dx (- x prev-x))
+             (dy (- y prev-y)))
+    (%output-x-set! output x)
+    (%output-y-set! output y)
+    (%output-usable-x-set! output (+ (output-usable-x output) dx))
+    (%output-usable-y-set! output (+ (output-usable-y output) dy))
+    (gliver-hook-run! *output-position-changed-hook* output prev-x prev-y)))
 
 (define (output-on-output-dimensions data proxy-output width height)
   "Invoked when the output dimension of PROXY-OUTPUT is changed.
@@ -459,15 +459,15 @@ Parameters: (DATA PROXY-OUTPUT WIDTH HEIGHT)
   - HEIGHT: Integer logical output height in pixels."
   (log-info "Output dimensions: ~a = ~ax~a" proxy-output width height)
   (and-let* ((output (output-find-by-proxy proxy-output))
-			 (prev-width (output-width output))
-			 (prev-height (output-height output)))
-	(%output-width-set! output width)
-	(%output-height-set! output height)
-	(when (= (output-usable-width output) prev-width)
-	  (%output-usable-width-set! output width))
-	(when (= (output-usable-height output) prev-height)
-	  (%output-usable-height-set! output height))
-	(gliver-hook-run! *output-dimensions-changed-hook* output prev-width prev-height)))
+             (prev-width (output-width output))
+             (prev-height (output-height output)))
+    (%output-width-set! output width)
+    (%output-height-set! output height)
+    (when (= (output-usable-width output) prev-width)
+      (%output-usable-width-set! output width))
+    (when (= (output-usable-height output) prev-height)
+      (%output-usable-height-set! output height))
+    (gliver-hook-run! *output-dimensions-changed-hook* output prev-width prev-height)))
 
 (gliver-hook-add! %output-created-hook 'output-on-output 0)
 (gliver-hook-add! %output-object-id-changed-hook 'output-on-output-wl-output 0)

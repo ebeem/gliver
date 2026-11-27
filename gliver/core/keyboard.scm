@@ -22,64 +22,65 @@
   #:use-module (gliver wayland client)
   #:declarative? #f
   #:export (
-			*keyboard-layouts*
-			*keyboard-layout-fallback*
-			*keyboard-variants*
-			*keyboard-repeat-rate*
-			*keyboard-repeat-delay*
-			*keyboard-xkb-keyboards*
-			*keyboard-current-layout-index*
-			*keyboard-keymap-proxy*
-			*keyboard-keymap-valid?*
-			keyboard-device-layout-index-set!
-			keyboard-device-layout-index
-			keyboard-device-input-device-set!
-			keyboard-device-input-device
-			keyboard-device-listener
-			keyboard-device-proxy
-			keyboard-device-state?
-			make-keyboard-device-state
-			keyboard-current-layout-code
-			keyboard-apply-current-keymap-to-keyboards!
-			keyboard-layout-set!
-			keyboard-apply-config!
-			keyboard-layout-next!
-			keyboard-layout-prev!
-			keyboard-on-created
-			keyboard-on-removed
-			keyboard-on-input-device
-			keyboard-on-layout
-			keyboard-on-keymap-success
-			keyboard-on-keymap-failure
-			keyboard-on-capslock-enabled
-			keyboard-on-capslock-disabled
-			keyboard-on-numlock-enabled
-			keyboard-on-numlock-disabled
-			keyboard-on-startup
-			keyboard-on-config-loaded
+            *keyboard-layouts*
+            *keyboard-layout-fallback*
+            *keyboard-variants*
+            *keyboard-repeat-rate*
+            *keyboard-repeat-delay*
+            *keyboard-xkb-keyboards*
+            *keyboard-current-layout-index*
+            *keyboard-keymap-proxy*
+            *keyboard-keymap-valid?*
+            <keyboard-device-state>
+            make-keyboard-device-state
+            keyboard-device-state?
+            keyboard-device-proxy
+            keyboard-device-listener
+            keyboard-device-input-device
+            keyboard-device-input-device-set!
+            keyboard-device-layout-index
+            keyboard-device-layout-index-set!
+            keyboard-current-layout-code
+            keyboard-apply-current-keymap-to-keyboards!
+            keyboard-layout-set!
+            keyboard-apply-config!
+            keyboard-layout-next!
+            keyboard-layout-prev!
+            keyboard-on-created
+            keyboard-on-removed
+            keyboard-on-input-device
+            keyboard-on-layout
+            keyboard-on-keymap-success
+            keyboard-on-keymap-failure
+            keyboard-on-capslock-enabled
+            keyboard-on-capslock-disabled
+            keyboard-on-numlock-enabled
+            keyboard-on-numlock-disabled
+            keyboard-on-startup
+            keyboard-on-config-loaded
 ))
 
 ;;; user configuration
 (define-var *keyboard-layouts* '("us")
-			"Keyboard layouts list, e.g. '(\"us\" \"ara\").")
+            "Keyboard layouts list, e.g. '(\"us\" \"ara\").")
 (define-var *keyboard-layout-fallback* "us"
-			"Fallback layout code to default to if no active layout is resolved.")
+            "Fallback layout code to default to if no active layout is resolved.")
 (define-var *keyboard-variants* '()
-			"Keyboard variants list corresponding to *keyboard-layouts*, e.g. '(\"\" \"digits\").")
+            "Keyboard variants list corresponding to *keyboard-layouts*, e.g. '(\"\" \"digits\").")
 (define-var *keyboard-repeat-rate* 25
-			"Keyboard repeat rate in characters per second.")
+            "Keyboard repeat rate in characters per second.")
 (define-var *keyboard-repeat-delay* 600
-			"Delay in milliseconds before key repeat begins.")
+            "Delay in milliseconds before key repeat begins.")
 
 ;;; global state
 (define-var *keyboard-xkb-keyboards* '()
-			"List of active <keyboard-device-state> instances.")
+            "List of active <keyboard-device-state> instances.")
 (define-var *keyboard-current-layout-index* 0
-			"Active 0-based layout index into *keyboard-layouts*.")
+            "Active 0-based layout index into *keyboard-layouts*.")
 (define-var *keyboard-keymap-proxy* %null-pointer
-			"Active river_xkb_keymap_v1 proxy uploaded to river.")
+            "Active river_xkb_keymap_v1 proxy uploaded to river.")
 (define-var *keyboard-keymap-valid?* #f
-			"Flag indicating whether the current keymap was validated by compositor.")
+            "Flag indicating whether the current keymap was validated by compositor.")
 
 ;; Per-keyboard state tracking record:
 ;;  - proxy: river_xkb_keyboard_v1 Wayland proxy
@@ -103,13 +104,13 @@ Returns: Valid integer layout index, or #f if not found."
   (cond
    ;; target is valid integer within range
    ((and (integer? target)
-		 (>= target 0)
-		 (< target (length *keyboard-layouts*)))
+         (>= target 0)
+         (< target (length *keyboard-layouts*)))
     target)
    ;; target is valid layout code that exists in layouts
    ((string? target)
     (list-index (lambda (layout)
-				  (string-ci=? target layout))
+                  (string-ci=? target layout))
                 *keyboard-layouts*))
    (else #f)))
 
@@ -119,7 +120,7 @@ Parameters: (STEP)
   - STEP: Integer offset (+1 for next, -1 for previous).
 Returns: #t on successful switch, or #f if only single layout is configured."
   (let ((count (length *keyboard-layouts*))
-		(target-index (+ *keyboard-current-layout-index* step)))
+        (target-index (+ *keyboard-current-layout-index* step)))
     (unless (<= count 1)
       (keyboard-layout-set! (modulo target-index count)))))
 
@@ -135,7 +136,7 @@ Returns: #t on successful switch, or #f if only single layout is configured."
   (when (and *keyboard-keymap-valid?*
              (valid-pointer? *keyboard-keymap-proxy*))
     ;; upload approved keymap to each tracked physical keyboard
-	;; NOTE: currently gliver doesn't support individual keyboard keymap
+    ;; NOTE: currently gliver doesn't support individual keyboard keymap
     (for-each
      (lambda (dev)
        (let ((proxy (keyboard-device-proxy dev)))
@@ -153,7 +154,7 @@ Parameters: (TARGET)
 Returns: #t on success, #f if TARGET cannot be resolved."
   (let ((idx (%resolve-layout-index target)))
     (if (not idx)
-		;; couldn't resolve target
+        ;; couldn't resolve target
         #f
         ;; otherwise, set layout index on each available keyboard
         (begin
@@ -226,11 +227,11 @@ Parameters: (DATA PROXY-KEYBOARD PROXY-DEVICE)
     ;; update input device for the keyboard
     (let ((dev (find (lambda (k)
                        (equal? (keyboard-device-proxy k)
-							   proxy-keyboard))
+                               proxy-keyboard))
                      *keyboard-xkb-keyboards*)))
       (when dev
         (keyboard-device-input-device-set! dev proxy-device)))
-	;; set repeat rate and delay
+    ;; set repeat rate and delay
     (input-device-set-repeat-info proxy-device
                                   *keyboard-repeat-rate*
                                   *keyboard-repeat-delay*)))
@@ -247,7 +248,7 @@ Parameters: (DATA PROXY-KEYBOARD INDEX NAME)
                      (equal? (keyboard-device-proxy k) proxy-keyboard))
                    *keyboard-xkb-keyboards*)))
     (when dev
-	  ;; update each device current layout index
+      ;; update each device current layout index
       (keyboard-device-layout-index-set! dev index)))
   ;; sync global layout index and notify listeners if layout changed
   (unless (= index *keyboard-current-layout-index*)

@@ -19,91 +19,91 @@
   #:use-module (gliver core helpers)
   #:declarative? #f
   #:export (
-			*quit-exits-river*
-			*terminal*
-			*startup-message*
-			*wallpaper*
-			*wallpaper-mode*
-			*prefix-timeout*
-			*message-timeout*
-			*theme-font*
-			*theme-font-size*
-			*theme-rosewater*
-			*theme-flamingo*
-			*theme-pink*
-			*theme-mauve*
-			*theme-red*
-			*theme-maroon*
-			*theme-peach*
-			*theme-yellow*
-			*theme-green*
-			*theme-teal*
-			*theme-sky*
-			*theme-sapphire*
-			*theme-blue*
-			*theme-lavender*
-			*theme-text*
-			*theme-subtext1*
-			*theme-subtext0*
-			*theme-overlay2*
-			*theme-overlay1*
-			*theme-overlay0*
-			*theme-surface2*
-			*theme-surface1*
-			*theme-surface0*
-			*theme-base*
-			*theme-mantle*
-			*theme-crust*
-			*theme-border-width*
-			*theme-border-radius*
-			*theme-bg-main*
-			*theme-bg-dim*
-			*theme-fg-main*
-			*theme-fg-dim*
-			*theme-fg-alt*
-			*theme-bg-active*
-			*theme-bg-inactive*
-			*theme-border-color*
-			*theme-urgent-color*
-			*window-border-width*
-			*window-border-color-focused*
-			*window-border-color-unfocused*
-			*window-border-color-urgent*
-			*palette-icon-color*
-			*palette-name-color*
-			*palette-value-color*
-			*palette-help-color*
-			*palette-doc-color*
-			*palette-variables-widths*
-			*palette-variables-searchable*
-			*palette-variables-visible*
-			*xdg-config-home*
-			*xdg-state-home*
-			*xdg-data-home*
-			*gliver-config-dir*
-			*gliver-runtime-dir*
-			*gliver-state-dir*
-			*config-file-path*
-			*example-config-file*
-			config-load!
-			config-reload!
+            *quit-exits-river*
+            *terminal*
+            *startup-message*
+            *wallpaper*
+            *wallpaper-mode*
+            *prefix-timeout*
+            *message-timeout*
+            *theme-font*
+            *theme-font-size*
+            *theme-rosewater*
+            *theme-flamingo*
+            *theme-pink*
+            *theme-mauve*
+            *theme-red*
+            *theme-maroon*
+            *theme-peach*
+            *theme-yellow*
+            *theme-green*
+            *theme-teal*
+            *theme-sky*
+            *theme-sapphire*
+            *theme-blue*
+            *theme-lavender*
+            *theme-text*
+            *theme-subtext1*
+            *theme-subtext0*
+            *theme-overlay2*
+            *theme-overlay1*
+            *theme-overlay0*
+            *theme-surface2*
+            *theme-surface1*
+            *theme-surface0*
+            *theme-base*
+            *theme-mantle*
+            *theme-crust*
+            *theme-border-width*
+            *theme-border-radius*
+            *theme-bg-main*
+            *theme-bg-dim*
+            *theme-fg-main*
+            *theme-fg-dim*
+            *theme-fg-alt*
+            *theme-bg-active*
+            *theme-bg-inactive*
+            *theme-border-color*
+            *theme-urgent-color*
+            *window-border-width*
+            *window-border-color-focused*
+            *window-border-color-unfocused*
+            *window-border-color-urgent*
+            *palette-icon-color*
+            *palette-name-color*
+            *palette-value-color*
+            *palette-help-color*
+            *palette-doc-color*
+            *palette-variables-widths*
+            *palette-variables-searchable*
+            *palette-variables-visible*
+            *xdg-config-home*
+            *xdg-state-home*
+            *xdg-data-home*
+            *gliver-config-dir*
+            *gliver-runtime-dir*
+            *gliver-state-dir*
+            *config-file-path*
+            *example-config-file*
+            config-load!
+            config-reload!
 ))
 
 ;;; config variables
 (define-var *quit-exits-river* #t
-			"Whether the quit command should also exit river.")
+            "Whether the quit command should also exit river.")
 (define-var *terminal* "foot"
-			"Terminal emulator to be used when spawning terminals.")
+            "Terminal emulator to be used when spawning terminals.")
 (define-var *startup-message* #t
-			"Whether to show message at startup.")
+            "Whether to show message at startup.")
 (define-var *wallpaper* #f
-			"Default wallpaper (image file path or hex color).")
+            "Default wallpaper (image file path or hex color).")
 (define-var *wallpaper-mode* 'fill
-			"Default wallpaper scaling mode: 'fill, 'fit, 'stretch, 'center, or 'tile.")
+            "Default wallpaper scaling mode: 'fill, 'fit, 'stretch, 'center, or 'tile.")
 (define-var *prefix-timeout* 1000
-			"Timeout in milliseconds for keybinding prefix sequences.")
+            "Timeout in milliseconds for keybinding prefix sequences.")
 (define-var *message-timeout* 8
-			"Timeout in seconds for notification messages.")
+            "Timeout in seconds for notification messages.")
 
 ;;; theme options
 (define-var *theme-font* "iosevka Bold"
@@ -278,7 +278,7 @@
           (lambda ()
             (log-info "Loading config: ~a" path)
             (load path)
-			(gliver-hook-run! *config-loaded-hook*)
+            (gliver-hook-run! *config-loaded-hook*)
             (log-info "Config loaded successfully."))
           (lambda (key . args)
             (log-error "Error loading config ~a: ~a ~a" path key args)
@@ -288,7 +288,7 @@
           (log-info "No config file found at ~a, loading example file."
                     path)
           (load *example-config-file*)
-		  (gliver-hook-run! *config-loaded-hook*)
+          (gliver-hook-run! *config-loaded-hook*)
           (log-info "Example config file loaded.")))))
 
 (define-command (config-reload!)

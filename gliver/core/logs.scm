@@ -17,24 +17,24 @@
   #:use-module (srfi srfi-19)
   #:declarative? #f
   #:export (
-			*log-level*
-			*log-hooks*
-			*log-sequences*
-			*log-river-calls*
-			*log-port*
-			*log-file-path*
-			*log-thread-padding*
-			*log-padding*
-			*log-levels*
-			log-level-value
-			log-level-set!
-			log-file-set!
-			log-write
-			log-debug
-			log-info
-			log-warn
-			log-error
-			with-guard
+            *log-level*
+            *log-hooks*
+            *log-sequences*
+            *log-river-calls*
+            *log-port*
+            *log-file-path*
+            *log-thread-padding*
+            *log-padding*
+            *log-levels*
+            log-level-value
+            log-level-set!
+            log-file-set!
+            log-write
+            log-debug
+            log-info
+            log-warn
+            log-error
+            with-guard
 ))
 
 ;;; logging configuration & parameters
@@ -106,10 +106,10 @@ Parameters: (FILENAME LEVEL FMT ARGS)
                          "Unknown")))
       ;; standard log4j format with logger name
       (format (*log-port*) "~a [~a] ~a ~a - ~a~%"
-              timestamp 
+              timestamp
               thread-name
-              level-str 
-              basename 
+              level-str
+              basename
               message)
       (force-output (*log-port*)))))
 
