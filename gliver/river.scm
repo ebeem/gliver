@@ -24,7 +24,7 @@
 
 (re-export-modules (gliver river connector)
                    (gliver river xkb-bindings-manager)
-				   (gliver river xkb-config-manager)
+                   (gliver river xkb-config-manager)
                    (gliver river window-manager)
                    (gliver river wm-decoration-manager)
                    (gliver river wm-node-manager)

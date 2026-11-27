@@ -237,7 +237,7 @@ Parameters: (PROXY-WINDOW EDGES WIDTH R G B A)
              (<= 0 b 4294967295) (<= 0 a 4294967295))
     (when *log-river-calls*
       (log-debug "Setting borders for window: ~a to width ~a, edges: ~a, and rgba(~a, ~a, ~a, ~a)" proxy-window width edges r g b a))
-    (river-window-v1-set-borders proxy-window edges width 
+    (river-window-v1-set-borders proxy-window edges width
                                  r g b a)))
 
 (define (wm-window-tiled-set proxy-window edges)

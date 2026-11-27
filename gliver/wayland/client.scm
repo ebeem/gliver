@@ -15,7 +15,9 @@
   #:use-module (ice-9 match)
   #:use-module (gliver core ffi)
   #:use-module (gliver core logs)
-  #:export (;; display
+  #:export (
+            libwayland-client
+            wl-func
             wl-display-connect
             wl-display-disconnect
             wl-display-get-fd
@@ -25,39 +27,27 @@
             wl-display-flush
             wl-display-get-error
             wl-display-get-protocol-error
-            gliver-wl-display-get-registry
-
-            ;; registry
-            gliver-wl-registry-bind
-
-            ;; proxy
-            wl-proxy-destroy
-            wl-proxy-get-id
-            wl-proxy-marshal-flags
-
-            ;; event queue
             wl-display-prepare-read
             wl-display-cancel-read
             wl-display-read-events
-
-            ;; listener framework
-            make-wl-listener
+            gliver-wl-display-get-registry
+            gliver-wl-registry-bind
+            wl-proxy-destroy
+            wl-proxy-get-id
             wl-proxy-add-listener
-
-            ;; interface construction
+            wl-proxy-marshal-flags
             make-wl-interface
-            make-wl-interface-full
-
-            ;; gc protection
+            make-wl-listener
+            *wl-gc-roots*
             wl-gc-protect!
-
-            ;; proxy version
             wl-proxy-get-version
-
-            ;; Array-based marshaling
+            make-wl-args
             wl-marshal-request
+            WL_MARSHAL_FLAG_DESTROY
             wl-marshal-request-destroy
             wl-marshal-constructor
+            make-wl-message-array
+            make-wl-interface-full
 ))
 
 ;;; load libwayland-client
@@ -147,8 +137,8 @@
         (let* ((interface-ptr (make-bytevector (sizeof '*) 0))
                (id-ptr (make-bytevector (sizeof uint32) 0))
                (code (%wl-display-get-protocol-error display
-                                                    (bytevector->pointer interface-ptr)
-                                                    (bytevector->pointer id-ptr)))
+                                                     (bytevector->pointer interface-ptr)
+                                                     (bytevector->pointer id-ptr)))
                (raw-iface (dereference-pointer (bytevector->pointer interface-ptr)))
                (id (bytevector-u32-native-ref id-ptr 0)))
           (if (and (null-pointer? raw-iface) (zero? code) (zero? id))
@@ -325,8 +315,8 @@ Returns a pointer to the listener struct."
 (define %wl-proxy-marshal-array-flags
   (if libwayland-client
       (pointer->procedure '*
-						  (dynamic-func "wl_proxy_marshal_array_flags" libwayland-client)
-						  (list '* uint32 '* uint32 uint32 '*))
+                          (dynamic-func "wl_proxy_marshal_array_flags" libwayland-client)
+                          (list '* uint32 '* uint32 uint32 '*))
       (lambda args
         (error "libwayland-client not loaded, cannot call wl_proxy_marshal_array_flags"))))
 
@@ -505,7 +495,7 @@ EVENTS: list of (name signature types-pointers) triples, in opcode order."
                           (native-endianness) int-size)
     ;; events (offset 2*ptr-size + 4*int-size)
     (bytevector-uint-set! bv (+ ptr-size int-size int-size ptr-size
-                                int-size int-size)
+                                         int-size int-size)
                           (pointer-address events-ptr)
                           (native-endianness) ptr-size)
     (bytevector->pointer bv)))

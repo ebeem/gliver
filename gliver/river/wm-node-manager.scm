@@ -31,7 +31,7 @@
 
 ;;; global state
 (define-var *wm-nodes* '()
-			"List of river_node_v1 proxies for tracking.")
+            "List of river_node_v1 proxies for tracking.")
 
 ;;; node requests
 (define (wm-node-destroy! proxy-node)

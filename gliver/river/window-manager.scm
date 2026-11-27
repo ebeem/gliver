@@ -74,17 +74,17 @@ Parameters: (REGISTRY PROTOCOL-NAME OBJECT-ID VERSION)
   - VERSION: Integer maximum interface version supported by compositor."
   (when (string=? protocol-name RIVER_WINDOW_MANAGER_V1_NAME)
     (log-info "Binding ~a..." protocol-name)
-	(let ((proxy (gliver-wl-registry-bind registry object-id
+    (let ((proxy (gliver-wl-registry-bind registry object-id
                                           *river-window-manager-v1-interface*
                                           (min version 4))))
-	  (%manager-wl-proxy-set! *manager* proxy)
-	  (log-info "Manager ~a proxy is set to ~a" *manager* proxy))))
+      (%manager-wl-proxy-set! *manager* proxy)
+      (log-info "Manager ~a proxy is set to ~a" *manager* proxy))))
 
 (define (window-manager-on-globals-unbind)
   "Unbind and destroy the river_window_manager_v1 proxy.
 Parameters: None."
   (and-let* ((proxy (manager-wl-proxy *manager*)))
-	(wm-manager-destroy proxy)))
+    (wm-manager-destroy proxy)))
 
 (define (window-manager-on-globals-verify)
   "Verify that river_window_manager_v1 was bound successfully, raise error otherwise.
@@ -112,7 +112,7 @@ Parameters: None."
           wm-on-output
           wm-on-seat)))
     (wl-proxy-add-listener (manager-wl-proxy *manager*)
-						   wm-listener %null-pointer)))
+                           wm-listener %null-pointer)))
 
 ;;; river_window_manager_v1: requests
 (define (wm-manager-stop proxy-manager)
@@ -122,10 +122,10 @@ state needs to be executed.
 Parameters: (PROXY-MANAGER)
   - PROXY-MANAGER: Pointer to river_window_manager_v1 proxy."
   (when (and (valid-pointer? proxy-manager)
-			 (equal? (manager-wl-proxy *manager*) proxy-manager))
+             (equal? (manager-wl-proxy *manager*) proxy-manager))
     (when *log-river-calls*
-	  (log-debug "Stopping manager ~a" proxy-manager))
-	(river-window-manager-v1-stop proxy-manager)))
+      (log-debug "Stopping manager ~a" proxy-manager))
+    (river-window-manager-v1-stop proxy-manager)))
 
 (define (wm-manager-destroy proxy-manager)
   "Destroy the manager, this means everything was cleared from
@@ -135,11 +135,11 @@ will be automatically managed and called when needed.
 Parameters: (PROXY-MANAGER)
   - PROXY-MANAGER: Pointer to river_window_manager_v1 proxy."
   (when (and (valid-pointer? proxy-manager)
-			 (equal? (manager-wl-proxy *manager*) proxy-manager))
+             (equal? (manager-wl-proxy *manager*) proxy-manager))
     (when *log-river-calls*
-	  (log-debug "Destroying manager ~a" proxy-manager))
-	(river-window-manager-v1-destroy proxy-manager)
-	(%manager-wl-proxy-set! *manager* %null-pointer)))
+      (log-debug "Destroying manager ~a" proxy-manager))
+    (river-window-manager-v1-destroy proxy-manager)
+    (%manager-wl-proxy-set! *manager* %null-pointer)))
 
 (define (wm-manager-manage-finish proxy-manager)
   "Client has made all changes to window management
@@ -147,10 +147,10 @@ state it wishes to include in the current manage sequence.
 Parameters: (PROXY-MANAGER)
   - PROXY-MANAGER: Pointer to river_window_manager_v1 proxy."
   (when (and (valid-pointer? proxy-manager)
-			 (equal? (manager-wl-proxy *manager*) proxy-manager))
+             (equal? (manager-wl-proxy *manager*) proxy-manager))
     (when (and *log-sequences* *log-river-calls*)
-	  (log-debug "Finishing manage sequence ~a" proxy-manager))
-	(river-window-manager-v1-manage-finish proxy-manager)))
+      (log-debug "Finishing manage sequence ~a" proxy-manager))
+    (river-window-manager-v1-manage-finish proxy-manager)))
 
 (define (wm-manager-manage-dirty proxy-manager)
   "Mark manage sequence dirty to request a new manage_start
@@ -159,20 +159,20 @@ in manage sequence outside the river flow (like statusbar modules).
 Parameters: (PROXY-MANAGER)
   - PROXY-MANAGER: Pointer to river_window_manager_v1 proxy."
   (when (and (valid-pointer? proxy-manager)
-			 (equal? (manager-wl-proxy *manager*) proxy-manager))
+             (equal? (manager-wl-proxy *manager*) proxy-manager))
     (when *log-river-calls*
-	  (log-debug "Dirty manage sequence ~a" proxy-manager))
-	(river-window-manager-v1-manage-dirty proxy-manager)))
+      (log-debug "Dirty manage sequence ~a" proxy-manager))
+    (river-window-manager-v1-manage-dirty proxy-manager)))
 
 (define (wm-manager-render-finish proxy-manager)
   "Inform compositor that client has finished current render sequence.
 Parameters: (PROXY-MANAGER)
   - PROXY-MANAGER: Pointer to river_window_manager_v1 proxy."
   (when (and (valid-pointer? proxy-manager)
-			 (equal? (manager-wl-proxy *manager*) proxy-manager))
+             (equal? (manager-wl-proxy *manager*) proxy-manager))
     (when (and *log-sequences* *log-river-calls*)
-	  (log-debug "Finishing render sequence ~a" proxy-manager))
-	(river-window-manager-v1-render-finish proxy-manager)))
+      (log-debug "Finishing render sequence ~a" proxy-manager))
+    (river-window-manager-v1-render-finish proxy-manager)))
 
 (define (wm-manager-shell-surface-get proxy-manager proxy-surface)
   "Create a new shell surface for window manager UI
@@ -321,7 +321,7 @@ Parameters: (DATA PROXY-MANAGER)
 
   (catch #t
     (lambda ()
-      ;; dequeue and invoke tasks from render queue until empty.      
+      ;; dequeue and invoke tasks from render queue until empty.
       (define (process-queue!)
         (unless (null? *wm-render-queue*)
           (let ((task (car *wm-render-queue*)))
