@@ -178,22 +178,24 @@ Parameters: (PROXY-CONFIG)
     (river-xkb-config-v1-destroy proxy-config)
     (set! *xkb-config* %null-pointer)))
 
-(define (xkb-config-compile-keymap layout-str variant-str)
-  "Compile keymap definition from LAYOUT-STR and VARIANT-STR.
-Parameters: (LAYOUT-STR VARIANT-STR)
-  - LAYOUT-STR: String comma-separated layout list (e.g. \"us,ara\").
-  - VARIANT-STR: String comma-separated variant list (e.g. \",digits\").
+(define (xkb-config-compile-keymap layout-str variant-str options-str)
+  "Compile keymap definition from LAYOUT-STR, VARIANT-STR and OPTIONS-STR.
+Parameters: (LAYOUT-STR VARIANT-STR OPTIONS-STR)
+  - LAYOUT-STR: String comma-separated layouts (e.g. \"us,ara\").
+  - VARIANT-STR: String comma-separated variants (e.g. \",digits\").
+  - OPTIONS-STR: String comma-separated options (e.g. \"terminate:ctrl_alt_bksp\").
 Returns: String representing keymap definition, or #f on failure."
   (when *log-river-calls*
-    (log-debug "Compiling keymap (layout=~s, variant=~s)"
-               layout-str variant-str))
+    (log-debug "Compiling keymap (layout=~s, variant=~s, options=~s)"
+               layout-str variant-str options-str))
   (call-with-values
       (lambda ()
         ;; NOTE: rules and model can be optionally passed
         ;; I am not sure if this will be of any use
         ;; I also don't very well understand the meaning of these values
         (xkb-keymap-compile-from-names #:layout layout-str
-                                       #:variant variant-str))
+                                       #:variant variant-str
+                                       #:options options-str))
     (lambda (km ctx)
       (let ((keymap-def (and (valid-pointer? km) (xkb-keymap->string km))))
         ;; cleanup keymap and context as they are not needed anymore
@@ -270,14 +272,15 @@ Returns river_xkb_keymap_v1 proxy pointer or #f on failure."
               (close-fd fd)
               #f))))))
 
-(define* (xkb-config-create-keymap-from-layout proxy-config layouts variants
+(define* (xkb-config-create-keymap-from-layout proxy-config layouts variants options
                                                #:optional (format RIVER_XKB_CONFIG_V1_KEYMAP_FORMAT_TEXT_V1))
   "Create a keymap object on PROXY-CONFIG from layer LAYOUTS.
 Allocates a sealed anonymous memory file descriptor (memfd) and sends create_keymap request.
-Parameters: (PROXY-CONFIG LAYOUTS VARIANTS [FORMAT])
+Parameters: (PROXY-CONFIG LAYOUTS VARIANTS OPTIONS [FORMAT])
   - PROXY-CONFIG: Pointer to river_xkb_config_v1 proxy.
   - LAYOUTS: List of layouts (e.g. '(\"us\" \"ara\")).
   - VARIANTS: List of variants (e.g. '(\"\" \"digits\")) - can be left empty.
+  - OPTIONS: List of XKB options (e.g. '(\"ctrl:swapcaps\" \"compose:ralt\")) - can be left empty.
   - FORMAT: Integer keymap format enum (default text_v1).
 Returns river_xkb_keymap_v1 proxy pointer or #f on failure."
   (when (and (valid-pointer? proxy-config)
@@ -286,8 +289,9 @@ Returns river_xkb_keymap_v1 proxy pointer or #f on failure."
     ;; layout and variant need to be in comma separated format (e.g. "en, ara")
     (and-let* ((layout-str   (string-join layouts ","))
                (variant-str  (string-join variants ","))
+               (options-str   (string-join options ","))
                ;; create keymap-def from layout and variant
-               (keymap-def   (xkb-config-compile-keymap layout-str variant-str)))
+               (keymap-def   (xkb-config-compile-keymap layout-str variant-str options-str)))
       ;; pass the keymap-def string to xkb-config-create-keymap-from-string
       (xkb-config-create-keymap-from-string proxy-config keymap-def format))))
 

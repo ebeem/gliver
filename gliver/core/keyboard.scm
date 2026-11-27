@@ -25,6 +25,7 @@
             *keyboard-layouts*
             *keyboard-layout-fallback*
             *keyboard-variants*
+            *keyboard-options*
             *keyboard-repeat-rate*
             *keyboard-repeat-delay*
             *keyboard-xkb-keyboards*
@@ -67,6 +68,8 @@
             "Fallback layout code to default to if no active layout is resolved.")
 (define-var *keyboard-variants* '()
             "Keyboard variants list corresponding to *keyboard-layouts*, e.g. '(\"\" \"digits\").")
+(define-var *keyboard-options* '()
+            "Keyboard options list corresponding to *keyboard-options*, e.g. '(\"ctrl:swapcaps\" \"compose:ralt\").")
 (define-var *keyboard-repeat-rate* 25
             "Keyboard repeat rate in characters per second.")
 (define-var *keyboard-repeat-delay* 600
@@ -167,14 +170,15 @@ Returns: #t on success, #f if TARGET cannot be resolved."
           #t))))
 
 (define-command (keyboard-apply-config!)
-  "Compile xkb keymap from *KEYBOARD-LAYOUTS*
-and *KEYBOARD-VARIANTS* and upload to river.
+  "Compile xkb keymap from *KEYBOARD-LAYOUTS*,
+*KEYBOARD-VARIANTS*, *KEYBOARD-OPTIONS* and upload to river.
 Returns: river_xkb_keymap_v1 proxy pointer on success, or #f on failure."
   ;; this will automatically invoke keyboard-on-keymap-success if successful
   ;; which will take care of applying uploaded keymap to all keyboards
   (xkb-config-create-keymap-from-layout *xkb-config*
                                         *keyboard-layouts*
-                                        *keyboard-variants*))
+                                        *keyboard-variants*
+                                        *keyboard-options*))
 
 (define-command (keyboard-layout-next!)
   "Switch all keyboards to the next layout in *KEYBOARD-LAYOUTS*.
