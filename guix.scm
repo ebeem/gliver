@@ -23,7 +23,6 @@
    (build-system gnu-build-system)
    (arguments
     (list
-     #:tests? #f
      #:make-flags '(list (string-append "PREFIX=" (assoc-ref %outputs "out")))
      #:phases
      #~(modify-phases %standard-phases

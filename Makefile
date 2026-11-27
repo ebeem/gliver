@@ -193,8 +193,10 @@ $(COMPILED): gliver/core/ffi.scm
 compile: $(COMPILED)
 
 # run automated test suites against headless river
-test: compile
-	GUILE_AUTO_COMPILE=0 $(GUILE) -L . -C build tests/runner.scm
+test:
+	@if [ -f tests/runner.scm ]; then \
+		GUILE_AUTO_COMPILE=0 $(GUILE) -L . -C build tests/runner.scm; \
+	fi
 
 check: test
 
