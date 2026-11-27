@@ -193,11 +193,6 @@ Parameters: (OUTPUT [#:focus #t])
   (when (null? (output-workspaces output))
     (let ((workspace
            (make-workspace #:name (format #f "workspace-~d-~d" (output-id output) 1)
-                           #:layout `((layout . manual)
-                                      (layout-type . manual)
-                                      (split-ratio . 0.5)
-                                      (inner-gap . #f)
-                                      (outer-gap . #f))
                            #:output output)))
       (workspace-add! workspace #:focus focus)))
 
