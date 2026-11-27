@@ -1,0 +1,250 @@
+* Roadmap
+** v 0.0.4
+*** DONE replace default hook modifier in manager.scm with setter functions
+default record setter should be private, another public one should be created to customize the behavior. It's also a good idea to call all hooks needed in setters rather than relying on user to run them. Add an optional parameter to disable hook call.
+
+*** DONE move all extra modules to ~contrib~
+including ~window-rules~ and any other module that seems like a plugin
+
+*** DONE move all configuration to hash table
+NOTE: deprecated, define-var is the preferred approach
+the current configuration file makes it harder to have an common place from which variables are received and set. A better approach is to use the configuration hash-table so that it becomes also easier to listen to changes via hook. the ~config.scm~ file should be deleted.
+
+
+*** DONE create a hash-table for all ~contrib~ and extra configuration variables
+gaps parameters, mode, message-timeout and all other manager state variables should move to the hash-table which is the only variable referenced by the ~manager~ other than the list of outputs, seats, and windows.
+
+*** DONE make default layout manual
+
+*** DONE check out dirty manager sequences and imperfect frames
+
+*** DONE test multi monitor configuration
+use ~WLR_WL_OUTPUTS=2~ in a nested setup
+
+*** DONE make a custom =define-command= macro
+this should help in creating a well defined hash-table structure that can be looked up quickly while following ~gliver~'s standards in defining commands
+
+*** DONE make a custom =define-var= macro
+this should help in creating a well defined hash-table structure that can be looked up quickly while following ~gliver~'s standards in defining variables. Remove all variables from manager ~manager-config~ and make them in a global variables =hash-table= instead.
+
+*** DONE make common functions for display
+alternative to emacs minibuffer, messages, and logs. Components provided should be:
+- command palette: allows users to select candidate from options
+- prompt message: allows user to enter a free value
+- toast: allows user to display messages with custom click behaviors and timeout
+
+#+begin_src scheme
+;;; message display
+(define *message-last* "")
+(define *message-callback* #f)
+
+(define (message fmt . args)
+  "Display a message in the message bar."
+  (let ((msg (apply format #f fmt args)))
+    (set! *message-last* msg)
+    (log-info "Message: ~a" msg)
+    (when *message-callback*
+      (*message-callback* msg))
+    msg))
+
+(define (message-no-timeout fmt . args)
+  "Display a persistent message."
+  (apply message fmt args))
+
+;;; interactive input
+(define *input-callback* #f)
+(define *input-prompt* "")
+(define *input-buffer* "")
+(define *input-completions* '())
+(define *input-result-callback* #f)
+
+(define* (read-one-line prompt #:key (completions '()))
+  "Request one line of input from the user.
+In the async architecture, this sets up state and returns #f immediately.
+The actual input is handled via handle-input-key callbacks."
+  (set! *input-prompt* prompt)
+  (set! *input-buffer* "")
+  (set! *input-completions* completions)
+  ;; display prompt
+  (log-debug "~a" prompt)
+  ;; return #f, the actual result comes via callback
+  #f)
+
+(define (read-yes-or-no prompt)
+  "Ask a yes/no question."
+  (read-one-line (string-append prompt " (y/n) ")))
+
+(define (handle-input-key key-str)
+  "Handle a keypress during input mode. Returns #f or the completed string."
+  (cond
+   ((string=? key-str "Return")
+    (let ((result *input-buffer*))
+      (set! *input-buffer* "")
+      (set! *input-prompt* "")
+      result))
+   ((string=? key-str "Escape")
+    (set! *input-buffer* "")
+    (set! *input-prompt* "")
+    (log-debug "Aborted.")
+    #f)
+   ((string=? key-str "BackSpace")
+    (when (> (string-length *input-buffer*) 0)
+      (set! *input-buffer*
+        (substring *input-buffer* 0 (1- (string-length *input-buffer*)))))
+    (log-debug "~a~a" *input-prompt* *input-buffer*)
+    #f)
+   ((string=? key-str "Tab")
+    ;; Tab completion
+    (let ((matches (filter (lambda (c)
+                             (string-prefix? *input-buffer* c))
+                           *input-completions*)))
+      (cond
+       ((null? matches) #f)
+       ((= 1 (length matches))
+        (set! *input-buffer* (car matches))
+        (log-debug "~a~a" *input-prompt* *input-buffer*)
+        #f)
+       (else
+        (log-debug "~a" (string-join matches " | "))
+        #f))))
+   ((= (string-length key-str) 1)
+    ;; Regular character
+    (set! *input-buffer* (string-append *input-buffer* key-str))
+    (log-debug "~a~a" *input-prompt* *input-buffer*)
+    #f)
+   (else #f)))
+#+end_src
+
+*** DONE create additional ui integration with both quickshell and noctalia
+also create noctalia integration with gliver
+I started thinking it will be better to implement a similar minimal shell using cairo and guile.
+pango is also going to help make this happen, I am really considering how huge some of these tools consume from resources. So far, gliver is consuming very little resources even though it has the rendering engine loaded already. This means implementing the rest of gui modules won't even just make it easier to extend and give more freedom, it will also make the resources consumption much less
+update: out of scope now with gleui
+
+
+*** DONE make placeholder a single process that can spawn multiple windows
+now done via cairo rendering, which is even better
+
+*** DONE move any ffi call to gliver/deps
+these are minimal bindings that lack guile library. In the future, if a proper package is created I will probably switch
+maybe wayland is also another library to consider moving to deps
+
+*** DONE fix and investigate fullscreen toggling window order and container border
+if fullscreen is toggled (exited), border isn't rendered and focusing another window in the same container doesn't bring it on top. Seems like window ordering issue of some sort.
+seems like container-window-indicator also disappears.
+
+*** DONE add workspace grid feature
+this should be already possible with core, only introduce a variable to decide number of rows and fix the workspace navigation commands to respect it
+
+*** DONE add workspace group module
+this should allow syncing workspace switching, like span workspaces across monitors. Should have easy to toggle default, maybe syncing based on index
+
+*** DONE investigate break on tty switching
+go to tty and back to gliver you will notice that layout isn't correct
+
+*** DONE document hooks
+currently it's not clear what the parameters are, should probably be documented in ~hooks.scm~
+
+*** DONE add metadata to outputs, workspaces, containers, and windows
+this will allow modules to add their metadata to types so they can persist and be shared across other modules. Should be very similar to how manager handles configuration.
+
+*** DONE allow switching keyboard layout
+
+*** DONE re-document all modules under river & core
+I will go to other directories later, I did so many refactoring and rushed work that I started not liking parts of the code especially the ui part in contrib directory. I took some time to write and very well document the keyboard-manager, I want this to be a reference to how I want other files to be documented.
+NOTE: this shouldn't break APIs, it should just make it easier for anyone to understand the code, some internal functions may have to be refactored along the way, but not APIs.
+
+*** DONE investigate why notifications freeze librewolf sometimes
+Not sure if this is a problem with gliver's notification daemon or a bug in librewolf, but it seems like randomly sometimes notifications freeze librewolf for almost a minute
+
+
+*** DONE switching workspace focuses container but doesn't focus active window
+focused window remain the previous one, maybe a missing dirty manage sequence?
+
+*** DONE create a list where all destroyable references are stored
+to keep track of what references still exist and ensure that they are all cleared up
+
+** v0.0.5
+*** TODO default terminal/palette should be auto detected at initialization
+also default font, maybe notify if no nerd fallback font is found?
+
+*** DONE weather module doesn't get polled
+investigate, is it a problem with the module or with the polling process?
+
+*** DONE support fractional display scaling
+
+
+** v0.0.6
+
+*** TODO investigate river memory leaks
+I am not sure if this is with gliver or river, but it seems to me that there are some memory leaks. gliver itself seems to destroy all created objects and its ram usage remains flat, river on the other hand keeps allocating more ram. what gliver has to ensure is proper destroy calls from the river protocol whenever needed which seems to be already implemented in all protocols but there maybe something that I missed.
+
+*** DONE refactor gleui components
+
+*** DONE enable variable inheritance
+
+** v0.0.7
+*** TODO implement #:interactive key in commands
+
+*** TODO make palette commands more interactive
+
+** v0.0.8
+*** TODO maybe improve automatic layout
+the implementation used to check for specific events like window creation and apply only needed changes to the layout. It's much easier to just reload the whole layout on some specific events needed by the layout. Check performance difference and change the logic accordingly. If there is no huge impact in performance keep current approach because it's much easier to read and maintain.
+
+*** TODO introduce scrolling layout
+
+** v0.0.9
+*** TODO add variable to allow navigating containers to navigate window in container
+when navigating container right/left and there are windows in that direction under the current container, move to them first.
+This variable should also reflect on moving window to right/left container, or maybe introduce another variable for more flexibility
+
+*** TODO fix window-rules module
+was developed long time ago and I don't think it's working anymore
+
+** v0.1.0
+*** TODO keep windows settings when starting gliver
+after restarting, all windows will move to the default output and container.
+an error also is observed in logs
+ERROR hooks.scm - Hook %window-created: function raised wrong-type-arg: (struct-vtable Wrong type argument in position 1 (expecting struct): ~S (#f) (#f))
+
+*** TODO plan animations
+no need for implementation now, but common functions should be used and expect animations to be introduced later. There should be no call changes to introduce animations.
+
+*** TODO finalize manual & cookbook
+
+*** TODO move configuration to the right module
+instead of having one config file to define all variables, define them using the macro ~define-var~ in the module that needs them. only store global configuration in the config file, like desktop environment variables and theme colors (maybe, or have a theming api?).
+
+** v0.1.1
+
+*** TODO implement wlr-output-management protocol
+this should allow setting custom output resolution, scale, position without relying on external tools like ~wlr-randr~
+
+
+
+* ideas to explore
+** notifications daemon
+- command to list recent notifications via palette and re-display them
+- option to log notifications to files to keep history
+- option to detect idle and keep notification on screen until user is back
+- option if user hover the notification via pointer, keep all notifications until pointer leaves area
+- toggle dnd mode to disable notifications (stack them and user is able to see history)
+- progress bar to indicate the timeout progress of the notification
+
+** settings UIs
+maybe it's convenient to have very basic gleui keyboard driven interfaces to manage different part of the desktop stack. I am listing below some ideas that I feel they could be very convenient to have.
+NOTE: I won't be including some settings options like output, power, appearance, multi-tasking, and keyboard options. These all are already very configurable and managed via gliver guile scheme APIs and they are supposed to be fixed.
+
+While it's true that CLIs exist and they are excellent (like ~nmcli/nmtui~ and ~bluetoothctl~), I find myself in need to refer to the help and docs every time I want to use them (TUIs are much more friendly) , such tools are used very rarely and it's hard to remember what needs to be done. Emacs packages are also another viable option.
+
+- Network Manager (via dbus ~org.freedesktop.NetworkManager~)
+- Bluetooh Manager (via dbus ~org.bluez~)
+- Sound Manager (via unix socket ~/run/user/$UID/pipewire-0~ or ~wpctl~)
+  To switch active output/input device
+
+** community
+currently I am in favor of irc, while it lacks some modern features, it's more than enough for our purpose. Many users are most likely ~guix~ and ~emacs~ users which means they will have their own clients to connect to the libera channel ~#gliver~. However, to be more friendly to newcomers, I am thinking there should be an extensions (probably downloadable, not part of gliver) that will use gleui to create a custom simple irc client, users can configure nickname, and by default it will connect to ~#gliver~ and be able to have very basic features like retrieving archive logs, notifications, copy-pasting, uploading snippets, opening URLs. This should make it easier for newcomers to join the community and use IRC without all of its complexity that's not trivial to users used to modern instant chatting like ~matrix~ or ~discord~.
+
+** gleui
+I like the recent improvements, it taught me that gleui if improved further to cover more use-cases, may actually be a very fun UI framework for ~gliver~ simple applications. I don't have plan to extend that as it's currently ~Wayland~ native, to make it work on other environments (including ~x11~) won't be an easy task I guess. There are much better tools for such task like ~gtk~, ~gliver~ uses gleui for better control and to keep the footprint of resources utilization at its best and reduce dependencies.
