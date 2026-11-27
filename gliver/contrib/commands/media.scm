@@ -56,6 +56,6 @@
 
 ;;; screenshot commands
 (define-command (media-screenshot)
-  "Brightness decrease."
+  "Take a screenshot."
   (exec "flameshot gui"))
 
