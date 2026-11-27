@@ -8,6 +8,10 @@
 #+ATTR_ORG: :width 900
 [[./.preview/screenshot.jpeg]]
 
+#+begin_quote
+Spoiler: Every single component drawn on the screenshot above - including the palette, statusbar, borders, tabs - is created and managed by ~Gliver~!
+#+end_quote
+
 ** Status
 
 ~Gliver~ is considered almost complete feature-wise, it's possible to use it as a window manager if you are willing to tolerate some crashes and bugs. Please submit all the issues you face so we can make ~Gliver~ more stable.
@@ -162,8 +166,12 @@ Pull requests are always welcome! Here are some guidelines to ensure your contri
 
 - Document your work: Preserve comments and docstrings explaining what the code does, and update them if your patch changes.
 - Target the right directory: Most new features, modules, and packages should go into the ~contrib~ directory.
+- Avoid AI-generated code: Please refrain from submitting any Large Language Model (LLM) output to this project repository (code contributions, issues, PRs, wiki, etc.).
 - Avoid change in ~core~: Contributions to the ~core~ directory will go through a lengthy review process, I prefer not to break existing APIs.
-- Avoid AI-generated code: To ensure strict compliance with Codeberg's Terms of Use, please refrain from submitting code written by Large Language Models (LLMs).
+#+begin_quote
+Note: features/enhancements and bugs in ~core~ are more than welcome. Only APIs that will break user configuration shall be avoided if possible.
+#+end_quote
+
 
 ** Wishlist
 
@@ -192,17 +200,21 @@ Workaround for gtk applications can be [[https://codeberg.org/river/wiki#global-
 
 ** GUI Components & Daemons
 
-| Name                 | Gliver Component            | Good Alternatives |
-|----------------------+-----------------------------+-------------------|
-| output configuration | core/output.scm             | kanashi           |
-| input configuration  | core/keybinding.scm         | channel, kwim     |
-| topbar / statusbar   | gleui/statusbar.scm         | waybar, swaybar   |
-| screen locker        | TODO                        | swaylock, waylock |
-| idle management      | TODO                        | swayidle          |
-| screen capture       | not planned                 | flameshot, grim   |
-| application launcher | gleui/launcher.scm          | fuzzel, rofi      |
-| notification daemon  | gleui/notifications.scm     | mako, dunst       |
-| wallpaper manager    | river/wallpaper-manager.scm | swaybg, awww      |
+| Name                 | Gliver Component                   | Good Alternatives  |
+|----------------------+------------------------------------+--------------------|
+| output configuration | core/output.scm (TODO: incomplete) | wlr-randr, kanashi |
+| input configuration  | core/keybinding.scm                | channel, kwim      |
+| topbar / statusbar   | gleui/statusbar.scm                | waybar, swaybar    |
+| screen locker        | TODO                               | swaylock, waylock  |
+| idle management      | TODO                               | swayidle           |
+| screen capture       | not planned                        | flameshot, grim    |
+| application launcher | gleui/launcher.scm                 | fuzzel, rofi       |
+| notification daemon  | gleui/notifications.scm            | mako, dunst        |
+| wallpaper manager    | river/wallpaper-manager.scm        | swaybg, awww       |
+
+#+begin_quote
+Note: output configuration currently lacks features like custom resolution, scale, and position. Such features can be configured via ~wlr-randr~.
+#+end_quote
 
 ** Help
 
