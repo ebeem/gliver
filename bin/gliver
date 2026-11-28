@@ -21,11 +21,13 @@
 (use-modules (ice-9 format)
              (ice-9 getopt-long)
              (ice-9 match)
+             (srfi srfi-2)
              (gliver config)
              (gliver core)
              (gliver river)
              (gliver contrib commands)
-			 (gliver contrib keybindings gliver)
+             (gliver contrib keybindings gliver)
+             (gliver contrib utils systemd)
              (gliver contrib debug ipc-server)
              (gliver contrib debug repl-server))
 
@@ -65,6 +67,65 @@
         (mkdir-p parent)))
     (mkdir path)))
 
+(define (log-session-environment phase)
+  "Log key session environment variables at PHASE for debugging."
+  (log-info "Session environment (~a): XDG_SESSION_TYPE=~s XDG_CURRENT_DESKTOP=~s WAYLAND_DISPLAY=~s DBUS_SESSION_BUS_ADDRESS=~s"
+            phase
+            (getenv "XDG_SESSION_TYPE")
+            (getenv "XDG_CURRENT_DESKTOP")
+            (getenv "WAYLAND_DISPLAY")
+            (getenv "DBUS_SESSION_BUS_ADDRESS")))
+
+(define (executable-exists? name)
+  "Return #t if executable NAME is found in PATH."
+  (and-let* ((path (getenv "PATH"))
+             (bin (search-path (string-split path #\:) name)))
+    (access? bin X_OK)))
+
+(define (ensure-session-environment!)
+  "Ensure XDG session environment variables are set to proper values."
+  (let ((session-type    (getenv "XDG_SESSION_TYPE"))
+        (current-desktop (getenv "XDG_CURRENT_DESKTOP")))
+    (cond
+     ;; if XDG_SESSION_TYPE is empty in environment variables
+     ;; set it to "wayland"
+     ((or (not session-type)
+          (string-null? session-type))
+      (setenv "XDG_SESSION_TYPE" "wayland"))
+     ;; if XDG_SESSION_TYPE has a value other than "wayland"
+     ;; leave it put warn user as this may cause compatibility issues
+     ((not (string=? session-type "wayland"))
+      (log-warn "XDG_SESSION_TYPE is ~s (expected \"wayland\"); this may cause issues."
+                session-type)))
+
+    (cond
+     ;; if XDG_CURRENT_DESKTOP is empty in environment variables
+     ;; set it to "gliver:river:wlr" (fallback gliver -> river -> wlr)
+     ((or (not current-desktop) (string-null? current-desktop))
+      (setenv "XDG_CURRENT_DESKTOP" "gliver:river:wlr"))
+     ;; if it's set to something else that doesn't contain wlr
+     ;; leave it but warn user
+     ((not (member "wlr" (string-split current-desktop #\:)))
+      (log-warn "XDG_CURRENT_DESKTOP is ~s (missing \"wlr\" fallback); this may cause issues."
+                current-desktop)))))
+
+(define (update-activation-environment!)
+  "Export session environment variables to D-Bus and systemd when available."
+  (and-let* ((dbus-addr (getenv "DBUS_SESSION_BUS_ADDRESS"))
+             ((not (string-null? dbus-addr)))
+             ;; I believe there should be no distro missing this binary
+             ((executable-exists? "dbus-update-activation-environment")))
+    (let* ((systemd-dbus? (and (executable-exists? "systemctl")
+                               (systemd-active? "dbus.service")))
+           (args (if systemd-dbus?
+                     ;; for systemd, we have to pass --systemd to dbus
+                     '("--systemd" "--all")
+                     '("--all")))
+           (status (apply system* "dbus-update-activation-environment" args))
+           (rc (status:exit-val status)))
+      (unless (and rc (zero? rc))
+        (log-warn "dbus-update-activation-environment exited with status ~a" rc)))))
+
 ;;; startup sequence
 (define (startup! options)
   "Main startup sequence, following the spec §20.1."
@@ -91,52 +152,35 @@
               "gliver: fatal: cannot connect to Wayland display~%")
       (exit 1))
 
-    ;; step 4-5: protocol binding and output enumeration
-    ;; handled inside river-connect! now
-
-    ;; step 6: create default workspaces
-    ;; create default output if none were detected via protocol
-    ;; (when (null? (manager-outputs *manager*))
-    ;;   (log-info "No outputs detected yet, creating default output.")
-    ;;   (let ((output (make-output "default" #:width 1920 #:height 1080)))
-    ;;     (output-add! output)))
-
-    ;; step 7: layout registration
-    ;; in river 0.4.1, the wm registers by binding river_window_manager_v1.
-    ;; layout namespace is set when binding river_layout_manager_v3.
-    ;; (log-info "Window manager protocol bound.")
-
-    ;; step 8: start repl server
+    ;; step 4: start repl and ipc servers
     (log-info "Starting REPL server...")
     (repl-start!)
-
-    ;; step 9: start ipc server
     (log-info "Starting IPC server...")
     (ipc-start!)
 
-    ;; step 10: install default keybindings (if not overridden by config)
+    ;; step 5: install default keybindings (default, can be overridden)
     (keybindings-gliver-install-default!)
 
-    ;; step 11: sync keybindings to river (deferred to next manage sequence)
-    (log-info "Requesting keybinding sync...")
-    (keybinding-sync!)
+    ;; step 6: update environment variables
+    ;; details: https://codeberg.org/ebeem/gliver/issues/38
+    (log-session-environment "before")
+    (ensure-session-environment!)
+    (update-activation-environment!)
+    (log-session-environment "after")
 
-    (log-info "Running startup hooks...")
-    (gliver-hook-run! *startup-hook*)
-
-	;; NOTE: this should be calling the message module so it's visible
-	;; inside the window manager, it should probably be moved to a module
+	;; step 7: startup hook & load configuration
     ;; show startup message
     (when *startup-message*
       (log-info "Welcome to Gliver ~a. Press C-t ? for help." *version*))
 
-    (log-info "Startup complete.")
+    (log-info "Running startup hooks...")
+    (gliver-hook-run! *startup-hook*)
 
-	;; step 12: load configuration
     (log-info "Loading configuration...")
     (when config-path
       (set! *config-file-path* config-path))
-	(with-manage-sequence (config-load!))))
+	(with-manage-sequence
+     (config-load!))))
 
 (define (shutdown!)
   "Clean shutdown sequence."
@@ -157,8 +201,8 @@
   (define (handler sig)
     (log-info "Received OS signal ~a, forcing shutdown..." sig)
     ;; run shutdown safely
-    (catch #t 
-      (lambda () (shutdown!)) 
+    (catch #t
+      (lambda () (shutdown!))
       (lambda _ #f))
     (exit (+ 128 sig)))
 
@@ -184,7 +228,7 @@
 
 	;; signal handlers to guarantee shutdown
     (install-signal-handlers!)
-	
+
     ;; run
     (catch #t
       (lambda ()
