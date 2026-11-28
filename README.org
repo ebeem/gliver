@@ -66,9 +66,9 @@ Because ~River~ relies on a non-monolithic architecture, it separates the compos
 - pkgconf
 
 Optional dependencies (recommended for starters)
-- foot (default terminal) \\
+- any of foot, kitty, alacritty, ghostty, tilix, xterm (default terminal) \\
   Can be configured via =*terminal*= variable.
-- iosevka font (default font) \\
+- iosevka font (default font) and a nerd font for statusbar icons \\
   Can be configured via =*theme-font*= variable.
 
 #+begin_quote

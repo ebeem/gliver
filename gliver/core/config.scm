@@ -12,6 +12,7 @@
 
 (define-module (gliver core config)
   #:use-module (ice-9 format)
+  #:use-module (srfi srfi-1)
   #:use-module (gliver config)
   #:use-module (gliver core logs)
   #:use-module (gliver core types)
@@ -92,8 +93,13 @@
 ;;; config variables
 (define-var *quit-exits-river* #t
             "Whether the quit command should also exit river.")
-(define-var *terminal* "foot"
-            "Terminal emulator to be used when spawning terminals.")
+;; default terminal is the first found terminal from known ones
+(define-var *terminal*
+  (or (find executable-exists? `(,(getenv "TERM")
+                                 "foot" "kitty" "alacritty"
+                                 "ghostty" "tilix" "xterm"))
+      "foot")
+  "Terminal emulator to be used when spawning terminals.")
 (define-var *startup-message* #t
             "Whether to show message at startup.")
 (define-var *wallpaper* #f
