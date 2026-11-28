@@ -38,7 +38,8 @@ Returns #t if PTR is valid, #f otherwise."
 Parameters: (NAME)
   - NAME: String executable name.
 Returns #t if found and executable, #f otherwise."
-  (and-let* ((path (getenv "PATH"))
+  (and-let* (((string? name))
+             (path (getenv "PATH"))
              (bin (search-path (string-split path #\:) name)))
     ;; execute access on the first returned binary
     (access? bin X_OK)))
@@ -79,43 +80,33 @@ Parameters: (NAME MODULE DOCSTRING [GETTER SETTER])
       (with-syntax ((name name)
                     (init-val init-val)
                     (parent parent)
-                    (doc doc)
-                    ;; give the gensym name syntax context so `define` binds
-                    ;; it in the caller's module.
-                    (backing (datum->syntax name (gensym "%var-"))))
+                    (doc doc))
         #'(begin
-            ;; holds the local override, or `*unspecified*' (also `??`) when inheriting
-            (define backing init-val)
             ;; register custom getter/setter closures
             ;; we can't have just name like other variables, because
             ;; name is here a define-syntax, not a defined variable
-            (variable-register! 'name (current-module) doc
-                                (lambda ()
-                                  (if (unspecified? backing)
-                                      parent
-                                      backing))
-                                (lambda (val)
-                                  (set! backing val)))
-            ;; variable transformer for custom getter/setter.
+            (let ((backing init-val))
+              (variable-register! 'name (current-module) doc
+                                  (lambda ()
+                                    (if (unspecified? backing)
+                                        parent
+                                        backing))
+                                  (lambda (val)
+                                    (set! backing val))))
+            ;; variable transformer, just utilize var-get and var-set.
             (define-syntax name
               (make-variable-transformer
                (lambda (y)
                  (syntax-case y (set!)
                    ;; set should update the backing override
                    ;; use `??` to revert to `parent`
-                   ((set! id val) #'(set! backing val))
+                   ((set! id val) #'(var-set! name val))
                    ;; operator position, invoke it
-                   ;; this maybe helpful for functions inheritance
-                   ;; I don't think that it will be used in gliver
                    ((id . args)
-                    #'((if (unspecified? backing)
-                           parent
-                           backing) . args))
-                   ;; value position, resolve to `parent` unless overridden.
+                    #'((var-get 'name) . args))
+                   ;; value position, resolve via registry accessor.
                    (id (identifier? #'id)
-                       #'(if (unspecified? backing)
-                             parent
-                             backing)))))))))
+                       #'(var-get 'name)))))))))
 
     (syntax-case x ()
       ;; (define-var name #:inherit parent "docstring")
