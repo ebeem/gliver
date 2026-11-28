@@ -95,7 +95,7 @@
             "Whether the quit command should also exit river.")
 ;; default terminal is the first found terminal from known ones
 (define-var *terminal*
-  (or (find executable-exists? `(,(getenv "TERM")
+  (or (find executable-exists? `(,(or (getenv "TERM") "foot")
                                  "foot" "kitty" "alacritty"
                                  "ghostty" "tilix" "xterm"))
       "foot")
