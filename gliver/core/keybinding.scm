@@ -23,6 +23,9 @@
   #:export (
             *keybinding-current-mode*
             *keybinding-mapping*
+            *keybinding-dirty?*
+            keybinding-mark-dirty!
+            keybinding-on-keymap-cleared
             keybinding->string
             keybinding-modifiers-list
             define-key
@@ -37,6 +40,7 @@
             keybinding-switch-to-mode!
             keybinding-sync-all!
             keybinding-sync!
+            keybinding-on-manage-start
 ))
 
 ;;; state
@@ -45,6 +49,22 @@
 
 (define-var *keybinding-mapping* '()
             "Alist of (<keybinding> . river-binding-proxy).")
+
+(define-var *keybinding-dirty?* #f
+            "Boolean indicating whether keybindings have been modified since the last sync.")
+
+(define (keybinding-mark-dirty!)
+  "Mark keybindings as dirty and request a manage sequence."
+  (unless *keybinding-dirty?*
+    (set! *keybinding-dirty?* #t)
+    (wm-manager-manage-dirty (manager-wl-proxy *manager*))))
+
+(define (keybinding-on-keymap-cleared keymap)
+  "Invoked when KEYMAP is cleared, mark keybindings dirty.
+Parameters: (KEYMAP)
+  - KEYMAP: <keymap> record that was cleared."
+  (keybinding-mark-dirty!))
+(gliver-hook-add! %keymap-cleared-hook 'keybinding-on-keymap-cleared)
 
 (define (%keybinding-find-by-proxy proxy-binding)
   "Look up the <keybinding> record associated with PROXY-BINDING.
@@ -86,7 +106,8 @@ Parameters: (KEYMAP KEY ACTION [#:persist PERSIST])
          (key-str (key->string k))
          (mode (keymap-mode keymap)))
     (hash-table-set! (keymap-bindings keymap) key-str
-                     (make-keybinding k action persist mode keymap))))
+                     (make-keybinding k action persist mode keymap))
+    (keybinding-mark-dirty!)))
 
 (define-syntax define-keys
   (syntax-rules ()
@@ -102,7 +123,11 @@ Parameters: (KEYMAP KEY ACTION [#:persist PERSIST])
 Parameters: (KEYMAP KEY)
   - KEYMAP: <keymap> record to unbind from.
   - KEY: <key> record or string key description (for kbd)."
-  (hash-table-delete! (keymap-bindings keymap) (key->string (%ensure-key key))))
+  (let ((bindings (keymap-bindings keymap))
+        (key-str (key->string (%ensure-key key))))
+    (when (hash-table-exists? bindings key-str)
+      (hash-table-delete! bindings key-str)
+      (keybinding-mark-dirty!))))
 
 (define (lookup-key keymap key)
   "Look up KEY in KEYMAP. Returns the <keybinding> or #f.
@@ -262,6 +287,8 @@ Parameters: (KEYMAP [#:force FORCE])
 Destroys existing bindings, generates binding records from registered keymaps,
 and creates `river_xkb_binding_v1` objects for all seats.
 Parameters: None."
+  (set! *keybinding-dirty?* #f)
+
   ;; destroy all existing keybindings first
   (xkb-bindings-manager-bindings-destroy-all!)
 
@@ -300,13 +327,9 @@ Parameters: None."
   "Request a keybinding sync during the next compositor manage sequence.
 Parameters: None."
   ;; sync keybindings in manage sequence
-  (with-manage-sequence
+  (with-manage-sequence #:dirty #t
    (log-info "Performing keybinding sync...")
    (keybinding-sync-all!))
-
-  ;; it's safe to call manage dirty because it will be ignored
-  ;; if we are currently in a one
-  (wm-manager-manage-dirty (manager-wl-proxy *manager*))
 
   ;; create xkb bindings seat for ensure_next_key_eaten
   ;; this will return the existing seat if it's already created
@@ -316,3 +339,10 @@ Parameters: None."
        (when (valid-pointer? seat-proxy)
          (xkb-bindings-manager-bindings-create-seat seat-proxy))))
    (manager-seats *manager*)))
+
+(define (keybinding-on-manage-start)
+  "Sync keybindings at the start of a manage sequence when marked dirty.
+Parameters: None."
+  (when *keybinding-dirty?*
+    (keybinding-sync!)))
+(gliver-hook-add! *manager-manage-start-hook* 'keybinding-on-manage-start)

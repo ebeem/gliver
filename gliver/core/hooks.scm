@@ -164,6 +164,7 @@
             %keybinding-released-hook
             %keybinding-repeat-stopped-hook
             %keybinding-eaten-hook
+            %keymap-cleared-hook
             *keymap-change-hook*
             *command-pre-hook*
             *command-post-hook*
@@ -1254,6 +1255,12 @@ Parameters: (PROXY-BINDING)
   "Invoked when a binding is eaten on seat.
 Parameters: (PROXY-SEAT)
   - PROXY-SEAT: Pointer to river_xkb_bindings_seat_v1 proxy.")
+
+(define-var %keymap-cleared-hook
+  (make-gliver-hook '%keymap-cleared-hook 1)
+  "Invoked when bindings in a keymap are cleared.
+Parameters: (KEYMAP)
+  - KEYMAP: <keymap> record that was cleared.")
 
 (define-var *keymap-change-hook*
   (make-gliver-hook 'keymap-change 1)

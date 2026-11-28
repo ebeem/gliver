@@ -102,9 +102,12 @@ Returns alist of (key-string . <keybinding>) pairs."
   "Remove all bindings from KEYMAP.
 Parameters: (KEYMAP)
   - KEYMAP: <keymap> record to clear."
-  (hash-table-walk (keymap-bindings keymap)
-                   (lambda (key value)
-                     (hash-table-delete! (keymap-bindings keymap) key))))
+  (let ((bindings (keymap-bindings keymap)))
+    (when (> (hash-table-size bindings) 0)
+      (hash-table-walk bindings
+                       (lambda (key value)
+                         (hash-table-delete! bindings key)))
+      (gliver-hook-run! %keymap-cleared-hook keymap))))
 
 ;;; standard keymaps
 (define-var *top-map*

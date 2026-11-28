@@ -2,7 +2,7 @@
   #:use-module (gliver core)
   #:use-module (gliver contrib commands)
   #:export (
-			keybindings-stumpwm-install-default!
+            keybindings-stumpwm-install-default!
 ))
 
 (define (keybindings-stumpwm-install-default!)
@@ -87,5 +87,4 @@
   (define-key *root-map* "C-q" 'quit)
 
   ;; prefix
-  (define-key *top-map* "C-t" '(enter-keymap *root-map*))
-  (keybinding-sync!))
+  (define-key *top-map* "C-t" '(enter-keymap *root-map*)))

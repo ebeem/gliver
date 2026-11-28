@@ -2,7 +2,7 @@
   #:use-module (gliver core)
   #:use-module (gliver contrib commands)
   #:export (
-			keybindings-sway-install-default!
+            keybindings-sway-install-default!
 ))
 
 ;;; sway keybindings
@@ -91,6 +91,4 @@
   (define-key *top-map* "XF86AudioMicMute" 'media-mic-mute)
   (define-key *top-map* "XF86MonBrightnessDown" 'media-brightness-decrease)
   (define-key *top-map* "XF86MonBrightnessUp" 'media-brightness-increase)
-  (define-key *top-map* "Print" 'media-screenshot)
-
-  (keybinding-sync!))
+  (define-key *top-map* "Print" 'media-screenshot))

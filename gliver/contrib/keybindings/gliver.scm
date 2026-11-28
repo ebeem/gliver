@@ -2,7 +2,7 @@
   #:use-module (gliver core)
   #:use-module (gliver contrib commands)
   #:export (
-			keybindings-gliver-install-default!
+            keybindings-gliver-install-default!
 ))
 
 (define (keybindings-gliver-install-default!)
@@ -96,9 +96,7 @@
   (define-key *root-map* "o" 'launcher-run)
   (define-key *root-map* "h" '(enter-keymap *help-map*))
   (define-key *root-map* "w" '(enter-keymap *window-map*))
-  (define-key *root-map* "W" '(enter-keymap *workspace-map*))
-
-  (keybinding-sync!))
+  (define-key *root-map* "W" '(enter-keymap *workspace-map*)))
 
 (keybindings-clear!)
 (keybindings-gliver-install-default!)
