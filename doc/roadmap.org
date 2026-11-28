@@ -165,7 +165,7 @@ focused window remain the previous one, maybe a missing dirty manage sequence?
 to keep track of what references still exist and ensure that they are all cleared up
 
 ** v0.0.5
-*** TODO default terminal/palette should be auto detected at initialization
+*** DONE default terminal/palette should be auto detected at initialization
 also default font, maybe notify if no nerd fallback font is found?
 
 *** DONE weather module doesn't get polled
