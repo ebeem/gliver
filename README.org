@@ -224,7 +224,7 @@ Workaround for gtk applications can be [[https://codeberg.org/river/wiki#global-
 Note: output configuration currently lacks features like custom resolution, scale, and position. Such features can be configured via ~wlr-randr~.
 #+end_quote
 
-** Help
+** Help & Community
 
 As in ~Emacs~ and ~StumpWM~, you can always get documentation natively through ~Gliver~:
 
@@ -236,3 +236,5 @@ As in ~Emacs~ and ~StumpWM~, you can always get documentation natively through ~
 | =s-SPC h ?= | Show top map keybidnings |
 
 You can also drop into the Live REPL at any time to inspect state.
+
+Join us in our IRC channel on Libera.Chat: #gliver
