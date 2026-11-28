@@ -101,6 +101,7 @@ MODULES =	gliver/config.scm \
 			gliver/contrib/debug/ipc-server.scm \
 			gliver/contrib/debug/repl-server.scm \
 			gliver/contrib/utils/systemd.scm \
+			gliver/contrib/utils/xdg-desktop.scm \
 			gliver/contrib/ui/gleui/base/surface.scm \
 			gliver/contrib/ui/gleui/base/shm.scm \
 			gliver/contrib/ui/gleui/base/draw.scm \

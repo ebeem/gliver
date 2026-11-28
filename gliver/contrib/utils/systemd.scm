@@ -1,23 +1,36 @@
+;;; gliver/contrib/utils/systemd.scm --- Systemd unit utilities
+;;;
+;;; Copyright (C) 2026 Gliver Contributors
+;;; SPDX-License-Identifier: GPL-3.0-or-later
+
 (define-module (gliver contrib utils systemd)
   #:use-module (ice-9 popen)
   #:use-module (ice-9 rdelim)
   #:use-module (gliver core)
-  #:export (systemd-status
+  #:export (
+            systemctl
+            systemd-status
             systemd-start
             systemd-stop
             systemd-restart
             systemd-enable
             systemd-disable
             systemd-active?
-            systemd-ensure-started))
+            systemd-session?
+            systemd-ensure-started
+))
 
 ;; helper to build the command list and execute
-(define (systemctl action unit system?)
-  (let* ((args (if system?
-                   (list "systemctl" action unit)
-                   (list "systemctl" "--user" action unit)))
-         (status (apply system* args)))
-    (zero? (status:exit-val status))))
+(define* (systemctl action unit system? #:key (no-block? #f))
+  (let* ((units (if (list? unit) unit (list unit)))
+         (args `(,@(if system?
+                       (list "systemctl" action)
+                       (list "systemctl" "--user" action))
+                 ,@(if no-block? '("--no-block") '())
+                 ,@units))
+         (status (apply system* args))
+         (rc (status:exit-val status)))
+    (and rc (zero? rc))))
 
 ;; returns the full status output as a string
 (define* (systemd-status unit #:key (system? #f))
@@ -32,7 +45,8 @@
 ;; basic controls using keyword arguments
 (define* (systemd-start unit #:key (system? #f))   (systemctl "start" unit system?))
 (define* (systemd-stop unit #:key (system? #f))    (systemctl "stop" unit system?))
-(define* (systemd-restart unit #:key (system? #f)) (systemctl "restart" unit system?))
+(define* (systemd-restart unit #:key (system? #f) (no-block? #f))
+  (systemctl "restart" unit system? #:no-block? no-block?))
 (define* (systemd-enable unit #:key (system? #f))  (systemctl "enable" unit system?))
 (define* (systemd-disable unit #:key (system? #f)) (systemctl "disable" unit system?))
 
@@ -41,8 +55,14 @@
   (let* ((args (if system?
                    (list "systemctl" "is-active" "--quiet" unit)
                    (list "systemctl" "--user" "is-active" "--quiet" unit)))
-         (status (apply system* args)))
-    (zero? (status:exit-val status))))
+         (status (apply system* args))
+         (rc (status:exit-val status)))
+    (and rc (zero? rc))))
+
+(define (systemd-session?)
+  "Return #t if the current user session has an active systemd D-Bus service."
+  (and (executable-exists? "systemctl")
+       (systemd-active? "dbus.service")))
 
 ;; start if stopped (conditional start)
 (define* (systemd-ensure-started unit #:key (system? #f))

@@ -21,13 +21,12 @@
 (use-modules (ice-9 format)
              (ice-9 getopt-long)
              (ice-9 match)
-             (srfi srfi-2)
              (gliver config)
              (gliver core)
              (gliver river)
              (gliver contrib commands)
              (gliver contrib keybindings gliver)
-             (gliver contrib utils systemd)
+             (gliver contrib utils xdg-desktop)
              (gliver contrib debug ipc-server)
              (gliver contrib debug repl-server))
 
@@ -67,65 +66,6 @@
         (mkdir-p parent)))
     (mkdir path)))
 
-(define (log-session-environment phase)
-  "Log key session environment variables at PHASE for debugging."
-  (log-info "Session environment (~a): XDG_SESSION_TYPE=~s XDG_CURRENT_DESKTOP=~s WAYLAND_DISPLAY=~s DBUS_SESSION_BUS_ADDRESS=~s"
-            phase
-            (getenv "XDG_SESSION_TYPE")
-            (getenv "XDG_CURRENT_DESKTOP")
-            (getenv "WAYLAND_DISPLAY")
-            (getenv "DBUS_SESSION_BUS_ADDRESS")))
-
-(define (executable-exists? name)
-  "Return #t if executable NAME is found in PATH."
-  (and-let* ((path (getenv "PATH"))
-             (bin (search-path (string-split path #\:) name)))
-    (access? bin X_OK)))
-
-(define (ensure-session-environment!)
-  "Ensure XDG session environment variables are set to proper values."
-  (let ((session-type    (getenv "XDG_SESSION_TYPE"))
-        (current-desktop (getenv "XDG_CURRENT_DESKTOP")))
-    (cond
-     ;; if XDG_SESSION_TYPE is empty in environment variables
-     ;; set it to "wayland"
-     ((or (not session-type)
-          (string-null? session-type))
-      (setenv "XDG_SESSION_TYPE" "wayland"))
-     ;; if XDG_SESSION_TYPE has a value other than "wayland"
-     ;; leave it put warn user as this may cause compatibility issues
-     ((not (string=? session-type "wayland"))
-      (log-warn "XDG_SESSION_TYPE is ~s (expected \"wayland\"); this may cause issues."
-                session-type)))
-
-    (cond
-     ;; if XDG_CURRENT_DESKTOP is empty in environment variables
-     ;; set it to "gliver:river:wlr" (fallback gliver -> river -> wlr)
-     ((or (not current-desktop) (string-null? current-desktop))
-      (setenv "XDG_CURRENT_DESKTOP" "gliver:river:wlr"))
-     ;; if it's set to something else that doesn't contain wlr
-     ;; leave it but warn user
-     ((not (member "wlr" (string-split current-desktop #\:)))
-      (log-warn "XDG_CURRENT_DESKTOP is ~s (missing \"wlr\" fallback); this may cause issues."
-                current-desktop)))))
-
-(define (update-activation-environment!)
-  "Export session environment variables to D-Bus and systemd when available."
-  (and-let* ((dbus-addr (getenv "DBUS_SESSION_BUS_ADDRESS"))
-             ((not (string-null? dbus-addr)))
-             ;; I believe there should be no distro missing this binary
-             ((executable-exists? "dbus-update-activation-environment")))
-    (let* ((systemd-dbus? (and (executable-exists? "systemctl")
-                               (systemd-active? "dbus.service")))
-           (args (if systemd-dbus?
-                     ;; for systemd, we have to pass --systemd to dbus
-                     '("--systemd" "--all")
-                     '("--all")))
-           (status (apply system* "dbus-update-activation-environment" args))
-           (rc (status:exit-val status)))
-      (unless (and rc (zero? rc))
-        (log-warn "dbus-update-activation-environment exited with status ~a" rc)))))
-
 ;;; startup sequence
 (define (startup! options)
   "Main startup sequence, following the spec §20.1."
@@ -163,10 +103,10 @@
 
     ;; step 6: update environment variables
     ;; details: https://codeberg.org/ebeem/gliver/issues/38
-    (log-session-environment "before")
-    (ensure-session-environment!)
-    (update-activation-environment!)
-    (log-session-environment "after")
+    (xdg-desktop-log-environment "before")
+    (xdg-desktop-ensure-environment!)
+    (xdg-desktop-update-activation-environment!)
+    (xdg-desktop-log-environment "after")
 
 	;; step 7: startup hook & load configuration
     ;; show startup message

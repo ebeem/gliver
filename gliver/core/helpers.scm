@@ -15,6 +15,7 @@
   #:declarative? #f
   #:export (
             valid-pointer?
+            executable-exists?
             *variable-registry*
             *variable-accessors*
             ??
@@ -31,6 +32,16 @@ Parameters: (PTR)
   - PTR: Pointer to validate.
 Returns #t if PTR is valid, #f otherwise."
   (and (pointer? ptr) (not (null-pointer? ptr))))
+
+(define (executable-exists? name)
+  "Return #t if executable NAME is found in PATH.
+Parameters: (NAME)
+  - NAME: String executable name.
+Returns #t if found and executable, #f otherwise."
+  (and-let* ((path (getenv "PATH"))
+             (bin (search-path (string-split path #\:) name)))
+    ;; execute access on the first returned binary
+    (access? bin X_OK)))
 
 ;;; variable introspection registry
 (define *variable-registry* (make-hash-table))
