@@ -17,6 +17,7 @@
   #:use-module (cairo)
   #:use-module (ice-9 format)
   #:use-module (ice-9 match)
+  #:use-module (ice-9 threads)
   #:use-module (rnrs bytevectors)
   #:use-module (rnrs io ports)
   #:use-module (srfi srfi-1)
@@ -135,14 +136,24 @@
 
 (define %notification-service-name "org.freedesktop.Notifications")
 (define %notification-object-path  "/org/freedesktop/Notifications")
+;; dbus may spam notifications in another thread, safe threading
+;; must be used when needed to prevent race conditions
+(define %notification-state-mutex (make-mutex))
+(define %notification-pending-queue '())
+;; burst cooldown to prevent spamming notifications from freezing gliver (50ms)
+(define %notification-burst-cooldown
+  (quotient (* 50 internal-time-units-per-second) 1000))
+;; last shown notification time to ensure cooldown passed before showing next
+(define %notification-last-show-time (- %notification-burst-cooldown))
 
 (define (%next-id!)
   "Return and increment the next notification ID.
 Parameters: None.
 Returns positive integer notification ID."
-  (let ((id *notification-daemon-id-counter*))
-    (set! *notification-daemon-id-counter* (1+ *notification-daemon-id-counter*))
-    id))
+  (with-mutex %notification-state-mutex
+    (let ((id *notification-daemon-id-counter*))
+      (set! *notification-daemon-id-counter* (1+ *notification-daemon-id-counter*))
+      id)))
 
 (define (%notification-toast-name id)
   "Build the toast instance name corresponding to notification ID.
@@ -168,17 +179,19 @@ Parameters: (ID APP-NAME SUMMARY BODY URGENCY ICON)
                  (urgency . ,urgency)
                  (icon . ,icon)
                  (timestamp . ,(current-time)))))
-    (set! *notification-daemon-history*
-          (cons entry *notification-daemon-history*))
-    ;; pop last notification in history if it exceed max length
-    (when (> (length *notification-daemon-history*) *notification-daemon-max-history*)
+    (with-mutex %notification-state-mutex
       (set! *notification-daemon-history*
-            (take *notification-daemon-history* *notification-daemon-max-history*)))))
+            (cons entry *notification-daemon-history*))
+      ;; pop last notification in history if it exceed max length
+      (when (> (length *notification-daemon-history*) *notification-daemon-max-history*)
+        (set! *notification-daemon-history*
+              (take *notification-daemon-history* *notification-daemon-max-history*))))))
 
 (define-command (notification-daemon-clear-history!)
   "Clear the stored notification history.
 Parameters: None."
-  (set! *notification-daemon-history* '())
+  (with-mutex %notification-state-mutex
+    (set! *notification-daemon-history* '()))
   (log-info "notification-daemon: history cleared"))
 
 ;;; notification dbus wire codec signals
@@ -536,7 +549,72 @@ Parameters: None."
                                     icon
                                     theme-overrides))))
 
-;;; method dispatch
+(define (%pop-pending-notification!)
+  "Pop the oldest queued notification and update the last-show timestamp.
+Parameters: None.
+Returns list (FORMATTED TIMEOUT NOTIF-ID ICON THEME-OVERRIDES ACTIONS), or #f if empty."
+  ;; mutex to prevent modifying queue from other threads
+  (with-mutex %notification-state-mutex
+    (if (null? %notification-pending-queue)
+        #f
+        ;; queue is stored newest-first, so pop from the tail
+        (let ((next (last %notification-pending-queue)))
+          ;; remove the tail and update last show time
+          (set! %notification-pending-queue
+                (drop-right %notification-pending-queue 1))
+          (set! %notification-last-show-time
+                (get-internal-real-time))
+          next))))
+
+(define (%display-next-notification!)
+  "Pop and display one queued notification on the main thread.
+Parameters: None."
+  (let ((job (%pop-pending-notification!)))
+    ;; create the layer surface outside the mutex so d-bus notify calls can be received
+    (when job
+      (match-let (((formatted timeout notif-id icon theme-overrides actions) job))
+        (catch #t
+          (lambda ()
+            (%notification-daemon-show! formatted timeout notif-id
+                                        icon theme-overrides actions))
+          (lambda (k . args)
+            (log-error "notification-daemon: Error displaying toast: ~a ~a" k args)))))))
+
+(define (%notification-on-tick)
+  "Invoked on manage tick, pop and display a notification from queue if available.
+Parameters: None."
+  ;; throttling here keeps main-loop wayland dispatch responsive during notification floods
+  (let ((due? (with-mutex %notification-state-mutex
+                (and (pair? %notification-pending-queue)
+                     (>= (- (get-internal-real-time) %notification-last-show-time)
+                         %notification-burst-cooldown)))))
+    ;; only display after cooldown is passed, otherwise wait for next tick
+    (when due?
+      (%display-next-notification!))))
+
+(define (%enqueue-notification-show! formatted timeout notif-id icon theme-overrides actions)
+  "Queue a notification for main-thread display.
+Parameters: (FORMATTED TIMEOUT NOTIF-ID ICON THEME-OVERRIDES ACTIONS)
+  - FORMATTED: String formatted Pango markup.
+  - TIMEOUT: Float auto-dismiss delay in seconds, or 0 to disable.
+  - NOTIF-ID: Integer notification identifier.
+  - ICON: String, list, or #f icon path/name or '(image-data ...) payload.
+  - THEME-OVERRIDES: Alist of toast theme override keys and values.
+  - ACTIONS: List of flat D-Bus action keys followed by labels."
+  (with-mutex %notification-state-mutex
+    (let* ((max-vis  (max 1 (or *notification-daemon-max-visible* 6)))
+           ;; replace any older unshown entry sharing notif-id (replaces_id updates)
+           (filtered (filter (lambda (item)
+                               (not (equal? (list-ref item 2) notif-id)))
+                             %notification-pending-queue))
+           (updated  (cons (list formatted timeout notif-id icon theme-overrides actions)
+                           filtered)))
+      ;; only keep most max-vis unshown items
+      (set! %notification-pending-queue
+            (if (> (length updated) max-vis)
+                (take updated max-vis)
+                updated)))))
+
 (define (%handle-notify! sender serial body-bv)
   "Decode a Notify call from SENDER and display it.
 This will be invoked when an application sends a notification message.
@@ -567,11 +645,7 @@ Parameters: (SENDER SERIAL BODY-BV)
             ;; send reply with new notification id, this means a success
             (dbus-reply! *notification-daemon-dbus* sender serial "u" (dbus-encode-u32 notif-id))
             (%add-to-history! notif-id app-name summary body urgency icon)
-            (catch #t
-              (lambda ()
-                (%notification-daemon-show! formatted timeout notif-id icon theme-overrides actions))
-              (lambda (k . args)
-                (log-error "notification-daemon: Error displaying toast: ~a ~a" k args))))))))
+            (%enqueue-notification-show! formatted timeout notif-id icon theme-overrides actions))))))
 
 (define (%handle-method-call! member sender serial path iface body-bv)
   "Dispatch D-Bus method call MEMBER from SENDER with SERIAL on PATH and IFACE.
@@ -604,6 +678,11 @@ Parameters: (MEMBER SENDER SERIAL PATH IFACE BODY-BV)
       (lambda ()
         (let* ((p        (open-bytevector-input-port body-bv))
                (close-id (dbus-get-u32 p)))
+          (with-mutex %notification-state-mutex
+            (set! %notification-pending-queue
+                  (filter (lambda (item)
+                            (not (equal? (list-ref item 2) close-id)))
+                          %notification-pending-queue)))
           (gleui-toast-kill! #:name (%notification-toast-name close-id))))
       (lambda _ #f))
     (dbus-reply! *notification-daemon-dbus* sender serial "" #f))
@@ -684,6 +763,9 @@ Returns #t if the daemon is running, #f on failure."
   "Stop the D-Bus notification daemon and dismiss active notification toasts.
 Parameters: None.
 Returns #t if the daemon was active, unspecified otherwise."
+  (with-mutex %notification-state-mutex
+    (set! %notification-pending-queue '())
+    (set! %notification-last-show-time (- %notification-burst-cooldown)))
   (catch #t
     (lambda () (notification-daemon-dismiss-all!))
     (lambda _ #f))
@@ -704,3 +786,5 @@ Parameters: None.
 Returns #t if restarted successfully, #f on failure."
   (notification-daemon-stop!)
   (notification-daemon-start!))
+
+(gliver-hook-add! *manager-tick-hook* '%notification-on-tick)

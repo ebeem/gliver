@@ -233,6 +233,7 @@ Parameters: (STATE)
                                            (gleui-toast-state-shm-active-idx state)
                                            width height widget
                                            #:layer-surface layer-surface
+                                           #:update-size? #f
                                            #:shm-name (format #f "gliver-toast-~a-shm"
                                                               (or (gleui-toast-state-name state) "default"))))
           (lambda (new-slots next-idx _wl-buffer hit-boxes)
